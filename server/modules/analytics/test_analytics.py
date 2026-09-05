@@ -180,11 +180,13 @@ class TestAnalyticsModule(unittest.TestCase):
         self.assertEqual(data.attention_alerts[0].severity, "warning")
 
     def test_export_bank_file(self):
+        from fastapi.responses import StreamingResponse
         response = export_bank_file(1, self.db)
+        self.assertTrue(isinstance(response, StreamingResponse))
         self.assertEqual(response.media_type, "text/csv")
         self.assertIn("attachment; filename=", response.headers["Content-Disposition"])
         content = response.body.decode("utf-8")
-        self.assertIn("Payment Reference,Beneficiary Name,Bank Account Number", content)
+        self.assertIn("Transaction_Ref,Beneficiary_Name,Account_Number,IFSC_Code,Amount,Remarks", content)
         self.assertIn("Alice Smith", content)
         self.assertIn("ACCT00010101", content)
         self.assertIn("7500.00", content)
