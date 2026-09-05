@@ -33,6 +33,25 @@
         }
       }
     </script>
+    <style>
+      /* Ensure default pointer cursor behavior across the UI and prevent carets on layout containers */
+      html, body, #root {
+        cursor: default;
+      }
+      button, a, [role="button"], select, input[type="button"], input[type="submit"] {
+        cursor: pointer;
+      }
+      input[type="text"], input[type="email"], input[type="password"], input[type="number"], input[type="date"], textarea {
+        cursor: text;
+        -webkit-user-select: text;
+        user-select: text;
+      }
+      /* Prevent accidental caret and text selection on chrome/shell elements */
+      nav, aside, header, button, .no-select {
+        -webkit-user-select: none;
+        user-select: none;
+      }
+    </style>
   </head>
   <body class="bg-[#f8fafc] text-slate-900 font-sans antialiased selection:bg-slate-200 selection:text-slate-900">
     <div id="root"></div>
