@@ -20,8 +20,8 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [token, setToken] = useState<string | null>(getAuthToken());
-  const [user, setUser] = useState<User | null>(getStoredUser());
+  const [token, setToken] = useState<string | null>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
 
@@ -35,7 +35,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setStoredUser(fetchedUser);
           setToken(storedToken);
         } catch {
-          logout();
+          // Token invalid or expired — clear everything and show login
+          clearAuthToken();
+          setUser(null);
+          setToken(null);
         }
       }
       setIsLoading(false);
