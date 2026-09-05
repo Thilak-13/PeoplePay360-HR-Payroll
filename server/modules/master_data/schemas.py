@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from typing import Optional, List
 from decimal import Decimal
-from pydantic import BaseModel, Field, ConfigDict, model_validator
+from pydantic import BaseModel, Field, ConfigDict, model_validator, computed_field, PrivateAttr
 
 
 # ==========================================
@@ -265,14 +265,13 @@ class EmployeeBase(BaseModel):
     department_id: Optional[int] = None
     working_schedule_id: Optional[int] = None
     job_title: Optional[str] = Field(None, max_length=100)
-    bank_account_number: Optional[str] = Field(None, max_length=50)
-    bank_ifsc: Optional[str] = Field(None, max_length=20)
     hire_date: Optional[date] = None
     status: str = Field(default="active")  # 'active', 'inactive', 'on_leave'
 
 
 class EmployeeCreate(EmployeeBase):
-    pass
+    bank_account_number: Optional[str] = Field(None, max_length=50)
+    bank_ifsc: Optional[str] = Field(None, max_length=20)
 
 
 class EmployeeUpdate(BaseModel):
@@ -296,7 +295,33 @@ class EmployeeRead(EmployeeBase):
     department: Optional[DepartmentRead] = None
     working_schedule: Optional[WorkingScheduleResponse] = None
 
+    _raw_bank_account: Optional[str] = PrivateAttr(default=None)
+
     model_config = ConfigDict(from_attributes=True)
+
+    def __init__(self, **data):
+        raw_bank = data.pop("bank_account_number", None)
+        super().__init__(**data)
+        if raw_bank is not None:
+            self._raw_bank_account = raw_bank
+
+    @model_validator(mode="wrap")
+    @classmethod
+    def _extract_bank_account(cls, data, handler):
+        res = handler(data)
+        if hasattr(data, "bank_account_number"):
+            res._raw_bank_account = getattr(data, "bank_account_number", None)
+        elif isinstance(data, dict) and "bank_account_number" in data:
+            res._raw_bank_account = data["bank_account_number"]
+        return res
+
+    @computed_field
+    def masked_account(self) -> Optional[str]:
+        if self._raw_bank_account:
+            acc_str = str(self._raw_bank_account)
+            last4 = acc_str[-4:] if len(acc_str) >= 4 else acc_str
+            return f"****{last4}"
+        return None
 
 
 class EmployeeResponse(EmployeeRead):
