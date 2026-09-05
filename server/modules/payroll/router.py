@@ -34,7 +34,7 @@ from server.modules.payroll.schemas import (
     PayrollSummaryMetrics,
 )
 from server.modules.payroll.services import PayrollService
-from server.modules.payroll.engine import get_eligible_employees
+from server.modules.payroll.engine import get_eligible_employees, compute_payrun_batch
 
 router = APIRouter()
 
@@ -272,7 +272,7 @@ def get_payrun_detail(payrun_id: int, db: Session = Depends(get_db)):
 def compute_payrun(payrun_id: int, db: Session = Depends(get_db)):
     """Execute computation pipeline on all payslips in a payrun."""
     try:
-        PayrollService.compute_payrun(db, payrun_id)
+        compute_payrun_batch(db, payrun_id)
         return get_payrun_detail(payrun_id, db)
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
@@ -281,16 +281,46 @@ def compute_payrun(payrun_id: int, db: Session = Depends(get_db)):
 @router.post("/payruns/{payrun_id}/transition", response_model=PayrunResponse, tags=["Payrun State Machine"])
 def transition_payrun_state(
     payrun_id: int,
-    req: StateTransitionRequest,
+    target_status: Optional[str] = Query(None, description="Target state ('computed', 'validated', 'paid', 'cancelled')"),
+    req: Optional[StateTransitionRequest] = None,
     db: Session = Depends(get_db)
 ):
     """
     Transition payrun state: draft -> computed -> validated -> paid
-    - Enforces Validation Barrier: blocks transition to 'validated' if warnings exist.
-    - Enforces Terminal Lock: transitioning to 'paid' permanently locks payrun and payslips.
+    - POST /payruns/{id}/transition?target_status=validated: Validation Barrier — checks if any payslip in batch has has_warning == True. If so, raise HTTPException(400, "Validation Barrier: Cannot validate batch with unresolved compliance warnings"). Else transition status to 'validated'.
+    - POST /payruns/{id}/transition?target_status=paid: Terminal Lock — requires status == 'validated'. Sets payrun and payslips to 'paid', permanently locking them against recomputation.
     """
+    status_to_apply = target_status or (req.target_status if req else None)
+    if not status_to_apply:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="target_status parameter is required"
+        )
+
+    payrun = PayrollService.get_payrun_by_id(db, payrun_id)
+    if not payrun:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Payrun #{payrun_id} not found")
+
+    status_to_apply = status_to_apply.lower()
+
+    # Validation Barrier
+    if status_to_apply == "validated":
+        if any(p.has_warning for p in payrun.payslips):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Validation Barrier: Cannot validate batch with unresolved compliance warnings"
+            )
+
+    # Terminal Lock check
+    if status_to_apply == "paid":
+        if payrun.status != "validated":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Terminal Lock: Payrun must be in 'validated' status before marking as paid. Current status: '{payrun.status}'"
+            )
+
     try:
-        return PayrollService.transition_payrun_state(db, payrun_id, req.target_status)
+        return PayrollService.transition_payrun_state(db, payrun_id, status_to_apply)
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
