@@ -38,27 +38,46 @@ def get_dashboard_analytics(db: Session = Depends(get_db)):
     # ------------------------------------------------------
     # 1. KPIs Query
     # ------------------------------------------------------
-    # Total Net Paid & Total Gross Paid from paid payslips (or payruns)
+    # Sprint 04 SQL aggregation:
+    # SELECT COALESCE(SUM(ps.net_wage), 0) FROM payslips ps JOIN payruns p ON ps.payrun_id = p.id WHERE p.status = 'paid'
     payout_kpi_query = text("""
         SELECT 
-            COALESCE(SUM(net_wage), 0.0) AS total_net,
-            COALESCE(SUM(gross_wage), 0.0) AS total_gross,
-            COUNT(*) AS paid_payslip_count
-        FROM payslips
-        WHERE status = 'paid'
+            COALESCE(SUM(ps.net_wage), 0) AS total_net_paid,
+            COUNT(ps.id) AS total_payslips,
+            COALESCE(SUM(ps.gross_wage), 0) AS total_gross_paid
+        FROM payslips ps
+        JOIN payruns p ON ps.payrun_id = p.id
+        WHERE p.status = 'paid'
     """)
-    payout_kpi = db.execute(payout_kpi_query).fetchone()
-    total_net_paid = float(payout_kpi[0]) if payout_kpi else 0.0
-    total_gross_paid = float(payout_kpi[1]) if payout_kpi else 0.0
-    payslip_count = int(payout_kpi[2]) if payout_kpi else 0
+    total_net_paid = 0.0
+    total_payslips = 0
+    total_gross_paid = 0.0
+    try:
+        payout_kpi = db.execute(payout_kpi_query).fetchone()
+        total_net_paid = float(payout_kpi[0]) if payout_kpi else 0.0
+        total_payslips = int(payout_kpi[1]) if payout_kpi else 0
+        total_gross_paid = float(payout_kpi[2]) if payout_kpi else 0.0
 
-    # If payslip table didn't have status = 'paid', fallback to payruns total_net
-    if total_net_paid == 0.0:
-        payrun_kpi = db.execute(text("SELECT COALESCE(SUM(total_net), 0.0), COALESCE(SUM(total_gross), 0.0), COALESCE(SUM(payslip_count), 0) FROM payruns WHERE status = 'paid'")).fetchone()
-        if payrun_kpi and float(payrun_kpi[0]) > 0.0:
-            total_net_paid = float(payrun_kpi[0])
-            total_gross_paid = float(payrun_kpi[1])
-            payslip_count = int(payrun_kpi[2])
+        # Fallback for independent paid payslips or payruns if needed
+        if total_payslips == 0:
+            direct_ps = db.execute(text("SELECT COALESCE(SUM(net_wage), 0), COUNT(*), COALESCE(SUM(gross_wage), 0) FROM payslips WHERE status = 'paid'")).fetchone()
+            if direct_ps and int(direct_ps[1]) > 0:
+                total_net_paid = float(direct_ps[0])
+                total_payslips = int(direct_ps[1])
+                total_gross_paid = float(direct_ps[2])
+            else:
+                payrun_kpi = db.execute(text("SELECT COALESCE(SUM(total_net), 0.0), COALESCE(SUM(total_gross), 0.0), COALESCE(SUM(payslip_count), 0) FROM payruns WHERE status = 'paid'")).fetchone()
+                if payrun_kpi and float(payrun_kpi[0]) > 0.0:
+                    total_net_paid = float(payrun_kpi[0])
+                    total_gross_paid = float(payrun_kpi[1])
+                    total_payslips = int(payrun_kpi[2])
+    except Exception:
+        pass
+
+    payslip_count = total_payslips
+
+    # Average net salary across paid payslips
+    avg_net_salary = round(float(total_net_paid) / total_payslips, 2) if total_payslips > 0 else 0.0
 
     # Avg Salary across active employee contracts
     avg_salary_query = text("""
@@ -66,31 +85,52 @@ def get_dashboard_analytics(db: Session = Depends(get_db)):
         FROM contracts
         WHERE status IN ('active', 'running')
     """)
-    avg_salary_row = db.execute(avg_salary_query).fetchone()
-    avg_salary = round(float(avg_salary_row[0]), 2) if avg_salary_row else 0.0
+    contract_avg_salary = 0.0
+    try:
+        avg_salary_row = db.execute(avg_salary_query).fetchone()
+        contract_avg_salary = round(float(avg_salary_row[0]), 2) if avg_salary_row else 0.0
+    except Exception:
+        pass
 
-    # Approved Leave Days from leave_requests
+    # Prioritize contract average wage; fallback to average net salary
+    avg_salary = contract_avg_salary if contract_avg_salary > 0.0 else avg_net_salary
+
+    # Query sum of approved leave days from leave_requests
     leave_query = text("""
         SELECT COALESCE(SUM(number_of_days), 0.0)
         FROM leave_requests
         WHERE status = 'approved'
     """)
-    leave_row = db.execute(leave_query).fetchone()
-    approved_leave_days = round(float(leave_row[0]), 2) if leave_row else 0.0
+    approved_leave_days = 0.0
+    try:
+        leave_row = db.execute(leave_query).fetchone()
+        approved_leave_days = round(float(leave_row[0]), 2) if leave_row else 0.0
+    except Exception:
+        pass
 
     # Total active employees
-    emp_count_row = db.execute(text("SELECT COUNT(*) FROM employees WHERE status = 'active'")).fetchone()
-    active_employees_count = int(emp_count_row[0]) if emp_count_row else 0
+    active_employees_count = 0
+    try:
+        emp_count_row = db.execute(text("SELECT COUNT(*) FROM employees WHERE status = 'active'")).fetchone()
+        active_employees_count = int(emp_count_row[0]) if emp_count_row else 0
+    except Exception:
+        pass
 
     # Total payruns count
-    payruns_count_row = db.execute(text("SELECT COUNT(*) FROM payruns")).fetchone()
-    total_payruns_count = int(payruns_count_row[0]) if payruns_count_row else 0
+    total_payruns_count = 0
+    try:
+        payruns_count_row = db.execute(text("SELECT COUNT(*) FROM payruns")).fetchone()
+        total_payruns_count = int(payruns_count_row[0]) if payruns_count_row else 0
+    except Exception:
+        pass
 
     kpis = KPIsSummary(
         total_net_paid=round(total_net_paid, 2),
+        total_payslips=total_payslips,
         payslip_count=payslip_count,
         avg_salary=avg_salary,
         approved_leave_days=approved_leave_days,
+        avg_net_salary=avg_net_salary,
         total_gross_paid=round(total_gross_paid, 2),
         active_employees_count=active_employees_count,
         total_payruns_count=total_payruns_count,
@@ -116,34 +156,36 @@ def get_dashboard_analytics(db: Session = Depends(get_db)):
         GROUP BY d.id, d.name, d.code
         ORDER BY d.id ASC
     """)
-    dept_rows = db.execute(dept_query).fetchall()
     department_spend: List[DepartmentSpendItem] = []
+    try:
+        dept_rows = db.execute(dept_query).fetchall()
+        for row in dept_rows:
+            dept_id = row[0]
+            name = row[1]
+            code = row[2]
+            emp_cnt = int(row[3])
+            paid_net = float(row[4])
+            paid_gross = float(row[5])
+            contract_net = float(row[6])
+            contract_gross = float(row[7])
 
-    for row in dept_rows:
-        dept_id = row[0]
-        name = row[1]
-        code = row[2]
-        emp_cnt = int(row[3])
-        paid_net = float(row[4])
-        paid_gross = float(row[5])
-        contract_net = float(row[6])
-        contract_gross = float(row[7])
+            # Prioritize realized paid payout, else fallback to active contract run-rate
+            net_val = paid_net if paid_net > 0.0 else contract_net
+            gross_val = paid_gross if paid_gross > 0.0 else contract_gross
 
-        # Prioritize realized paid payout, else fallback to active contract run-rate
-        net_val = paid_net if paid_net > 0.0 else contract_net
-        gross_val = paid_gross if paid_gross > 0.0 else contract_gross
-
-        department_spend.append(
-            DepartmentSpendItem(
-                department_id=dept_id,
-                department_name=name,
-                department_code=code,
-                employee_count=emp_cnt,
-                total_net=round(net_val, 2),
-                total_gross=round(gross_val, 2),
-                spend=round(net_val, 2),
+            department_spend.append(
+                DepartmentSpendItem(
+                    department_id=dept_id,
+                    department_name=name,
+                    department_code=code,
+                    employee_count=emp_cnt,
+                    total_net=round(net_val, 2),
+                    total_gross=round(gross_val, 2),
+                    spend=round(net_val, 2),
+                )
             )
-        )
+    except Exception:
+        pass
 
     # ------------------------------------------------------
     # 3. Compliance Alerts Query
@@ -281,6 +323,10 @@ def get_dashboard_analytics(db: Session = Depends(get_db)):
         kpis=kpis,
         department_spend=department_spend,
         compliance_alerts=compliance_alerts,
+        total_net_paid=kpis.total_net_paid,
+        total_payslips=kpis.total_payslips,
+        avg_salary=kpis.avg_salary,
+        approved_leave_days=kpis.approved_leave_days,
     )
 
 
