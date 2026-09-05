@@ -320,100 +320,209 @@ def calculate_payslip_lines_pipeline(
     rules: List[SalaryRule]
 ) -> Tuple[Decimal, Decimal, Decimal, Decimal, List[Dict[str, Any]]]:
     """
-    Execute rules ordered by sequence ASC across categories:
-    (BASIC -> ALLOWANCE -> GROSS -> DEDUCTION -> NET)
-    Returns: (basic_wage, gross_wage, total_deductions, net_wage, snapshot_lines)
+    Execute the sequenced salary-rules accumulator.
+
+    Processing order
+    ----------------
+    Rules are sorted strictly by ``sequence`` ASC so the standard pipeline
+    BASIC -> ALLOWANCE -> GROSS -> DEDUCTION -> NET is preserved regardless of
+    the order rules are stored in the database.
+
+    Computation logic per category
+    --------------------------------
+    * **BASIC**
+      - ``percentage``: ``line_total = base * (amount / 100)``
+        where ``base`` is looked up from ``rule_values`` by ``percentage_base``
+        (defaults to ``"wage"`` when unset).
+      - ``fixed``:      ``line_total = amount`` (falls back to ``wage`` when zero).
+      Updates ``rule_values[rule.code]`` and the running BASIC accumulator.
+
+    * **ALLOWANCE**
+      - ``percentage``: ``line_total = base * (amount / 100)``
+        where ``base`` is looked up from ``rule_values[percentage_base]``
+        (defaults to the current BASIC accumulator when the key is absent).
+      - ``fixed``:      ``line_total = amount``.
+      Updates ``rule_values[rule.code]`` and the running ALLOWANCE accumulator.
+
+    * **GROSS**
+      Always auto-computed as ``BASIC + ALLOWANCE`` (the rule's own amount is
+      ignored).  Registers ``rule_values["GROSS"]`` and ``rule_values[rule.code]``.
+      If no explicit GROSS rule exists the accumulator is materialised internally
+      before the first DEDUCTION or NET rule runs.
+
+    * **DEDUCTION**
+      - ``percentage``: ``line_total = base * (amount / 100)``
+        where ``base`` is looked up from ``rule_values[percentage_base]``
+        (defaults to GROSS when the key is absent).
+      - ``fixed``:      ``line_total = amount``.
+      Updates ``rule_values[rule.code]`` and the running DEDUCTION accumulator.
+
+    * **NET**
+      Always auto-computed as ``max(0.00, GROSS - DEDUCTIONS)``.
+      Registers ``rule_values["NET"]`` and ``rule_values[rule.code]``.
+
+    ``rate`` field in snapshot lines
+    ----------------------------------
+    Set to the percentage value for ``percentage``-typed rules;
+    set to ``100.00`` for ``fixed`` rules.
+
+    Parameters
+    ----------
+    wage : Decimal
+        Employee's contractual wage (the ``"wage"`` base reference).
+    rules : List[SalaryRule]
+        All salary rules attached to the chosen salary structure.
+
+    Returns
+    -------
+    Tuple of (basic_wage, gross_wage, total_deductions, net_wage, snapshot_lines)
+    where ``snapshot_lines`` is a list of dicts ready to be persisted as
+    PayslipLine records.
     """
-    # Sort rules strictly by sequence ASC
+    # ------------------------------------------------------------------
+    # 1. Sort strictly by sequence ASC
+    # ------------------------------------------------------------------
     sorted_rules = sorted(rules, key=lambda r: r.sequence)
 
-    category_totals = {
-        "BASIC": Decimal("0.00"),
+    # Running category accumulators
+    category_totals: Dict[str, Decimal] = {
+        "BASIC":     Decimal("0.00"),
         "ALLOWANCE": Decimal("0.00"),
-        "GROSS": Decimal("0.00"),
+        "GROSS":     Decimal("0.00"),
         "DEDUCTION": Decimal("0.00"),
-        "NET": Decimal("0.00"),
+        "NET":       Decimal("0.00"),
     }
-    computed_lines: List[Dict[str, Any]] = []
 
-    # Map for rule codes to values for reference
-    rule_values: Dict[str, Decimal] = {"wage": wage}
+    # Lookup map: any rule code -> its computed total; seeded with the wage base
+    rule_values: Dict[str, Decimal] = {"wage": round_curr(wage)}
 
+    snapshot_lines: List[Dict[str, Any]] = []
+
+    # Track whether GROSS has been materialised yet
+    gross_materialised = False
+
+    def _resolve_base(base_code: Optional[str], default: Decimal) -> Decimal:
+        """Return accumulated value for base_code, or default when absent."""
+        if base_code and base_code in rule_values:
+            return rule_values[base_code]
+        return default
+
+    def _ensure_gross() -> None:
+        """Materialise GROSS = BASIC + ALLOWANCE exactly once."""
+        nonlocal gross_materialised
+        if not gross_materialised:
+            computed = round_curr(category_totals["BASIC"] + category_totals["ALLOWANCE"])
+            category_totals["GROSS"] = computed
+            rule_values["GROSS"]     = computed
+            gross_materialised       = True
+
+    # ------------------------------------------------------------------
+    # 2. Process each rule in sequence order
+    # ------------------------------------------------------------------
     for rule in sorted_rules:
-        category = rule.category.upper()
-        amount_type = rule.amount_type.lower()
-        rule_amt = Decimal(str(rule.amount or 0.00))
-        rate = Decimal("100.00")
-        line_total = Decimal("0.00")
+        category    = rule.category.upper()
+        amount_type = (rule.amount_type or "fixed").lower()
+        rule_amt    = round_curr(
+            Decimal(str(rule.amount)) if rule.amount is not None else Decimal("0.00")
+        )
+        line_total  = Decimal("0.00")
+        rate        = Decimal("100.00")   # default for fixed rules
 
         if category == "BASIC":
             if amount_type == "percentage":
-                rate = rule_amt
-                line_total = round_curr(wage * (rule_amt / Decimal("100.00")))
+                rate       = rule_amt
+                base       = _resolve_base(rule.percentage_base or "wage", rule_values["wage"])
+                line_total = round_curr(base * (rate / Decimal("100.00")))
             else:
-                line_total = round_curr(rule_amt if rule_amt > 0 else wage)
+                # fixed – fall back to full wage when amount is zero
+                line_total = round_curr(rule_amt if rule_amt > Decimal("0.00") else wage)
+
             category_totals["BASIC"] += line_total
-            rule_values[rule.code] = line_total
-            rule_values["BASIC"] = category_totals["BASIC"]
+            rule_values[rule.code]    = line_total
+            rule_values["BASIC"]      = category_totals["BASIC"]
 
         elif category == "ALLOWANCE":
             if amount_type == "percentage":
-                rate = rule_amt
-                base = rule_values.get(rule.percentage_base or "BASIC", category_totals["BASIC"])
-                line_total = round_curr(base * (rule_amt / Decimal("100.00")))
+                rate       = rule_amt
+                base       = _resolve_base(
+                    rule.percentage_base or "BASIC",
+                    category_totals["BASIC"],
+                )
+                line_total = round_curr(base * (rate / Decimal("100.00")))
             else:
                 line_total = round_curr(rule_amt)
+
             category_totals["ALLOWANCE"] += line_total
-            rule_values[rule.code] = line_total
+            rule_values[rule.code]        = line_total
+            rule_values["ALLOWANCE"]      = category_totals["ALLOWANCE"]
 
         elif category == "GROSS":
-            # Auto compute total gross from basic + allowances
-            computed_gross = category_totals["BASIC"] + category_totals["ALLOWANCE"]
-            line_total = round_curr(computed_gross)
-            category_totals["GROSS"] = line_total
+            # Auto-compute; rule's own amount field is intentionally ignored
+            _ensure_gross()
+            line_total             = category_totals["GROSS"]
             rule_values[rule.code] = line_total
-            rule_values["GROSS"] = line_total
 
         elif category == "DEDUCTION":
+            # Guarantee GROSS is available before the first deduction is calculated
+            _ensure_gross()
+
             if amount_type == "percentage":
-                rate = rule_amt
-                base_code = rule.percentage_base or "BASIC"
-                base = rule_values.get(base_code, category_totals["BASIC"] if base_code == "BASIC" else category_totals["GROSS"])
-                line_total = round_curr(base * (rule_amt / Decimal("100.00")))
+                rate       = rule_amt
+                base       = _resolve_base(
+                    rule.percentage_base or "GROSS",
+                    category_totals["GROSS"],
+                )
+                line_total = round_curr(base * (rate / Decimal("100.00")))
             else:
                 line_total = round_curr(rule_amt)
+
             category_totals["DEDUCTION"] += line_total
-            rule_values[rule.code] = line_total
+            rule_values[rule.code]        = line_total
+            rule_values["DEDUCTION"]      = category_totals["DEDUCTION"]
 
         elif category == "NET":
-            # Net = Gross - Deductions
-            computed_net = max(Decimal("0.00"), category_totals["GROSS"] - category_totals["DEDUCTION"])
-            line_total = round_curr(computed_net)
+            # Guarantee GROSS is set before computing NET
+            _ensure_gross()
+            computed_net           = category_totals["GROSS"] - category_totals["DEDUCTION"]
+            line_total             = round_curr(max(Decimal("0.00"), computed_net))
             category_totals["NET"] = line_total
             rule_values[rule.code] = line_total
-            rule_values["NET"] = line_total
+            rule_values["NET"]     = line_total
 
         else:
-            line_total = round_curr(rule_amt)
+            # Unknown category – store raw amount, no accumulation
+            line_total             = round_curr(rule_amt)
+            rule_values[rule.code] = line_total
 
-        computed_lines.append({
+        snapshot_lines.append({
             "salary_rule_id": rule.id,
-            "name": rule.name,
-            "code": rule.code,
-            "category": category,
-            "sequence": rule.sequence,
-            "rate": rate,
-            "amount": rule_amt,
-            "total": line_total
+            "name":           rule.name,
+            "code":           rule.code,
+            "category":       category,
+            "sequence":       rule.sequence,
+            "rate":           rate,
+            "amount":         rule_amt,
+            "total":          line_total,
         })
 
-    # Summary wages
-    final_basic = category_totals["BASIC"]
-    final_gross = category_totals["GROSS"]
-    final_deductions = category_totals["DEDUCTION"]
-    final_net = category_totals["NET"]
+    # ------------------------------------------------------------------
+    # 3. Finalise – materialise GROSS/NET even when no explicit rule exists
+    # ------------------------------------------------------------------
+    _ensure_gross()
 
-    return final_basic, final_gross, final_deductions, final_net, computed_lines
+    # If no NET rule was present, derive NET from final accumulators
+    if category_totals["NET"] == Decimal("0.00") and category_totals["GROSS"] > Decimal("0.00"):
+        category_totals["NET"] = round_curr(
+            max(Decimal("0.00"), category_totals["GROSS"] - category_totals["DEDUCTION"])
+        )
+
+    return (
+        category_totals["BASIC"],
+        category_totals["GROSS"],
+        category_totals["DEDUCTION"],
+        category_totals["NET"],
+        snapshot_lines,
+    )
 
 
 # ==========================================
