@@ -69,12 +69,33 @@ def record_punch(
 @router.get("/daily-summary", response_model=DailySummaryResponse, tags=["Attendance"])
 def get_daily_summary(
     target_date: Optional[date] = Query(default=None, alias="date"),
-    current_user: User = Depends(require_hr()),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Get aggregate attendance punches and metrics for a specific date (HR & Admin only)."""
+    """Get aggregate attendance punches and metrics for a specific date (scoped to employee for self-service)."""
     d = target_date or date.today()
     summary = AttendanceService.get_daily_summary(db, d)
+    records = summary["records"]
+
+    if current_user.role == ROLE_EMPLOYEE:
+        records = [r for r in records if r.employee_id == current_user.employee_id]
+        total = len(records)
+        present = sum(1 for r in records if r.status in ["present", "late"])
+        absent = sum(1 for r in records if r.status == "absent")
+        late = sum(1 for r in records if r.status == "late")
+        half_day = sum(1 for r in records if r.status == "half_day")
+        hours = sum((float(r.worked_hours or 0.0)) for r in records)
+        return DailySummaryResponse(
+            date=summary["date"],
+            total_records=total,
+            present_count=present,
+            absent_count=absent,
+            late_count=late,
+            half_day_count=half_day,
+            total_hours_worked=round(hours, 2),
+            records=[AttendanceRecordResponse.model_validate(r) for r in records]
+        )
+
     return DailySummaryResponse(
         date=summary["date"],
         total_records=summary["total_records"],
@@ -83,7 +104,7 @@ def get_daily_summary(
         late_count=summary["late_count"],
         half_day_count=summary["half_day_count"],
         total_hours_worked=summary["total_hours_worked"],
-        records=[AttendanceRecordResponse.model_validate(r) for r in summary["records"]]
+        records=[AttendanceRecordResponse.model_validate(r) for r in records]
     )
 
 

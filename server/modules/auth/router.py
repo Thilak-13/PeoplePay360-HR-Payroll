@@ -379,9 +379,129 @@ def get_audit_logs(
     return [AuditLogResponse.model_validate(log) for log in logs]
 
 
+def ensure_baseline_entities(db: Session):
+    """Ensure baseline departments, schedules, employees (1-5), contracts, and leave allocations exist."""
+    from datetime import date, datetime, timezone, timedelta
+    from server.modules.master_data.models import Department, WorkingSchedule, Employee, Contract, LeaveAllocation
+    from server.modules.attendance.models import AttendanceRecord
+
+    # 1. Ensure Engineering & HR departments
+    dept_eng = db.query(Department).filter(Department.id == 1).first()
+    if not dept_eng:
+        dept_eng = Department(id=1, name="Engineering", code="ENG")
+        db.add(dept_eng)
+        db.commit()
+
+    dept_hr = db.query(Department).filter(Department.id == 3).first()
+    if not dept_hr:
+        dept_hr = Department(id=3, name="Human Resources", code="HR")
+        db.add(dept_hr)
+        db.commit()
+
+    # 2. Ensure Working Schedule
+    sched = db.query(WorkingSchedule).filter(WorkingSchedule.id == 1).first()
+    if not sched:
+        sched = WorkingSchedule(id=1, name="Standard 40h", hours_per_week=40.0)
+        db.add(sched)
+        db.commit()
+
+    # 3. Baseline Employees (1 to 5)
+    baseline_employees = [
+        (1, "John", "Doe", "john.doe@peoplepay360.com", "+1-555-0101", 1, "Principal Architect & Admin"),
+        (2, "Sarah", "Connor", "sarah.connor@peoplepay360.com", "+1-555-0102", 3, "HR Director"),
+        (3, "Alex", "Murphy", "alex.murphy@peoplepay360.com", "+1-555-0103", 1, "Payroll Specialist"),
+        (4, "Thilak", "I", "thilak@gmail.com", "+1-555-0104", 1, "Payroll Operations Director"),
+        (5, "Eleanor", "Vance", "employee@peoplepay360.com", "+1-555-0105", 1, "Software Engineer"),
+    ]
+
+    for emp_id, fname, lname, email, phone, d_id, title in baseline_employees:
+        emp = db.query(Employee).filter(Employee.id == emp_id).first()
+        if not emp:
+            emp = Employee(
+                id=emp_id,
+                first_name=fname,
+                last_name=lname,
+                email=email,
+                phone=phone,
+                department_id=d_id,
+                working_schedule_id=1,
+                job_title=title,
+                status="active",
+                hire_date=date(2025, 1, 1),
+            )
+            db.add(emp)
+            db.commit()
+
+    # 4. Contracts for Employees 1..5
+    contracts_map = {1: 75000.00, 2: 60000.00, 3: 65000.00, 4: 70000.00, 5: 55000.00}
+    for emp_id, wage in contracts_map.items():
+        c = db.query(Contract).filter(Contract.employee_id == emp_id, Contract.status == "active").first()
+        if not c:
+            new_c = Contract(
+                employee_id=emp_id,
+                wage=wage,
+                contract_type="full_time",
+                start_date=date(2025, 1, 1),
+                status="active",
+            )
+            db.add(new_c)
+
+    # 5. Leave Allocations for Employees 1..5
+    curr_year = date.today().year
+    for emp_id in range(1, 6):
+        for h_type, days in [("paid_time_off", 24.0), ("sick_leave", 12.0)]:
+            la = db.query(LeaveAllocation).filter(
+                LeaveAllocation.employee_id == emp_id,
+                LeaveAllocation.holiday_type == h_type,
+                LeaveAllocation.year == curr_year,
+            ).first()
+            if not la:
+                new_la = LeaveAllocation(
+                    employee_id=emp_id,
+                    holiday_type=h_type,
+                    number_of_days=days,
+                    year=curr_year,
+                    status="approved",
+                )
+                db.add(new_la)
+
+    # 6. Baseline Attendance for Employee 5
+    att_exists = db.query(AttendanceRecord).filter(AttendanceRecord.employee_id == 5).first()
+    if not att_exists:
+        today = date.today()
+        yest = today - timedelta(days=1)
+        rec1 = AttendanceRecord(
+            employee_id=5,
+            date=yest,
+            clock_in=datetime.combine(yest, datetime.min.time(), tzinfo=timezone.utc).replace(hour=9, minute=0),
+            clock_out=datetime.combine(yest, datetime.min.time(), tzinfo=timezone.utc).replace(hour=17, minute=30),
+            worked_hours=8.5,
+            overtime_hours=0.5,
+            status="present",
+            notes="Standard workday",
+        )
+        rec2 = AttendanceRecord(
+            employee_id=5,
+            date=today,
+            clock_in=datetime.combine(today, datetime.min.time(), tzinfo=timezone.utc).replace(hour=9, minute=0),
+            clock_out=None,
+            worked_hours=0.0,
+            overtime_hours=0.0,
+            status="present",
+            notes="Clocked in",
+        )
+        db.add(rec1)
+        db.add(rec2)
+
+    db.commit()
+
+
 @router.post("/seed-default-users", tags=["Auth"])
 def seed_default_users(db: Session = Depends(get_db)):
-    """Seed baseline demo accounts for the 5 system roles with verified credentials."""
+    """Seed baseline demo accounts for the 5 system roles with verified credentials and backing employee data."""
+    # Ensure baseline employee models exist first
+    ensure_baseline_entities(db)
+
     demo_users = [
         ("admin@peoplepay360.com", "Admin@123", ROLE_ADMIN, 1),
         ("superadmin@peoplepay360.com", "Admin@123", ROLE_SUPER_ADMIN, 1),
@@ -413,3 +533,4 @@ def seed_default_users(db: Session = Depends(get_db)):
             created.append(f"{email} ({role} - synced)")
     db.commit()
     return {"status": "seeded", "created_users": created}
+

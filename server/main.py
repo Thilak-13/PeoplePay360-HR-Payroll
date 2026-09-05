@@ -24,10 +24,28 @@ from server.modules.notifications.router import router as notifications_router
 # Auto-create all relational database tables
 Base.metadata.create_all(bind=engine)
 
+from contextlib import asynccontextmanager
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Ensure essential demo users and backing employee records exist on server startup."""
+    from server.modules.master_data.database import SessionLocal
+    from server.modules.auth.router import ensure_baseline_entities, seed_default_users
+    db = SessionLocal()
+    try:
+        ensure_baseline_entities(db)
+        seed_default_users(db)
+    except Exception as exc:
+        print(f"[Startup Notice] Baseline entities: {exc}")
+    finally:
+        db.close()
+    yield
+
 app = FastAPI(
     title="PeoplePay360 API",
     version="1.0.0",
     description="PeoplePay360 Enterprise HR, Payroll, RBAC & Workforce Automation API Engine",
+    lifespan=lifespan,
 )
 
 # Enable CORS for frontend integration

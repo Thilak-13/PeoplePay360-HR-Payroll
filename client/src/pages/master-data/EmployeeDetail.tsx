@@ -20,7 +20,9 @@ export const EmployeeDetail: React.FC<EmployeeDetailProps> = ({ employeeId, onBa
   const fetchEmployeeDetail = async () => {
     try {
       setLoading(true);
-      const res = await fetch(`/api/v1/master-data/employees/${employeeId}/detail`);
+      const token = localStorage.getItem('peoplepay360_token') || sessionStorage.getItem('peoplepay360_token');
+      const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
+      const res = await fetch(`/api/v1/master-data/employees/${employeeId}/detail`, { headers });
       if (res.ok) {
         const data = await res.json();
         setEmployee(data);

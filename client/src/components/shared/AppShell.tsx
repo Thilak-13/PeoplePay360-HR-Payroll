@@ -65,7 +65,11 @@ export const AppShell: React.FC = () => {
     setActiveTab(tab);
     if (tab === 'master-data') {
       if (subTab) setMasterSubTab(subTab as any);
-      setSelectedEmployeeId(null);
+      if (isSelfServiceOnly && user?.employee_id) {
+        setSelectedEmployeeId(user.employee_id);
+      } else {
+        setSelectedEmployeeId(null);
+      }
     } else if (tab === 'payroll') {
       if (subTab) setPayrollSubTab(subTab as any);
       setSelectedPayrunId(null);
@@ -177,10 +181,10 @@ export const AppShell: React.FC = () => {
           {activeTab === 'master-data' && (
             <div>
               {masterSubTab === 'employees' && (
-                selectedEmployeeId ? (
+                (selectedEmployeeId || (isSelfServiceOnly && user?.employee_id)) ? (
                   <EmployeeDetail
-                    employeeId={selectedEmployeeId}
-                    onBack={() => setSelectedEmployeeId(null)}
+                    employeeId={selectedEmployeeId || user?.employee_id || 5}
+                    onBack={isSelfServiceOnly ? undefined : () => setSelectedEmployeeId(null)}
                   />
                 ) : (
                   <EmployeeList onSelectEmployee={setSelectedEmployeeId} />
