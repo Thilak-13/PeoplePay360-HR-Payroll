@@ -12,6 +12,8 @@ from server.modules.analytics.schemas import (
     DashboardAnalyticsResponse,
     KPIsSummary,
     DepartmentSpendItem,
+    DepartmentCostItem,
+    MonthlyTrendItem,
     ComplianceAlertItem,
     SendPayslipsResponse,
     DispatchToast,
@@ -137,41 +139,43 @@ def get_dashboard_analytics(db: Session = Depends(get_db)):
     )
 
     # ------------------------------------------------------
-    # 2. Department Spend Query
+    # 2. Department Cost Breakdown:
+    #    JOIN departments, employees, and payslips, GROUP BY departments.name, summing gross_wage
     # ------------------------------------------------------
     dept_query = text("""
         SELECT 
-            d.id AS department_id,
             d.name AS department_name,
-            d.code AS department_code,
-            COUNT(DISTINCT e.id) AS employee_count,
-            COALESCE(SUM(p.net_wage), 0.0) AS paid_net,
             COALESCE(SUM(p.gross_wage), 0.0) AS paid_gross,
-            COALESCE(SUM(c.wage * 0.85), 0.0) AS contract_net,
-            COALESCE(SUM(c.wage), 0.0) AS contract_gross
+            COALESCE(SUM(p.net_wage), 0.0) AS paid_net,
+            COUNT(DISTINCT e.id) AS employee_count,
+            d.id AS department_id,
+            d.code AS department_code,
+            COALESCE(SUM(c.wage), 0.0) AS contract_gross,
+            COALESCE(SUM(c.wage * 0.85), 0.0) AS contract_net
         FROM departments d
         LEFT JOIN employees e ON e.department_id = d.id AND e.status = 'active'
         LEFT JOIN contracts c ON c.employee_id = e.id AND c.status IN ('active', 'running')
         LEFT JOIN payslips p ON p.employee_id = e.id AND p.status = 'paid'
-        GROUP BY d.id, d.name, d.code
+        GROUP BY d.name, d.id, d.code
         ORDER BY d.id ASC
     """)
     department_spend: List[DepartmentSpendItem] = []
+    department_costs: List[DepartmentCostItem] = []
     try:
         dept_rows = db.execute(dept_query).fetchall()
         for row in dept_rows:
-            dept_id = row[0]
-            name = row[1]
-            code = row[2]
+            name = row[0]
+            paid_gross = float(row[1])
+            paid_net = float(row[2])
             emp_cnt = int(row[3])
-            paid_net = float(row[4])
-            paid_gross = float(row[5])
-            contract_net = float(row[6])
-            contract_gross = float(row[7])
+            dept_id = row[4]
+            code = row[5]
+            contract_gross = float(row[6])
+            contract_net = float(row[7])
 
             # Prioritize realized paid payout, else fallback to active contract run-rate
-            net_val = paid_net if paid_net > 0.0 else contract_net
             gross_val = paid_gross if paid_gross > 0.0 else contract_gross
+            net_val = paid_net if paid_net > 0.0 else contract_net
 
             department_spend.append(
                 DepartmentSpendItem(
@@ -181,11 +185,77 @@ def get_dashboard_analytics(db: Session = Depends(get_db)):
                     employee_count=emp_cnt,
                     total_net=round(net_val, 2),
                     total_gross=round(gross_val, 2),
-                    spend=round(net_val, 2),
+                    gross_wage=round(gross_val, 2),
+                    spend=round(gross_val, 2),
+                )
+            )
+            department_costs.append(
+                DepartmentCostItem(
+                    department_name=name,
+                    gross_wage=round(gross_val, 2),
+                    total_gross=round(gross_val, 2),
+                    total_net=round(net_val, 2),
+                    employee_count=emp_cnt,
                 )
             )
     except Exception:
         pass
+
+    # ------------------------------------------------------
+    # 3. Monthly Net Spend Trend:
+    #    GROUP BY payruns.period_start, summing net_wage for all paid batches
+    # ------------------------------------------------------
+    monthly_trends: List[MonthlyTrendItem] = []
+    trend_rows = []
+    for col in ["period_start", "date_start"]:
+        try:
+            trend_query = text(f"""
+                SELECT 
+                    p.{col} AS period_start,
+                    COALESCE(SUM(ps.net_wage), 0.0) AS net_wage,
+                    COUNT(ps.id) AS payslip_count
+                FROM payruns p
+                JOIN payslips ps ON ps.payrun_id = p.id
+                WHERE p.status = 'paid'
+                GROUP BY p.{col}
+                ORDER BY p.{col} ASC
+            """)
+            trend_rows = db.execute(trend_query).fetchall()
+            if trend_rows:
+                break
+        except Exception:
+            continue
+
+    if not trend_rows:
+        for col in ["period_start", "date_start"]:
+            try:
+                trend_query = text(f"""
+                    SELECT 
+                        {col} AS period_start,
+                        COALESCE(total_net, 0.0) AS net_wage,
+                        COALESCE(payslip_count, 0) AS payslip_count
+                    FROM payruns
+                    WHERE status = 'paid'
+                    ORDER BY {col} ASC
+                """)
+                trend_rows = db.execute(trend_query).fetchall()
+                if trend_rows:
+                    break
+            except Exception:
+                continue
+
+    for r in trend_rows:
+        p_start = str(r[0]) if r[0] else ""
+        n_wage = float(r[1]) if r[1] else 0.0
+        p_count = int(r[2]) if r[2] else 0
+        monthly_trends.append(
+            MonthlyTrendItem(
+                period_start=p_start,
+                net_wage=round(n_wage, 2),
+                total_net=round(n_wage, 2),
+                payslip_count=p_count,
+            )
+        )
 
     # ------------------------------------------------------
     # 3. Compliance Alerts Query
@@ -322,6 +392,9 @@ def get_dashboard_analytics(db: Session = Depends(get_db)):
     return DashboardAnalyticsResponse(
         kpis=kpis,
         department_spend=department_spend,
+        department_costs=department_costs,
+        monthly_trends=monthly_trends,
+        monthly_spend_trend=monthly_trends,
         compliance_alerts=compliance_alerts,
         total_net_paid=kpis.total_net_paid,
         total_payslips=kpis.total_payslips,
