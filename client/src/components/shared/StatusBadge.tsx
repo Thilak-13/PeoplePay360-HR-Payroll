@@ -39,6 +39,14 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, label, classNa
       dotColor = 'bg-rose-500';
       break;
 
+    case 'computed':
+      dotColor = 'bg-indigo-500';
+      break;
+
+    case 'validated':
+      dotColor = 'bg-amber-600';
+      break;
+
     case 'on_leave':
       dotColor = 'bg-blue-400';
       break;

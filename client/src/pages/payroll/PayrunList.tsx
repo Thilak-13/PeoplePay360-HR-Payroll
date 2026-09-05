@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Payrun, SalaryStructure, PayrollMetrics } from './types';
 import { PayrunWizardModal } from './PayrunWizardModal';
+import { StatusBadge } from '../../components/shared/StatusBadge';
 
 interface PayrunListProps {
   onSelectPayrun: (payrunId: number) => void;
@@ -58,21 +59,6 @@ export const PayrunList: React.FC<PayrunListProps> = ({
       (p.structure_name && p.structure_name.toLowerCase().includes(searchTerm.toLowerCase()));
     return matchesTab && matchesSearch;
   });
-
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'draft':
-        return <span className="bg-slate-100 text-slate-700 text-xs px-2.5 py-0.5 rounded-full font-semibold">Draft</span>;
-      case 'computed':
-        return <span className="bg-indigo-100 text-indigo-800 text-xs px-2.5 py-0.5 rounded-full font-semibold">Computed</span>;
-      case 'validated':
-        return <span className="bg-amber-100 text-amber-800 text-xs px-2.5 py-0.5 rounded-full font-semibold">Validated</span>;
-      case 'paid':
-        return <span className="bg-emerald-100 text-emerald-800 text-xs px-2.5 py-0.5 rounded-full font-semibold">🔒 Paid</span>;
-      default:
-        return <span className="bg-slate-100 text-slate-600 text-xs px-2.5 py-0.5 rounded-full font-semibold">{status}</span>;
-    }
-  };
 
   return (
     <div className="space-y-6">
@@ -200,7 +186,7 @@ export const PayrunList: React.FC<PayrunListProps> = ({
               <div>
                 <div className="flex items-center justify-between gap-2 mb-2">
                   <span className="text-xs font-mono font-bold text-slate-400">#{p.id}</span>
-                  {getStatusBadge(p.status)}
+                  <StatusBadge status={p.status} />
                 </div>
                 <h3 className="text-base font-bold text-slate-900 group-hover:text-indigo-600">
                   {p.name}

@@ -181,6 +181,31 @@ def test_hr_manager_full_hr_crud_but_no_payroll_access():
 # Role 3: HR Payroll User Boundary Tests
 # ==============================================================================
 
+def test_hr_payroll_user_has_all_hr_manager_permissions():
+    token = create_access_token({"user_id": 3, "email": "payrolluser@peoplepay360.com", "role": ROLE_HR_PAYROLL_USER, "employee_id": 3})
+    headers = {"Authorization": f"Bearer {token}"}
+
+    # 1. Full CRUD to Employees: can list employees
+    res_emp = client.get("/api/v1/master-data/employees", headers=headers)
+    assert res_emp.status_code == 200
+
+    # 2. Full CRUD to Contracts: can list contracts
+    res_contracts = client.get("/api/v1/master-data/contracts", headers=headers)
+    assert res_contracts.status_code == 200
+
+    # 3. Full CRUD to Working Schedules / Shifts: can list shifts
+    res_shifts = client.get("/api/v1/attendance/shifts", headers=headers)
+    assert res_shifts.status_code == 200
+
+    # 4. Full CRUD to Attendance: can view daily summary
+    res_punches = client.get("/api/v1/attendance/daily-summary", headers=headers)
+    assert res_punches.status_code == 200
+
+    # 5. Full CRUD to Time Off: can view leave requests
+    res_leaves = client.get("/api/v1/master-data/leave-requests", headers=headers)
+    assert res_leaves.status_code == 200
+
+
 def test_hr_payroll_user_payrun_access_and_readonly_structures():
     token = create_access_token({"user_id": 3, "email": "payrolluser@peoplepay360.com", "role": ROLE_HR_PAYROLL_USER, "employee_id": 3})
     headers = {"Authorization": f"Bearer {token}"}
@@ -189,21 +214,54 @@ def test_hr_payroll_user_payrun_access_and_readonly_structures():
     res_payruns = client.get("/api/v1/payroll/payruns", headers=headers)
     assert res_payruns.status_code == 200
 
-    # 2. Can view salary structures -> 200 OK (Read-only access)
+    # 2. Can view payslips -> 200 OK
+    res_slips = client.get("/api/v1/payroll/payslips", headers=headers)
+    assert res_slips.status_code == 200
+
+    # 3. Can validate / create payruns via wizard -> 200 OK
+    res_wizard = client.post("/api/v1/payroll/payruns/wizard/step1-validate", json={
+        "name": "September 2026 Test Payrun",
+        "date_start": "2026-09-01",
+        "date_end": "2026-09-30",
+        "structure_id": 1,
+    }, headers=headers)
+    assert res_wizard.status_code == 200
+
+    # 4. Read-only Salary Structures: Can view salary structures -> 200 OK
     res_structs = client.get("/api/v1/payroll/structures", headers=headers)
     assert res_structs.status_code == 200
 
-    # 3. CANNOT create salary structures -> 403 Forbidden (Read-only!)
+    # 5. Read-only Salary Structures: Can view specific structure detail -> 200 OK
+    res_struct_detail = client.get("/api/v1/payroll/structures/1", headers=headers)
+    assert res_struct_detail.status_code == 200
+
+    # 6. CANNOT create salary structures -> 403 Forbidden (Read-only!)
     res_create_struct = client.post("/api/v1/payroll/structures", json={
         "name": "Unauthorized Structure", "code": "UNAUTH_CODE"
     }, headers=headers)
     assert res_create_struct.status_code == 403
 
-    # 4. CANNOT delete payruns -> 403 Forbidden
+    # 7. CANNOT update salary structures -> 403 Forbidden (Read-only!)
+    res_update_struct = client.put("/api/v1/payroll/structures/1", json={
+        "name": "Modified Structure"
+    }, headers=headers)
+    assert res_update_struct.status_code == 403
+
+    # 8. CANNOT delete salary structures -> 403 Forbidden (Read-only!)
+    res_del_struct = client.delete("/api/v1/payroll/structures/1", headers=headers)
+    assert res_del_struct.status_code == 403
+
+    # 9. CANNOT add salary rule -> 403 Forbidden (Read-only!)
+    res_add_rule = client.post("/api/v1/payroll/structures/1/rules", json={
+        "name": "Special Allowance", "code": "SPEC_ALW", "category": "ALLOWANCE", "sequence": 20, "amount_type": "fixed", "amount": 1000
+    }, headers=headers)
+    assert res_add_rule.status_code == 403
+
+    # 10. CANNOT delete payruns -> 403 Forbidden
     res_del_payrun = client.delete("/api/v1/payroll/payruns/999", headers=headers)
     assert res_del_payrun.status_code == 403
 
-    # 5. CANNOT access user management -> 403 Forbidden
+    # 11. CANNOT access user management -> 403 Forbidden
     res_users = client.get("/api/v1/auth/users", headers=headers)
     assert res_users.status_code == 403
 

@@ -48,6 +48,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     canRunPayroll,
     canAccessPayroll,
     canManageUsers,
+    canViewDashboard,
   } = useRole();
 
   const [roleDropdownOpen, setRoleDropdownOpen] = useState(false);
@@ -114,7 +115,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {
           title: 'Overview',
           items: [
-            { id: 'analytics', label: 'Dashboard', icon: TrendingUp, visible: canAccessPayroll },
+            { id: 'analytics', label: 'Dashboard', icon: TrendingUp, visible: canViewDashboard },
           ],
         },
         {
@@ -206,8 +207,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
     : 'U';
 
   const handleBrandClick = () => {
-    if (isSelfServiceOnly || !canAccessPayroll) {
-      onNavigate('master-data', 'employees');
+    if (isSelfServiceOnly || !canViewDashboard) {
+      if (canAccessPayroll) {
+        onNavigate('payroll', 'payruns');
+      } else {
+        onNavigate('master-data', 'employees');
+      }
     } else {
       onNavigate('analytics');
     }

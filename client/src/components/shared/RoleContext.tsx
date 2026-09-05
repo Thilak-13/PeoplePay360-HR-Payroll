@@ -138,6 +138,7 @@ interface RoleContextType {
   canApproveExpenses: boolean;
   canVerifyTax: boolean;
   isSelfServiceOnly: boolean;
+  canViewDashboard: boolean;
 }
 
 const RoleContext = createContext<RoleContextType | undefined>(undefined);
@@ -169,6 +170,7 @@ export const RoleProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const canEditPayrollConfig = isAdmin || isHrPayrollManager; // HR Payroll User is read-only for structures & rules!
   const canDeletePayruns = isAdmin || isHrPayrollManager; // HR Payroll User cannot delete payruns!
   const canManageUsers = isAdmin;
+  const canViewDashboard = isAdmin || isHrPayrollManager; // Only Admin & Payroll Manager see executive dashboard; HR Payroll User operates Payruns/Payslips/HR
 
   return (
     <RoleContext.Provider
@@ -191,6 +193,7 @@ export const RoleProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         canApproveExpenses: canManageHR,
         canVerifyTax: canAccessPayroll || isHrManager,
         isSelfServiceOnly: isEmployeeOnly,
+        canViewDashboard,
       }}
     >
       {children}

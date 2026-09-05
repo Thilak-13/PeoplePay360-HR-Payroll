@@ -27,10 +27,23 @@ import { X } from 'lucide-react';
 
 export const AppShell: React.FC = () => {
   const { isAuthenticated, isLoading, user, logout } = useAuth();
-  const { canManageEmployees, canRunPayroll, canAccessPayroll, isSelfServiceOnly } = useRole();
+  const {
+    canManageEmployees,
+    canRunPayroll,
+    canAccessPayroll,
+    canManageUsers,
+    canViewDashboard,
+    isSelfServiceOnly,
+  } = useRole();
 
   const [activeTab, setActiveTab] = useState<string>(() => (
-    isSelfServiceOnly || !canAccessPayroll ? 'master-data' : 'analytics'
+    isSelfServiceOnly
+      ? 'master-data'
+      : canViewDashboard
+      ? 'analytics'
+      : canAccessPayroll
+      ? 'payroll'
+      : 'master-data'
   ));
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<number | null>(
     isSelfServiceOnly && user?.employee_id ? user.employee_id : null
@@ -66,15 +79,20 @@ export const AppShell: React.FC = () => {
       if (user?.employee_id) {
         setSelectedEmployeeId(user.employee_id);
       }
-    } else if (!canAccessPayroll) {
-      // HR Manager: Full CRUD to Employees, Attendance, Contracts, Working Schedules, and Time Off
-      // NO access to payroll features (Payroll Dashboard, Payruns, Payslips, Salary Structures)
-      if (activeTab === 'analytics' || activeTab === 'payroll' || activeTab === 'user-management') {
+    } else {
+      if (!canViewDashboard && activeTab === 'analytics') {
+        setActiveTab(canAccessPayroll ? 'payroll' : 'master-data');
+        if (canAccessPayroll) setPayrollSubTab('payruns');
+      }
+      if (!canAccessPayroll && activeTab === 'payroll') {
         setActiveTab('master-data');
         setMasterSubTab('employees');
       }
+      if (!canManageUsers && activeTab === 'user-management') {
+        setActiveTab(canAccessPayroll ? 'payroll' : 'master-data');
+      }
     }
-  }, [isSelfServiceOnly, canAccessPayroll, activeTab, masterSubTab, attendanceSubTab, user?.employee_id]);
+  }, [isSelfServiceOnly, canAccessPayroll, canViewDashboard, canManageUsers, activeTab, masterSubTab, attendanceSubTab, user?.employee_id]);
 
   // 1. Loading screen
   if (isLoading) {
@@ -105,11 +123,17 @@ export const AppShell: React.FC = () => {
       if (targetTab === 'attendance' && targetSubTab === 'shifts') {
         targetSubTab = 'tracker';
       }
-    } else if (!canAccessPayroll) {
-      // HR Manager: Block payroll, analytics, and admin
-      if (targetTab === 'analytics' || targetTab === 'payroll' || targetTab === 'user-management') {
+    } else {
+      if (!canViewDashboard && targetTab === 'analytics') {
+        targetTab = canAccessPayroll ? 'payroll' : 'master-data';
+        targetSubTab = canAccessPayroll ? 'payruns' : 'employees';
+      }
+      if (!canAccessPayroll && targetTab === 'payroll') {
         targetTab = 'master-data';
         targetSubTab = 'employees';
+      }
+      if (!canManageUsers && targetTab === 'user-management') {
+        targetTab = canAccessPayroll ? 'payroll' : 'master-data';
       }
     }
 
@@ -218,8 +242,8 @@ export const AppShell: React.FC = () => {
 
         {/* Main Content Area */}
         <main className="flex-1 overflow-x-hidden">
-          {/* 1. Analytics Dashboard (Not accessible to Employee role) */}
-          {activeTab === 'analytics' && !isSelfServiceOnly && (
+          {/* 1. Analytics Dashboard (Only accessible to Admin & HR Payroll Manager) */}
+          {activeTab === 'analytics' && canViewDashboard && (
             <PayrollDashboard
               onNavigateToEmployee={handleNavigateToEmployee}
               onNavigateToPayslip={handleNavigateToPayslip}
@@ -265,20 +289,23 @@ export const AppShell: React.FC = () => {
                   onBack={() => setSelectedPayslipId(null)}
                 />
               ) : payrollSubTab === 'structures' ? (
-                <SalaryStructureManager />
+                <SalaryStructureManager onBack={() => setPayrollSubTab('payruns')} />
               ) : selectedPayrunId ? (
                 <PayrunDetail
                   payrunId={selectedPayrunId}
                   onBack={() => setSelectedPayrunId(null)}
                 />
               ) : (
-                <PayrunList onSelectPayrun={setSelectedPayrunId} />
+                <PayrunList
+                  onSelectPayrun={setSelectedPayrunId}
+                  onNavigateStructures={() => setPayrollSubTab('structures')}
+                />
               )}
             </div>
           )}
 
           {/* 5. Admin User Management & RBAC */}
-          {activeTab === 'user-management' && (
+          {activeTab === 'user-management' && canManageUsers && (
             <UserManagement />
           )}
         </main>
