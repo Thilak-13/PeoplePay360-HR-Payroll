@@ -70,6 +70,8 @@ export interface Payrun {
   name: string;
   date_start: string;
   date_end: string;
+  period_start?: string;
+  period_end?: string;
   status: 'draft' | 'computed' | 'validated' | 'paid' | 'cancelled' | string;
   structure_id?: number;
   structure_name?: string;
@@ -84,6 +86,10 @@ export interface Payrun {
 }
 
 export interface EligibleEmployee {
+  id?: number;
+  name?: string;
+  department?: string;
+  active_contract_id?: number;
   employee_id: number;
   employee_name: string;
   employee_email: string;
@@ -95,9 +101,20 @@ export interface EligibleEmployee {
   contract_start: string;
   contract_end?: string | null;
   has_bank_details: boolean;
+  has_warning?: boolean;
+  warning_reason?: string | null;
   bank_account?: string;
   ifsc_code?: string;
   warning?: string | null;
+}
+
+export interface Step1ValidateRequest {
+  name?: string;
+  date_start?: string;
+  date_end?: string;
+  period_start?: string;
+  period_end?: string;
+  structure_id?: number;
 }
 
 export interface Step1ValidateResponse {
@@ -106,6 +123,21 @@ export interface Step1ValidateResponse {
   overlapping_payruns: string[];
   eligible_employee_count: number;
   structure_name?: string;
+}
+
+export interface ConfirmPayrunWizardData {
+  name: string;
+  date_start?: string;
+  date_end?: string;
+  period_start?: string;
+  period_end?: string;
+  structure_id?: number;
+  employee_ids?: number[];
+  selected_employee_ids?: number[];
+}
+
+export interface StateTransitionRequest {
+  target_status: 'draft' | 'computed' | 'validated' | 'paid' | 'cancelled' | string;
 }
 
 export interface PayrollMetrics {
