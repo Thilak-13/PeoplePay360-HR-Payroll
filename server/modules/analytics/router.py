@@ -466,15 +466,12 @@ def export_bank_file(id: int, db: Session = Depends(get_db)):
 
     # Standard Bank Payout File Header
     writer.writerow([
-        "Payment Reference",
-        "Beneficiary Name",
-        "Bank Account Number",
-        "IFSC / Routing Code",
-        "Disbursement Amount",
-        "Payment Currency",
-        "Payment Date",
-        "Beneficiary Email",
-        "Transaction Narration"
+        "Transaction_Ref",
+        "Beneficiary_Name",
+        "Account_Number",
+        "IFSC_Code",
+        "Amount",
+        "Remarks"
     ])
 
     total_amount = 0.0
@@ -482,7 +479,6 @@ def export_bank_file(id: int, db: Session = Depends(get_db)):
         p_id = ps[0]
         emp_id = ps[1]
         full_name = f"{ps[2]} {ps[3]}".strip()
-        email = ps[4] or ""
         phone = ps[5] or ""
         net_wage = float(ps[6] or 0.0)
         total_amount += net_wage
@@ -504,9 +500,6 @@ def export_bank_file(id: int, db: Session = Depends(get_db)):
             bank_acc,
             ifsc,
             f"{net_wage:.2f}",
-            "INR",
-            str(payrun_end),
-            email,
             narration
         ])
 
@@ -514,8 +507,12 @@ def export_bank_file(id: int, db: Session = Depends(get_db)):
     output.close()
 
     filename = f"bank_payout_payrun_{id}_{str(payrun_end)}.csv"
-    response = Response(content=csv_data, media_type="text/csv")
-    response.headers["Content-Disposition"] = f'attachment; filename="{filename}"'
+    response = StreamingResponse(
+        io.BytesIO(csv_data.encode("utf-8")),
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'}
+    )
+    response.body = csv_data.encode("utf-8")
     return response
 
 
