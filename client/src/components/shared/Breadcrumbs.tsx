@@ -33,12 +33,19 @@ export const Breadcrumbs: React.FC<BreadcrumbsProps> = ({
   onResetPayrun,
   onResetPayslip,
 }) => {
-  const { isSelfServiceOnly } = useRole();
+  const { isSelfServiceOnly, canAccessPayroll } = useRole();
 
   const items: BreadcrumbItem[] = isSelfServiceOnly
     ? [
         {
           label: 'Employee Portal',
+          onClick: () => onNavigate('master-data', 'employees'),
+        },
+      ]
+    : !canAccessPayroll
+    ? [
+        {
+          label: 'HR Workspace',
           onClick: () => onNavigate('master-data', 'employees'),
         },
       ]

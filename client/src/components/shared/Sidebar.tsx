@@ -114,7 +114,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {
           title: 'Overview',
           items: [
-            { id: 'analytics', label: 'Dashboard', icon: TrendingUp, visible: true },
+            { id: 'analytics', label: 'Dashboard', icon: TrendingUp, visible: canAccessPayroll },
           ],
         },
         {
@@ -206,7 +206,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     : 'U';
 
   const handleBrandClick = () => {
-    if (isSelfServiceOnly) {
+    if (isSelfServiceOnly || !canAccessPayroll) {
       onNavigate('master-data', 'employees');
     } else {
       onNavigate('analytics');
@@ -234,7 +234,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 PeoplePay<span className="text-slate-400">360</span>
               </span>
               <span className="text-[10px] text-slate-400 font-medium tracking-wide truncate block">
-                {isSelfServiceOnly ? 'Employee Portal' : 'HR & Payroll Workspace'}
+                {isSelfServiceOnly ? 'Employee Portal' : !canAccessPayroll ? 'HR Management' : 'HR & Payroll Workspace'}
               </span>
             </div>
           </div>

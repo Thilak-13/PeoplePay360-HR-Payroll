@@ -27,9 +27,11 @@ import { X } from 'lucide-react';
 
 export const AppShell: React.FC = () => {
   const { isAuthenticated, isLoading, user, logout } = useAuth();
-  const { canManageEmployees, canRunPayroll, isSelfServiceOnly } = useRole();
+  const { canManageEmployees, canRunPayroll, canAccessPayroll, isSelfServiceOnly } = useRole();
 
-  const [activeTab, setActiveTab] = useState<string>(() => (isSelfServiceOnly ? 'master-data' : 'analytics'));
+  const [activeTab, setActiveTab] = useState<string>(() => (
+    isSelfServiceOnly || !canAccessPayroll ? 'master-data' : 'analytics'
+  ));
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<number | null>(
     isSelfServiceOnly && user?.employee_id ? user.employee_id : null
   );
@@ -48,7 +50,7 @@ export const AppShell: React.FC = () => {
   // Profile modal
   const [isProfileOpen, setIsProfileOpen] = useState(false);
 
-  // Sync and enforce strict Employee boundaries when role switches
+  // Sync and enforce strict role boundaries when role switches
   React.useEffect(() => {
     if (isSelfServiceOnly) {
       if (activeTab === 'analytics' || activeTab === 'payroll' || activeTab === 'user-management') {
@@ -64,8 +66,15 @@ export const AppShell: React.FC = () => {
       if (user?.employee_id) {
         setSelectedEmployeeId(user.employee_id);
       }
+    } else if (!canAccessPayroll) {
+      // HR Manager: Full CRUD to Employees, Attendance, Contracts, Working Schedules, and Time Off
+      // NO access to payroll features (Payroll Dashboard, Payruns, Payslips, Salary Structures)
+      if (activeTab === 'analytics' || activeTab === 'payroll' || activeTab === 'user-management') {
+        setActiveTab('master-data');
+        setMasterSubTab('employees');
+      }
     }
-  }, [isSelfServiceOnly, activeTab, masterSubTab, attendanceSubTab, user?.employee_id]);
+  }, [isSelfServiceOnly, canAccessPayroll, activeTab, masterSubTab, attendanceSubTab, user?.employee_id]);
 
   // 1. Loading screen
   if (isLoading) {
@@ -83,7 +92,6 @@ export const AppShell: React.FC = () => {
   }
 
   const handleNavigate = (tab: string, subTab?: string) => {
-    // If user is strictly employee, lock access out of payroll, analytics, and HR admin
     let targetTab = tab;
     let targetSubTab = subTab;
     if (isSelfServiceOnly) {
@@ -96,6 +104,12 @@ export const AppShell: React.FC = () => {
       }
       if (targetTab === 'attendance' && targetSubTab === 'shifts') {
         targetSubTab = 'tracker';
+      }
+    } else if (!canAccessPayroll) {
+      // HR Manager: Block payroll, analytics, and admin
+      if (targetTab === 'analytics' || targetTab === 'payroll' || targetTab === 'user-management') {
+        targetTab = 'master-data';
+        targetSubTab = 'employees';
       }
     }
 
