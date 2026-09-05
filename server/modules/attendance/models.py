@@ -1,4 +1,4 @@
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 from sqlalchemy import (
     Column,
     Integer,
@@ -27,8 +27,8 @@ class AttendanceRecord(Base):
     overtime_hours = Column(Numeric(5, 2), default=0.00, nullable=False)
     status = Column(String(20), default="present", nullable=False)  # present, absent, half_day, late, on_leave
     notes = Column(Text, nullable=True)
-    created_at = Column(DateTime(timezone=True), server_default=func.now(), default=datetime.utcnow)
-    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=datetime.utcnow, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=lambda: datetime.now(timezone.utc), default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     employee = relationship("Employee", foreign_keys=[employee_id], lazy="joined")
@@ -43,8 +43,8 @@ class Shift(Base):
     end_time = Column(String(5), default="18:00", nullable=False)
     break_hours = Column(Numeric(4, 2), default=1.00, nullable=False)
     grace_period_mins = Column(Integer, default=15, nullable=False)
-    created_at = Column(DateTime(timezone=True), server_default=func.now(), default=datetime.utcnow)
-    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=datetime.utcnow, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=lambda: datetime.now(timezone.utc), default=lambda: datetime.now(timezone.utc))
 
 
 class ShiftAssignment(Base):
@@ -55,8 +55,8 @@ class ShiftAssignment(Base):
     shift_id = Column(Integer, ForeignKey("shifts.id", ondelete="CASCADE"), nullable=False, index=True)
     start_date = Column(Date, nullable=False, default=date.today)
     end_date = Column(Date, nullable=True)
-    created_at = Column(DateTime(timezone=True), server_default=func.now(), default=datetime.utcnow)
-    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=datetime.utcnow, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=lambda: datetime.now(timezone.utc), default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     employee = relationship("Employee", foreign_keys=[employee_id], lazy="joined")

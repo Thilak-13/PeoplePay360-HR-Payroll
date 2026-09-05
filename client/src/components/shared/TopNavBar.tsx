@@ -12,23 +12,25 @@ import {
   ChevronDown,
   Shield,
   Check,
-  Building,
-  Activity,
-  User,
-  Key,
+  User as UserIcon,
+  LogOut,
+  Sparkles,
 } from 'lucide-react';
+import { useAuth } from '../../pages/auth/AuthContext';
 import { useRole } from './RoleContext';
-import { UserRole } from '../../pages/dashboard/types';
+import { UserRole } from '../../pages/auth/types';
 
 interface TopNavBarProps {
   activeTab: string;
   onTabChange: (tab: string) => void;
-  onOpenAuth?: () => void;
+  onOpenProfile?: () => void;
 }
 
-export const TopNavBar: React.FC<TopNavBarProps> = ({ activeTab, onTabChange, onOpenAuth }) => {
-  const { currentRole, setCurrentRole, roleInfo, allRoles } = useRole();
+export const TopNavBar: React.FC<TopNavBarProps> = ({ activeTab, onTabChange, onOpenProfile }) => {
+  const { user, logout } = useAuth();
+  const { currentRole, roleInfo, allRoles, switchPersona, isSelfServiceOnly, canManageEmployees, canRunPayroll } = useRole();
   const [dropdownOpen, setDropdownOpen] = useState<boolean>(false);
+  const [switching, setSwitching] = useState<boolean>(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Close dropdown on outside click
@@ -42,16 +44,33 @@ export const TopNavBar: React.FC<TopNavBarProps> = ({ activeTab, onTabChange, on
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const navItems = [
-    { id: 'analytics', label: 'Analytics', icon: TrendingUp },
-    { id: 'master-data', label: 'Employees', icon: Users },
-    { id: 'attendance', label: 'Attendance & Shifts', icon: Clock },
-    { id: 'payroll', label: 'Payroll Batches', icon: CreditCard },
-    { id: 'loans', label: 'Loans & EMI', icon: Coins },
-    { id: 'expenses', label: 'Expenses', icon: Receipt },
-    { id: 'tax', label: 'Statutory Tax', icon: Calculator },
-    { id: 'notifications', label: 'Dispatch Center', icon: Radio },
+  const handleRoleSwitch = async (targetRole: UserRole) => {
+    setSwitching(true);
+    try {
+      await switchPersona(targetRole);
+      setDropdownOpen(false);
+    } finally {
+      setSwitching(false);
+    }
+  };
+
+  // Role-gated Navigation items
+  const allNavItems = [
+    { id: 'analytics', label: 'Analytics', icon: TrendingUp, visible: true },
+    { id: 'master-data', label: 'Employees', icon: Users, visible: canManageEmployees },
+    { id: 'attendance', label: isSelfServiceOnly ? 'My Attendance' : 'Attendance & Shifts', icon: Clock, visible: true },
+    { id: 'payroll', label: isSelfServiceOnly ? 'My Payslips' : 'Payroll Batches', icon: CreditCard, visible: canRunPayroll || isSelfServiceOnly },
+    { id: 'loans', label: isSelfServiceOnly ? 'My Loans' : 'Loans & EMI', icon: Coins, visible: true },
+    { id: 'expenses', label: isSelfServiceOnly ? 'My Expenses' : 'Expenses', icon: Receipt, visible: true },
+    { id: 'tax', label: isSelfServiceOnly ? 'Tax Declarations' : 'Statutory Tax', icon: Calculator, visible: true },
+    { id: 'notifications', label: 'Dispatch Center', icon: Radio, visible: !isSelfServiceOnly },
   ];
+
+  const visibleNavItems = allNavItems.filter((i) => i.visible);
+
+  const initials = user?.email
+    ? user.email.split('@')[0].slice(0, 2).toUpperCase()
+    : 'U';
 
   return (
     <header className="bg-white border-b border-gray-200 sticky top-0 z-40 shadow-xs no-print">
@@ -78,14 +97,14 @@ export const TopNavBar: React.FC<TopNavBarProps> = ({ activeTab, onTabChange, on
 
             {/* Main Navigation Links */}
             <nav className="hidden xl:flex space-x-1">
-              {navItems.map((item) => {
+              {visibleNavItems.map((item) => {
                 const Icon = item.icon;
                 const isActive = activeTab.startsWith(item.id);
                 return (
                   <button
                     key={item.id}
                     onClick={() => onTabChange(item.id)}
-                    className={`inline-flex items-center space-x-1.5 px-3 py-1.5 text-xs font-semibold transition border-b-2 ${
+                    className={`inline-flex items-center space-x-1.5 px-3 py-1.5 text-xs font-semibold transition border-b-2 cursor-pointer ${
                       isActive
                         ? 'bg-indigo-50/70 text-indigo-700 border-indigo-600 rounded-t-lg'
                         : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50 border-transparent rounded-lg'
@@ -99,12 +118,12 @@ export const TopNavBar: React.FC<TopNavBarProps> = ({ activeTab, onTabChange, on
             </nav>
           </div>
 
-          {/* Right Section: System Indicator & Role-Switcher Dropdown */}
+          {/* Right Section: Persona Switcher, User Avatar, Sign Out */}
           <div className="flex items-center space-x-3">
             {/* Quick Printable Payslip Link */}
             <button
               onClick={() => onTabChange('printable-payslip')}
-              className={`hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold rounded-lg border transition ${
+              className={`hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold rounded-lg border transition cursor-pointer ${
                 activeTab === 'printable-payslip'
                   ? 'bg-indigo-600 text-white border-indigo-600'
                   : 'text-slate-600 border-slate-200 hover:bg-slate-50'
@@ -115,12 +134,12 @@ export const TopNavBar: React.FC<TopNavBarProps> = ({ activeTab, onTabChange, on
               <span>Sample Slip</span>
             </button>
 
-            {/* Active Role-Switcher Dropdown */}
+            {/* Active Role & Persona Switcher */}
             <div className="relative" ref={dropdownRef}>
               <button
                 type="button"
                 onClick={() => setDropdownOpen(!dropdownOpen)}
-                className="inline-flex items-center space-x-2 px-3 py-1.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 text-xs font-medium text-gray-700 shadow-xs focus:outline-hidden focus:ring-2 focus:ring-indigo-500 transition"
+                className="inline-flex items-center space-x-2 px-3 py-1.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 text-xs font-medium text-gray-700 shadow-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 transition cursor-pointer"
               >
                 <Shield className="w-3.5 h-3.5 text-indigo-600" />
                 <span className="hidden sm:inline text-gray-500 font-normal">Role:</span>
@@ -130,62 +149,77 @@ export const TopNavBar: React.FC<TopNavBarProps> = ({ activeTab, onTabChange, on
 
               {/* Role Dropdown Menu */}
               {dropdownOpen && (
-                <div className="origin-top-right absolute right-0 mt-2 w-72 rounded-xl shadow-lg bg-white ring-1 ring-black/5 divide-y divide-gray-100 focus:outline-hidden z-50">
-                  <div className="px-4 py-3 bg-gray-50/70 rounded-t-xl">
-                    <p className="text-xs font-bold text-gray-900 flex items-center gap-1.5">
-                      <Shield className="w-4 h-4 text-indigo-600" /> Granular RBAC Persona Switcher
+                <div className="origin-top-right absolute right-0 mt-2 w-80 rounded-2xl shadow-2xl bg-slate-900 border border-slate-800 ring-1 ring-black/5 divide-y divide-slate-800 focus:outline-none z-50 text-slate-100 animate-fade-in">
+                  <div className="px-4 py-3 bg-slate-950/60 rounded-t-2xl">
+                    <p className="text-xs font-bold text-white flex items-center gap-1.5">
+                      <Sparkles className="w-4 h-4 text-indigo-400" /> Instant Persona Switcher
                     </p>
-                    <p className="text-[11px] text-gray-500 mt-0.5">
-                      Switch user role to test granular module restrictions & field permissions.
+                    <p className="text-[11px] text-slate-400 mt-0.5">
+                      Switch authenticated accounts to test role-specific portals and permissions.
                     </p>
                   </div>
-                  <div className="py-1">
-                    {allRoles.map((role) => (
-                      <button
-                        key={role.id}
-                        onClick={() => {
-                          setCurrentRole(role.id as UserRole);
-                          setDropdownOpen(false);
-                        }}
-                        className={`w-full text-left px-4 py-2.5 text-xs flex items-center justify-between hover:bg-indigo-50/50 transition ${
-                          currentRole === role.id ? 'bg-indigo-50/80 text-indigo-900 font-bold' : 'text-gray-700'
-                        }`}
-                      >
-                        <div>
-                          <div className="font-semibold text-gray-900 flex items-center gap-1.5">
-                            {role.name}
-                            {role.id === 'super_admin' && (
-                              <span className="px-1.5 py-0.2 rounded text-[9px] bg-purple-100 text-purple-700 font-bold">
-                                Super
-                              </span>
-                            )}
+                  <div className="p-1.5 space-y-1">
+                    {allRoles.map((acc) => {
+                      const isCurrent = currentRole === acc.role;
+                      return (
+                        <button
+                          key={acc.role}
+                          disabled={switching}
+                          onClick={() => handleRoleSwitch(acc.role)}
+                          className={`w-full text-left p-2.5 rounded-xl text-xs flex items-center justify-between transition cursor-pointer ${
+                            isCurrent
+                              ? 'bg-indigo-950/80 border border-indigo-700/80 text-white font-bold'
+                              : 'hover:bg-slate-800/60 text-slate-300'
+                          }`}
+                        >
+                          <div className="flex items-start gap-2 min-w-0">
+                            <div className="mt-0.5">
+                              <Shield className={`w-3.5 h-3.5 ${acc.color}`} />
+                            </div>
+                            <div className="min-w-0">
+                              <div className="font-semibold text-white truncate">{acc.label}</div>
+                              <div className="text-[10px] text-slate-400 truncate">{acc.email}</div>
+                            </div>
                           </div>
-                          <div className="text-[10px] text-gray-500 font-normal">{role.description}</div>
-                        </div>
-                        {currentRole === role.id && <Check className="w-4 h-4 text-indigo-600 flex-shrink-0" />}
-                      </button>
-                    ))}
+                          {isCurrent && <Check className="w-4 h-4 text-indigo-400 flex-shrink-0" />}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               )}
             </div>
 
-            {/* Auth / Login Modal trigger */}
-            {onOpenAuth && (
+            {/* User Profile Button */}
+            {onOpenProfile && (
               <button
-                onClick={onOpenAuth}
-                className="p-1.5 rounded-lg border border-slate-200 text-slate-600 hover:text-indigo-600 hover:bg-slate-50 transition"
-                title="Authentication & Users"
+                onClick={onOpenProfile}
+                className="flex items-center gap-2 p-1.5 pr-2.5 rounded-lg border border-slate-200 hover:bg-slate-50 transition cursor-pointer"
+                title="Account Settings"
               >
-                <Key className="w-4 h-4" />
+                <div className="w-6 h-6 rounded-md bg-indigo-600 text-white font-bold text-[11px] flex items-center justify-center">
+                  {initials}
+                </div>
+                <span className="text-xs font-semibold text-slate-700 hidden md:inline truncate max-w-[120px]">
+                  {user?.email ? user.email.split('@')[0] : 'Account'}
+                </span>
               </button>
             )}
+
+            {/* Real Sign Out Button */}
+            <button
+              onClick={logout}
+              className="p-2 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300 transition cursor-pointer"
+              title="Sign Out"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+            </button>
           </div>
         </div>
 
         {/* Mobile Navigation Row (Horizontal Scroll) */}
         <div className="xl:hidden flex items-center space-x-2 py-2 overflow-x-auto no-scrollbar border-t border-slate-100">
-          {navItems.map((item) => {
+          {visibleNavItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeTab.startsWith(item.id);
             return (
@@ -208,3 +242,4 @@ export const TopNavBar: React.FC<TopNavBarProps> = ({ activeTab, onTabChange, on
     </header>
   );
 };
+

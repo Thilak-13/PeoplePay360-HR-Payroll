@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy import Column, Integer, String, DateTime, Text
 from server.modules.master_data.database import Base
 
@@ -15,4 +15,5 @@ class NotificationLog(Base):
     status = Column(String(20), nullable=False, default='queued')  # queued, sent, failed
     error_message = Column(Text, nullable=True)
     sent_at = Column(DateTime, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+

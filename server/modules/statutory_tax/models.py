@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Text
 from sqlalchemy.orm import relationship
 from server.modules.master_data.database import Base
@@ -19,7 +19,8 @@ class TaxDeclaration(Base):
     verified_by = Column(Integer, nullable=True)
     status = Column(String(20), nullable=False, default='draft')  # 'draft', 'submitted', 'verified', 'rejected'
     remarks = Column(String(255), nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     employee = relationship('Employee', foreign_keys=[employee_id], lazy='joined')
+

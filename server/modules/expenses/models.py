@@ -1,4 +1,4 @@
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 from sqlalchemy import (
     Column,
     Integer,
@@ -32,8 +32,9 @@ class ExpenseClaim(Base):
     reimbursement_date = Column(Date, nullable=True)
     payslip_id = Column(Integer, nullable=True, index=True)
     rejection_reason = Column(Text, nullable=True)
-    created_at = Column(DateTime(timezone=True), server_default=func.now(), default=datetime.utcnow)
-    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=datetime.utcnow, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=lambda: datetime.now(timezone.utc), default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     employee = relationship("Employee", foreign_keys=[employee_id], lazy="joined")
+

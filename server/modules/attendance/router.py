@@ -1,5 +1,6 @@
-from datetime import date, datetime
+from datetime import date, datetime, timezone, time as dt_time
 from typing import List, Optional
+from decimal import Decimal
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
@@ -77,7 +78,7 @@ def get_employee_monthly_attendance(
     db: Session = Depends(get_db)
 ):
     """Get full monthly punch details and aggregate hours for an employee."""
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     y = year or now.year
     m = month or now.month
     data = AttendanceService.get_employee_monthly(db, employee_id, y, m)

@@ -1,4 +1,4 @@
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 from sqlalchemy import (
     Column,
     Integer,
@@ -22,8 +22,8 @@ class Department(Base):
     code = Column(String(20), unique=True, index=True, nullable=True)
     manager_id = Column(Integer, nullable=True)
     parent_id = Column(Integer, ForeignKey("departments.id", ondelete="SET NULL"), nullable=True)
-    created_at = Column(DateTime(timezone=True), server_default=func.now(), default=datetime.utcnow)
-    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=datetime.utcnow, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=lambda: datetime.now(timezone.utc), default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     parent = relationship("Department", remote_side=lambda: [Department.id], backref="children")
@@ -36,8 +36,8 @@ class WorkingSchedule(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(100), nullable=False, index=True)
     hours_per_week = Column(Numeric(5, 2), default=40.00, nullable=False)
-    created_at = Column(DateTime(timezone=True), server_default=func.now(), default=datetime.utcnow)
-    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=datetime.utcnow, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=lambda: datetime.now(timezone.utc), default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     employees = relationship("Employee", back_populates="working_schedule")
@@ -53,8 +53,8 @@ class WorkingScheduleDay(Base):
     start_time = Column(String(5), nullable=False, default="09:00")
     end_time = Column(String(5), nullable=False, default="18:00")
     break_hours = Column(Numeric(4, 2), default=1.00, nullable=False)
-    created_at = Column(DateTime(timezone=True), server_default=func.now(), default=datetime.utcnow)
-    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=datetime.utcnow, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=lambda: datetime.now(timezone.utc), default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     schedule = relationship("WorkingSchedule", back_populates="days")
@@ -75,8 +75,8 @@ class Employee(Base):
     bank_ifsc = Column(String(20), nullable=True)
     hire_date = Column(Date, nullable=True, default=date.today)
     status = Column(String(20), default="active", nullable=False)  # 'active', 'inactive', 'on_leave'
-    created_at = Column(DateTime(timezone=True), server_default=func.now(), default=datetime.utcnow)
-    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=datetime.utcnow, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=lambda: datetime.now(timezone.utc), default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     department = relationship("Department", back_populates="employees")
@@ -104,8 +104,8 @@ class Contract(Base):
     start_date = Column(Date, nullable=False)
     end_date = Column(Date, nullable=True)
     status = Column(String(20), default="active", nullable=False)  # 'draft', 'active', 'expired', 'cancelled'
-    created_at = Column(DateTime(timezone=True), server_default=func.now(), default=datetime.utcnow)
-    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=datetime.utcnow, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=lambda: datetime.now(timezone.utc), default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     employee = relationship("Employee", back_populates="contracts")
@@ -120,8 +120,8 @@ class LeaveAllocation(Base):
     number_of_days = Column(Numeric(5, 2), nullable=False)
     year = Column(Integer, nullable=False)
     status = Column(String(20), default="approved", nullable=False)
-    created_at = Column(DateTime(timezone=True), server_default=func.now(), default=datetime.utcnow)
-    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=datetime.utcnow, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=lambda: datetime.now(timezone.utc), default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     employee = relationship("Employee", back_populates="leave_allocations")
@@ -141,8 +141,8 @@ class LeaveRequest(Base):
     date_to = Column(Date, nullable=False)
     number_of_days = Column(Numeric(5, 2), nullable=False)
     status = Column(String(20), default="draft", nullable=False)  # 'draft', 'confirm', 'approved', 'refused'
-    created_at = Column(DateTime(timezone=True), server_default=func.now(), default=datetime.utcnow)
-    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=datetime.utcnow, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=lambda: datetime.now(timezone.utc), default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     employee = relationship("Employee", back_populates="leave_requests")

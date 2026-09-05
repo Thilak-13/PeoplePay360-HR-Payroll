@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy import (
     Column,
     Integer,
@@ -23,8 +23,8 @@ class User(Base):
     role = Column(String(50), default="employee", nullable=False)  # super_admin, hr_manager, payroll_officer, dept_manager, employee
     employee_id = Column(Integer, ForeignKey("employees.id", ondelete="SET NULL"), nullable=True)
     is_active = Column(Boolean, default=True, nullable=False)
-    created_at = Column(DateTime(timezone=True), server_default=func.now(), default=datetime.utcnow)
-    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=datetime.utcnow, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=lambda: datetime.now(timezone.utc), default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     employee = relationship("Employee", foreign_keys=[employee_id], lazy="joined")
@@ -39,7 +39,7 @@ class AuditLog(Base):
     resource = Column(String(100), nullable=False, index=True)  # auth, employee, payrun, contract, etc.
     ip_address = Column(String(50), nullable=True)
     details_json = Column(Text, nullable=True)
-    timestamp = Column(DateTime(timezone=True), server_default=func.now(), default=datetime.utcnow, index=True)
+    timestamp = Column(DateTime(timezone=True), server_default=func.now(), default=lambda: datetime.now(timezone.utc), index=True)
 
     # Relationships
     user = relationship("User", foreign_keys=[user_id], lazy="joined")

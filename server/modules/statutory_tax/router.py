@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 
 from server.modules.master_data.database import get_db
 import server.modules.master_data.models
@@ -36,7 +36,7 @@ def submit_tax_declaration(payload: TaxDeclarationCreate, db: Session = Depends(
         existing.proof_documents_json = payload.proof_documents_json
         existing.status = 'submitted'
         existing.remarks = payload.remarks
-        existing.updated_at = datetime.utcnow()
+        existing.updated_at = datetime.now(timezone.utc)
         db.commit()
         db.refresh(existing)
         return existing
@@ -98,7 +98,7 @@ def verify_tax_declaration(id: int, payload: TaxDeclarationVerify, db: Session =
     decl.verified_by = payload.verified_by
     if payload.remarks:
         decl.remarks = payload.remarks
-    decl.updated_at = datetime.utcnow()
+    decl.updated_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(decl)
     return decl

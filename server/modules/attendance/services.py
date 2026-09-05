@@ -1,4 +1,4 @@
-from datetime import datetime, date, time as dt_time, timedelta
+from datetime import datetime, date, time as dt_time, timedelta, timezone
 from decimal import Decimal
 from typing import Optional, List, Dict, Any
 from sqlalchemy.orm import Session
@@ -18,7 +18,7 @@ class AttendanceService:
         notes: Optional[str] = None
     ) -> AttendanceRecord:
         """Record clock-in or clock-out and compute worked/overtime hours."""
-        ts = punch_time or datetime.utcnow()
+        ts = punch_time or datetime.now(timezone.utc)
         today = ts.date()
 
         # Find employee

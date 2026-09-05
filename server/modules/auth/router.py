@@ -212,7 +212,8 @@ def seed_default_users(db: Session = Depends(get_db)):
     ]
     created = []
     for email, pwd, role, emp_id in demo_users:
-        if not db.query(User).filter(User.email == email).first():
+        existing = db.query(User).filter(User.email == email).first()
+        if not existing:
             u = User(
                 email=email,
                 hashed_password=hash_password(pwd),
@@ -222,5 +223,11 @@ def seed_default_users(db: Session = Depends(get_db)):
             )
             db.add(u)
             created.append(email)
+        else:
+            existing.hashed_password = hash_password(pwd)
+            existing.role = role
+            existing.employee_id = emp_id
+            existing.is_active = True
+            created.append(f"{email} (synced)")
     db.commit()
     return {"status": "seeded", "created_users": created}

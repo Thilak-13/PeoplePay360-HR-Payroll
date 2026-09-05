@@ -1,4 +1,9 @@
 export type UserRole = 
+  | 'super_admin'
+  | 'hr_manager'
+  | 'payroll_officer'
+  | 'dept_manager'
+  | 'employee'
   | 'Admin' 
   | 'HR Manager' 
   | 'HR Payroll User' 

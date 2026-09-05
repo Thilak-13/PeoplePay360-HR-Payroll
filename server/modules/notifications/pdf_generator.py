@@ -1,5 +1,5 @@
 import io
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Any, Optional
 
 from reportlab.lib.pagesizes import letter
@@ -63,7 +63,7 @@ def generate_payslip_pdf(data: Dict[str, Any]) -> bytes:
     # Header
     story.append(Paragraph("<b>PeoplePay360 Global Technologies Ltd.</b>", title_style))
     story.append(Paragraph("Confidential Employee Monthly Salary Slip", subtitle_style))
-    pay_period = data.get('pay_period', datetime.utcnow().strftime('%B %Y'))
+    pay_period = data.get('pay_period', datetime.now(timezone.utc).strftime('%B %Y'))
     story.append(Paragraph(f"Pay Period: <b>{pay_period}</b>", subtitle_style))
     story.append(Spacer(1, 15))
     story.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor('#e2e8f0'), spaceAfter=15))
@@ -178,7 +178,7 @@ def generate_payslip_pdf(data: Dict[str, Any]) -> bytes:
 
     # Footer
     story.append(Paragraph("<i>This is a computer-generated salary slip and requires no physical signature.</i>", subtitle_style))
-    story.append(Paragraph(f"Generated via PeoplePay360 on {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')}", subtitle_style))
+    story.append(Paragraph(f"Generated via PeoplePay360 on {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}", subtitle_style))
 
     doc.build(story)
     return buffer.getvalue()

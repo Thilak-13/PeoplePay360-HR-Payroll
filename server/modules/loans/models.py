@@ -1,4 +1,4 @@
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 from sqlalchemy import (
     Column,
     Integer,
@@ -31,8 +31,8 @@ class EmployeeLoan(Base):
     reason = Column(Text, nullable=True)
     disbursement_date = Column(Date, nullable=True)
     approved_by = Column(Integer, nullable=True)
-    created_at = Column(DateTime(timezone=True), server_default=func.now(), default=datetime.utcnow)
-    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=datetime.utcnow, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=lambda: datetime.now(timezone.utc), default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     employee = relationship("Employee", foreign_keys=[employee_id], lazy="joined")
@@ -50,7 +50,7 @@ class LoanRepayment(Base):
     payment_date = Column(Date, nullable=False, default=date.today)
     balance_after = Column(Numeric(12, 2), nullable=False)
     notes = Column(Text, nullable=True)
-    created_at = Column(DateTime(timezone=True), server_default=func.now(), default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     loan = relationship("EmployeeLoan", back_populates="repayments")

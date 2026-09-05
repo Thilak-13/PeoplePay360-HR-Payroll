@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, Dict, Any, List
 from sqlalchemy.orm import Session
 from server.modules.notifications.models import NotificationLog
@@ -23,7 +23,7 @@ def send_notification_email(
         body=body,
         attachment_name=attachment_name,
         status='sent',
-        sent_at=datetime.utcnow(),
+        sent_at=datetime.now(timezone.utc),
         error_message=None
     )
     db.add(log_entry)

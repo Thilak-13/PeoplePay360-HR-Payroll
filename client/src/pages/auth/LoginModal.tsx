@@ -1,15 +1,17 @@
 import React, { useState } from "react";
 import { Lock, Mail, Shield, Key, AlertCircle, CheckCircle2, UserCheck, X } from "lucide-react";
-import { loginUser, seedDefaultUsers, setAuthToken, setStoredUser } from "./api";
-import { User, UserRole } from "./types";
+import { useAuth } from "./AuthContext";
+import { DEMO_ACCOUNTS, DemoAccount, User, UserRole } from "./types";
+import { seedDefaultUsers } from "./api";
 
 interface LoginModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onLoginSuccess: (user: User) => void;
+  onLoginSuccess?: (user: User) => void;
 }
 
 export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLoginSuccess }) => {
+  const { login, quickDemoLogin, user } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -23,23 +25,28 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin
     setError(null);
     setLoading(true);
     try {
-      const data = await loginUser({ email, password });
-      onLoginSuccess(data.user);
+      await login({ email: email.trim(), password });
+      if (onLoginSuccess && user) onLoginSuccess(user);
       onClose();
     } catch (err: any) {
-      setError(err.message || "Failed to log in. Check credentials.");
+      setError(err.response?.data?.detail || err.message || "Failed to log in. Check credentials.");
     } finally {
       setLoading(false);
     }
   };
 
-  const fillDemoAccount = (demoEmail: string, demoRole: UserRole) => {
-    setEmail(demoEmail);
-    if (demoRole === "super_admin") setPassword("Admin@123");
-    else if (demoRole === "hr_manager") setPassword("Hr@12345");
-    else if (demoRole === "payroll_officer") setPassword("Payroll@123");
-    else setPassword("Employee@123");
+  const handleDemoLogin = async (account: DemoAccount) => {
     setError(null);
+    setLoading(true);
+    try {
+      await quickDemoLogin(account);
+      if (onLoginSuccess && user) onLoginSuccess(user);
+      onClose();
+    } catch (err: any) {
+      setError(err.response?.data?.detail || err.message || `Failed to sign in as ${account.label}`);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSeedUsers = async () => {
@@ -148,38 +155,17 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin
               </button>
             </div>
             <div className="grid grid-cols-2 gap-2 text-xs">
-              <button
-                type="button"
-                onClick={() => fillDemoAccount("admin@peoplepay360.com", "super_admin")}
-                className="p-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-left flex items-center gap-2 text-slate-200 transition-colors"
-              >
-                <div className="w-2 h-2 rounded-full bg-purple-400" />
-                <span>Super Admin</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => fillDemoAccount("hr@peoplepay360.com", "hr_manager")}
-                className="p-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-left flex items-center gap-2 text-slate-200 transition-colors"
-              >
-                <div className="w-2 h-2 rounded-full bg-blue-400" />
-                <span>HR Manager</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => fillDemoAccount("payroll@peoplepay360.com", "payroll_officer")}
-                className="p-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-left flex items-center gap-2 text-slate-200 transition-colors"
-              >
-                <div className="w-2 h-2 rounded-full bg-emerald-400" />
-                <span>Payroll Officer</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => fillDemoAccount("employee@peoplepay360.com", "employee")}
-                className="p-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-left flex items-center gap-2 text-slate-200 transition-colors"
-              >
-                <div className="w-2 h-2 rounded-full bg-amber-400" />
-                <span>Employee</span>
-              </button>
+              {DEMO_ACCOUNTS.map((acc) => (
+                <button
+                  key={acc.role}
+                  type="button"
+                  onClick={() => handleDemoLogin(acc)}
+                  className="p-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-left flex items-center gap-2 text-slate-200 transition-colors cursor-pointer"
+                >
+                  <div className={`w-2 h-2 rounded-full ${acc.color.replace('text-', 'bg-')}`} />
+                  <span className="truncate">{acc.label}</span>
+                </button>
+              ))}
             </div>
           </div>
         </div>

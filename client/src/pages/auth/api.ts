@@ -30,6 +30,16 @@ const getAuthHeaders = () => {
   return token ? { Authorization: `Bearer ${token}` } : {};
 };
 
+// Global Axios Request Interceptor for automatic Bearer token injection
+axios.interceptors.request.use((config) => {
+  const token = getAuthToken();
+  if (token && config.headers) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+}, (error) => Promise.reject(error));
+
+
 export async function loginUser(req: LoginRequest): Promise<AuthToken> {
   const res = await axios.post<AuthToken>(`${API_BASE}/login`, req);
   const data = res.data;

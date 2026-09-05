@@ -1,4 +1,4 @@
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 from sqlalchemy import (
     Column,
     Integer,
@@ -23,8 +23,8 @@ class SalaryStructure(Base):
     name = Column(String(100), nullable=False, index=True)
     code = Column(String(50), unique=True, index=True, nullable=False)
     parent_id = Column(Integer, ForeignKey("salary_structures.id", ondelete="SET NULL"), nullable=True)
-    created_at = Column(DateTime(timezone=True), server_default=func.now(), default=datetime.utcnow)
-    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=datetime.utcnow, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=lambda: datetime.now(timezone.utc), default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     parent = relationship("SalaryStructure", remote_side=lambda: [SalaryStructure.id], backref="children")
@@ -55,8 +55,8 @@ class SalaryRule(Base):
     amount = Column(Numeric(12, 2), default=0.00, nullable=False)
     percentage_base = Column(String(50), default="BASIC", nullable=True)  # 'BASIC', 'wage', 'GROSS'
     condition_code = Column(Text, nullable=True)
-    created_at = Column(DateTime(timezone=True), server_default=func.now(), default=datetime.utcnow)
-    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=datetime.utcnow, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=lambda: datetime.now(timezone.utc), default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     structure = relationship("SalaryStructure", back_populates="rules")
@@ -77,8 +77,8 @@ class Payrun(Base):
     total_net = Column(Numeric(12, 2), default=0.00, nullable=False)
     payslip_count = Column(Integer, default=0, nullable=False)
     warning_count = Column(Integer, default=0, nullable=False)
-    created_at = Column(DateTime(timezone=True), server_default=func.now(), default=datetime.utcnow)
-    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=datetime.utcnow, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=lambda: datetime.now(timezone.utc), default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     structure = relationship("SalaryStructure")
@@ -104,8 +104,8 @@ class Payslip(Base):
     warning_message = Column(Text, nullable=True)
     bank_account = Column(String(50), nullable=True)
     ifsc_code = Column(String(20), nullable=True)
-    created_at = Column(DateTime(timezone=True), server_default=func.now(), default=datetime.utcnow)
-    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=datetime.utcnow, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=lambda: datetime.now(timezone.utc), default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     payrun = relationship("Payrun", back_populates="payslips")
@@ -126,9 +126,10 @@ class PayslipLine(Base):
     rate = Column(Numeric(6, 2), default=100.00, nullable=False)
     amount = Column(Numeric(12, 2), nullable=False)
     total = Column(Numeric(12, 2), nullable=False)
-    created_at = Column(DateTime(timezone=True), server_default=func.now(), default=datetime.utcnow)
-    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=datetime.utcnow, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=lambda: datetime.now(timezone.utc), default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     payslip = relationship("Payslip", back_populates="lines")
     salary_rule = relationship("SalaryRule", back_populates="payslip_lines")
+
