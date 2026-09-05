@@ -7,7 +7,7 @@ from sqlalchemy import (
     Date,
     DateTime,
     ForeignKey,
-    Text,
+    CheckConstraint,
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -18,7 +18,7 @@ class Department(Base):
     __tablename__ = "departments"
 
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String(100), nullable=False, index=True)
+    name = Column(String(100), unique=True, nullable=False, index=True)
     code = Column(String(20), unique=True, index=True, nullable=True)
     manager_id = Column(Integer, nullable=True)
     parent_id = Column(Integer, ForeignKey("departments.id", ondelete="SET NULL"), nullable=True)
@@ -54,6 +54,8 @@ class Employee(Base):
     department_id = Column(Integer, ForeignKey("departments.id", ondelete="SET NULL"), nullable=True)
     working_schedule_id = Column(Integer, ForeignKey("working_schedules.id", ondelete="SET NULL"), nullable=True)
     job_title = Column(String(100), nullable=True)
+    bank_account_number = Column(String(50), nullable=True)
+    bank_ifsc = Column(String(20), nullable=True)
     hire_date = Column(Date, nullable=True, default=date.today)
     status = Column(String(20), default="active", nullable=False)  # 'active', 'inactive', 'on_leave'
     created_at = Column(DateTime(timezone=True), server_default=func.now(), default=datetime.utcnow)
@@ -73,14 +75,18 @@ class Employee(Base):
 
 class Contract(Base):
     __tablename__ = "contracts"
+    __table_args__ = (
+        CheckConstraint("wage > 0", name="check_contract_wage_positive"),
+        CheckConstraint("end_date IS NULL OR end_date >= start_date", name="check_contract_dates_valid"),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     employee_id = Column(Integer, ForeignKey("employees.id", ondelete="CASCADE"), nullable=False, index=True)
     wage = Column(Numeric(12, 2), nullable=False)
-    contract_type = Column(String(50), default="full_time", nullable=False)  # 'full_time', 'part_time', 'contractor', 'internship'
+    contract_type = Column(String(50), default="full_time", nullable=False)
     start_date = Column(Date, nullable=False)
     end_date = Column(Date, nullable=True)
-    status = Column(String(20), default="draft", nullable=False)  # 'draft', 'active', 'expired', 'cancelled'
+    status = Column(String(20), default="active", nullable=False)  # 'draft', 'active', 'expired', 'cancelled'
     created_at = Column(DateTime(timezone=True), server_default=func.now(), default=datetime.utcnow)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=datetime.utcnow, default=datetime.utcnow)
 
@@ -93,10 +99,10 @@ class LeaveAllocation(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     employee_id = Column(Integer, ForeignKey("employees.id", ondelete="CASCADE"), nullable=False, index=True)
-    holiday_type = Column(String(50), nullable=False)  # 'paid_time_off', 'sick_leave', 'unpaid', 'parental'
+    holiday_type = Column(String(50), nullable=False)
     number_of_days = Column(Numeric(5, 2), nullable=False)
     year = Column(Integer, nullable=False)
-    status = Column(String(20), default="approved", nullable=False)  # 'draft', 'approved', 'refused'
+    status = Column(String(20), default="approved", nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), default=datetime.utcnow)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=datetime.utcnow, default=datetime.utcnow)
 
@@ -106,10 +112,14 @@ class LeaveAllocation(Base):
 
 class LeaveRequest(Base):
     __tablename__ = "leave_requests"
+    __table_args__ = (
+        CheckConstraint("date_to >= date_from", name="check_leave_dates_valid"),
+        CheckConstraint("number_of_days > 0", name="check_leave_days_positive"),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     employee_id = Column(Integer, ForeignKey("employees.id", ondelete="CASCADE"), nullable=False, index=True)
-    holiday_type = Column(String(50), nullable=False)  # 'paid_time_off', 'sick_leave', 'unpaid', 'parental'
+    holiday_type = Column(String(50), nullable=False)
     date_from = Column(Date, nullable=False)
     date_to = Column(Date, nullable=False)
     number_of_days = Column(Numeric(5, 2), nullable=False)
