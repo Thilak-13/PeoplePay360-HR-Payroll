@@ -250,9 +250,222 @@ def test_working_schedule_with_daily_lines():
     assert len(up_data["days"]) == 2
 
 
+def test_contract_status_normalization_and_overlap_blocking():
+    # Create employee
+    res_emp = client.post(
+        "/api/v1/master-data/employees",
+        json={
+            "first_name": "Marcus",
+            "last_name": "Vance",
+            "email": "marcus.vance@example.com",
+            "phone": "+1999888777",
+            "job_title": "QA Engineer",
+            "hire_date": "2026-01-01",
+            "status": "active",
+        },
+    )
+    assert res_emp.status_code == 201
+    emp_id = res_emp.json()["id"]
+
+    # 1. Create contract with mixed-case status "Active" -> normalized to "active"
+    res_c1 = client.post(
+        "/api/v1/master-data/contracts",
+        json={
+            "employee_id": emp_id,
+            "wage": 6500.00,
+            "contract_type": "full_time",
+            "start_date": "2026-01-01",
+            "end_date": "2026-06-30",
+            "status": "Active",
+        },
+    )
+    assert res_c1.status_code == 201
+    c1_data = res_c1.json()
+    c1_id = c1_data["id"]
+    assert c1_data["status"] == "active"
+
+    # 2. Attempt to create overlapping contract with mixed-case "ACTIVE" -> 409 Conflict
+    res_overlap_active = client.post(
+        "/api/v1/master-data/contracts",
+        json={
+            "employee_id": emp_id,
+            "wage": 7000.00,
+            "contract_type": "full_time",
+            "start_date": "2026-04-01",
+            "end_date": "2026-09-30",
+            "status": "ACTIVE",
+        },
+    )
+    assert res_overlap_active.status_code == 409
+    assert "overlaps with existing active contract" in res_overlap_active.json()["detail"]
+
+    # 3. Attempt to create overlapping contract with status "Running" -> 409 Conflict
+    res_overlap_running = client.post(
+        "/api/v1/master-data/contracts",
+        json={
+            "employee_id": emp_id,
+            "wage": 7000.00,
+            "contract_type": "full_time",
+            "start_date": "2026-05-01",
+            "end_date": "2026-08-31",
+            "status": "Running",
+        },
+    )
+    assert res_overlap_running.status_code == 409
+
+    # 4. Attempt to create overlapping contract with status " active " -> 409 Conflict
+    res_overlap_spaced = client.post(
+        "/api/v1/master-data/contracts",
+        json={
+            "employee_id": emp_id,
+            "wage": 7000.00,
+            "contract_type": "full_time",
+            "start_date": "2026-05-01",
+            "end_date": "2026-08-31",
+            "status": " active ",
+        },
+    )
+    assert res_overlap_spaced.status_code == 409
+
+    # 5. Create Draft contract spanning overlapping dates -> 201 Created (allowed)
+    res_draft = client.post(
+        "/api/v1/master-data/contracts",
+        json={
+            "employee_id": emp_id,
+            "wage": 8000.00,
+            "contract_type": "full_time",
+            "start_date": "2026-06-01",
+            "end_date": "2026-12-31",
+            "status": "Draft",
+        },
+    )
+    assert res_draft.status_code == 201
+    draft_id = res_draft.json()["id"]
+    assert res_draft.json()["status"] == "draft"
+
+    # 6. Attempt to activate draft contract via PATCH while overlapping -> 409 Conflict
+    res_patch_fail = client.patch(
+        f"/api/v1/master-data/contracts/{draft_id}/status?new_status=Active"
+    )
+    assert res_patch_fail.status_code == 409
+    # Ensure draft contract remained draft
+    res_draft_check = client.get(f"/api/v1/master-data/contracts/{draft_id}")
+    assert res_draft_check.json()["status"] == "draft"
+
+    # 7. Shorten existing active contract so no overlap exists with draft (ends 2026-05-31)
+    res_shorten = client.put(
+        f"/api/v1/master-data/contracts/{c1_id}",
+        json={"end_date": "2026-05-31"}
+    )
+    assert res_shorten.status_code == 200
+
+    # 8. Now activate draft contract -> 200 OK
+    res_patch_success = client.patch(
+        f"/api/v1/master-data/contracts/{draft_id}/status?new_status=Active"
+    )
+    assert res_patch_success.status_code == 200
+    assert res_patch_success.json()["status"] == "active"
+
+
+def test_contract_boundary_and_self_exclusion():
+    res_emp = client.post(
+        "/api/v1/master-data/employees",
+        json={
+            "first_name": "Boundary",
+            "last_name": "Tester",
+            "email": "boundary.tester@example.com",
+            "job_title": "Tester",
+            "status": "active",
+        },
+    )
+    assert res_emp.status_code == 201
+    emp_id = res_emp.json()["id"]
+
+    # Active Contract A: 2026-01-01 to 2026-06-30
+    res_a = client.post(
+        "/api/v1/master-data/contracts",
+        json={
+            "employee_id": emp_id,
+            "wage": 5000.00,
+            "start_date": "2026-01-01",
+            "end_date": "2026-06-30",
+            "status": "active",
+        },
+    )
+    assert res_a.status_code == 201
+    contract_a_id = res_a.json()["id"]
+
+    # 1. Touching boundary: 2026-06-30 to 2026-12-31 -> 409 Conflict (touches on June 30)
+    res_touch = client.post(
+        "/api/v1/master-data/contracts",
+        json={
+            "employee_id": emp_id,
+            "wage": 5500.00,
+            "start_date": "2026-06-30",
+            "end_date": "2026-12-31",
+            "status": "active",
+        },
+    )
+    assert res_touch.status_code == 409
+
+    # 2. Next calendar day: 2026-07-01 to 2026-12-31 -> 201 Created (strictly adjacent)
+    res_adj = client.post(
+        "/api/v1/master-data/contracts",
+        json={
+            "employee_id": emp_id,
+            "wage": 5500.00,
+            "start_date": "2026-07-01",
+            "end_date": "2026-12-31",
+            "status": "active",
+        },
+    )
+    assert res_adj.status_code == 201
+
+    # 3. Self-exclusion on update: updating wage on Contract A does not collide with Contract A
+    res_up = client.put(
+        f"/api/v1/master-data/contracts/{contract_a_id}",
+        json={"wage": 6000.00}
+    )
+    assert res_up.status_code == 200
+    assert float(res_up.json()["wage"]) == 6000.00
+
+
+def test_working_schedule_hour_calculations_and_fallback():
+    # 1. Full month fallback calculation (September 2026: 30 calendar days, 8 weekend days, 22 working days, 176h)
+    res = client.post(
+        "/api/v1/master-data/schedules/calculate-hours",
+        json={"hours_per_week": 40.0, "days_per_week": 5, "date_from": "2026-09-01", "date_to": "2026-09-30"},
+    )
+    assert res.status_code == 200
+    data = res.json()
+    assert data["working_days"] == 22
+    assert data["total_calculated_hours"] == 176.0
+    assert data["hours_per_day"] == 8.0
+
+    # 2. Weekend-only date range (2026-09-05 Sat to 2026-09-06 Sun) -> 0 working days, 0.0 hours
+    res_we = client.post(
+        "/api/v1/master-data/schedules/calculate-hours",
+        json={"hours_per_week": 40.0, "days_per_week": 5, "date_from": "2026-09-05", "date_to": "2026-09-06"},
+    )
+    assert res_we.status_code == 200
+    data_we = res_we.json()
+    assert data_we["working_days"] == 0
+    assert data_we["total_calculated_hours"] == 0.0
+
+    # 3. Invalid date order (date_from > date_to) -> 400 Bad Request
+    res_bad = client.post(
+        "/api/v1/master-data/schedules/calculate-hours",
+        json={"hours_per_week": 40.0, "days_per_week": 5, "date_from": "2026-09-30", "date_to": "2026-09-01"},
+    )
+    assert res_bad.status_code == 400
+
+
 if __name__ == "__main__":
     test_ping()
     test_working_schedule_calculator()
     test_working_schedule_with_daily_lines()
     test_master_data_flow()
+    test_contract_status_normalization_and_overlap_blocking()
+    test_contract_boundary_and_self_exclusion()
+    test_working_schedule_hour_calculations_and_fallback()
     print("\n>>> ALL MASTER DATA BACKEND TESTS PASSED SUCCESSFULLY! <<<\n")

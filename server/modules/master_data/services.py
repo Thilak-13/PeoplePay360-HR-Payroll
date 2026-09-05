@@ -70,7 +70,8 @@ def calculate_working_hours(
             sh = parse_time_hours(str(d.start_time))
             eh = parse_time_hours(str(d.end_time))
             bh = float(d.break_hours)
-            day_hours_map[d.day_of_week] = max(0.0, eh - sh - bh)
+            shift_hours = max(0.0, eh - sh - bh)
+            day_hours_map[d.day_of_week] = day_hours_map.get(d.day_of_week, 0.0) + shift_hours
 
         total_weekly_hours = sum(day_hours_map.values())
         num_schedule_days = len(day_hours_map)
@@ -168,12 +169,15 @@ def check_contract_overlap(
       (contract.start_date <= new_end_date OR new_end_date IS NULL) AND
       (contract.end_date >= new_start_date OR contract.end_date IS NULL)
     """
+    if new_status:
+        new_status = str(new_status).lower().strip()
+
     if new_status not in ["active", "running"]:
         return  # Only active/running contracts are constrained by overlapping rules
 
     query = db.query(Contract).filter(
         Contract.employee_id == employee_id,
-        Contract.status.in_(["active", "running"]),
+        func.lower(func.trim(Contract.status)).in_(["active", "running"]),
     )
     if exclude_contract_id:
         query = query.filter(Contract.id != exclude_contract_id)
@@ -210,6 +214,10 @@ def create_employee_contract(db: Session, contract_data: ContractCreate) -> Cont
             detail=f"Employee #{contract_data.employee_id} not found.",
         )
 
+    # Normalize status casing
+    if contract_data.status:
+        contract_data.status = str(contract_data.status).lower().strip()
+
     check_contract_overlap(
         db,
         employee_id=contract_data.employee_id,
@@ -239,6 +247,9 @@ def update_employee_contract(db: Session, contract_id: int, update_data: Contrac
     new_start = update_dict.get("start_date", db_contract.start_date)
     new_end = update_dict.get("end_date", db_contract.end_date)
     new_status = update_dict.get("status", db_contract.status)
+    if new_status:
+        new_status = str(new_status).lower().strip()
+        update_dict["status"] = new_status
 
     validate_contract_dates(new_start, new_end)
 

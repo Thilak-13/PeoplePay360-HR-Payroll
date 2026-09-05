@@ -12,6 +12,14 @@ from server.modules.payroll.models import (
     PayslipLine,
 )
 
+# Ensure Payslip model has working_days, total_working_hours, and paid_days attributes
+if not hasattr(Payslip, "working_days"):
+    Payslip.working_days = 0
+if not hasattr(Payslip, "total_working_hours"):
+    Payslip.total_working_hours = Decimal("0.00")
+if not hasattr(Payslip, "paid_days"):
+    Payslip.paid_days = 0
+
 
 def round_curr(val: Decimal) -> Decimal:
     """Helper to round decimal to 2 decimal places."""
@@ -29,15 +37,15 @@ def round_curr(val: Decimal) -> Decimal:
 def resolve_active_contract(db: Session, employee_id: int, period_start: date, period_end: date) -> Optional[Dict[str, Any]]:
     """
     Temporal contract resolution:
-    Query only the contract where start_date <= period_end AND (end_date IS NULL OR end_date >= period_start).
+    Query only the contract where start_date <= period_end AND (end_date IS NULL OR end_date >= period_start) AND status = 'active'.
     """
     query = text("""
         SELECT id, employee_id, wage, contract_type, start_date, end_date, status
         FROM contracts
         WHERE employee_id = :employee_id
+          AND status = 'active'
           AND start_date <= :period_end
           AND (end_date IS NULL OR end_date >= :period_start)
-          AND status != 'cancelled'
         ORDER BY start_date DESC, id DESC
         LIMIT 1
     """)
@@ -153,10 +161,10 @@ def get_eligible_employees(db: Session, period_start: date, period_end: date) ->
         INNER JOIN contracts c ON e.id = c.employee_id
         LEFT JOIN departments d ON e.department_id = d.id
         WHERE e.status = 'active'
-          AND c.status != 'cancelled'
+          AND c.status = 'active'
           AND c.start_date <= :period_end
           AND (c.end_date IS NULL OR c.end_date >= :period_start)
-        ORDER BY d.name ASC, e.first_name ASC
+        ORDER BY d.name ASC, e.first_name ASC, c.start_date DESC, c.id DESC
     """)
     
     rows = db.execute(query, {
@@ -442,7 +450,38 @@ def compute_single_payslip(
     payslip.bank_account = bank_acc
     payslip.ifsc_code = ifsc
 
-    # 3. Structure & Rules
+    # 3. Dynamic Working Schedule & Calendar Hour Calculation (R1.3)
+    from server.modules.master_data.models import Employee, WorkingSchedule
+    from server.modules.master_data.services import calculate_working_hours
+
+    emp = db.query(Employee).filter(Employee.id == payslip.employee_id).first()
+    schedule = None
+    if emp and emp.working_schedule_id:
+        schedule = db.query(WorkingSchedule).filter(WorkingSchedule.id == emp.working_schedule_id).first()
+
+    if schedule and schedule.days and len(schedule.days) > 0:
+        sched_res = calculate_working_hours(
+            hours_per_week=schedule.hours_per_week or Decimal("40.00"),
+            days_per_week=len(schedule.days),
+            date_from=payslip.date_from,
+            date_to=payslip.date_to,
+            schedule=schedule,
+        )
+    else:
+        # Graceful fallback to standard 5-day / 40-hr calendar workdays (8h/day, excluding Sat/Sun)
+        sched_res = calculate_working_hours(
+            hours_per_week=Decimal("40.00"),
+            days_per_week=5,
+            date_from=payslip.date_from,
+            date_to=payslip.date_to,
+            schedule=None,
+        )
+
+    payslip.working_days = sched_res.working_days
+    payslip.total_working_hours = round_curr(Decimal(str(sched_res.total_calculated_hours)))
+    payslip.paid_days = sched_res.working_days
+
+    # 4. Structure & Rules
     structure = None
     if payslip.structure_id:
         structure = db.query(SalaryStructure).filter(SalaryStructure.id == payslip.structure_id).first()

@@ -15,8 +15,10 @@ from server.modules.payroll.models import (
 from server.modules.payroll.engine import (
     get_or_create_default_structure,
     resolve_active_contract,
+    get_eligible_employees,
     check_compliance_warnings,
     calculate_payslip_lines_pipeline,
+    compute_single_payslip,
 )
 from server.modules.payroll.services import PayrollService
 from server.modules.payroll.schemas import (
@@ -24,6 +26,12 @@ from server.modules.payroll.schemas import (
 )
 
 import server.modules.master_data.models  # Register all master data tables on Base.metadata
+from server.modules.master_data.models import (
+    Employee,
+    Contract,
+    WorkingSchedule,
+    WorkingScheduleDay,
+)
 
 TEST_DB_URL = "sqlite:///:memory:"
 engine = create_engine(TEST_DB_URL, connect_args={"check_same_thread": False})
@@ -165,3 +173,208 @@ def test_terminal_lock_enforcement(db_session):
     # Terminal Lock: Cannot delete paid payrun
     with pytest.raises(ValueError, match="Terminal Lock"):
         PayrollService.delete_payrun(db_session, payrun.id)
+
+
+# ==============================================================================
+# R1.1 & R1.3 Milestone 1 Test Suite
+# ==============================================================================
+
+def test_unapproved_draft_contracts_never_selected(db_session):
+    """
+    R1.1: Ensure unapproved draft contracts are NEVER selected for payroll.
+    1. Employee with active contract + draft contract: active contract is selected, draft is ignored.
+    2. Employee with ONLY draft contract: resolve_active_contract returns None, get_eligible_employees excludes them.
+    """
+    # Employee 1 currently has Contract 1 (active, wage 60000, start 2026-01-01)
+    # Add a newer draft contract with higher ID and later start date
+    draft_c = Contract(
+        id=99,
+        employee_id=1,
+        wage=Decimal("95000.00"),
+        contract_type="full_time",
+        start_date=date(2026, 9, 1),
+        end_date=None,
+        status="draft"
+    )
+    db_session.add(draft_c)
+    db_session.commit()
+
+    # resolve_active_contract must strictly select the active contract (#1), not the draft (#99)
+    c = resolve_active_contract(db_session, 1, date(2026, 9, 1), date(2026, 9, 30))
+    assert c is not None
+    assert c["id"] == 1
+    assert c["wage"] == Decimal("60000.00")
+    assert c["status"] == "active"
+
+    # Employee 2: Update contract to draft only
+    c2 = db_session.query(Contract).filter(Contract.id == 2).first()
+    c2.status = "draft"
+    db_session.commit()
+
+    c_none = resolve_active_contract(db_session, 2, date(2026, 9, 1), date(2026, 9, 30))
+    assert c_none is None
+
+    # get_eligible_employees must exclude Employee 2 who has only draft contract
+    eligible = get_eligible_employees(db_session, date(2026, 9, 1), date(2026, 9, 30))
+    eligible_emp_ids = [e["employee_id"] for e in eligible]
+    assert 1 in eligible_emp_ids
+    assert 2 not in eligible_emp_ids
+
+
+def test_active_contracts_spanning_pay_period_dates_selected(db_session):
+    """
+    R1.1: Test that active contracts spanning the pay period dates ARE selected across boundary conditions.
+    """
+    # 1. Spanning entire period
+    c = resolve_active_contract(db_session, 1, date(2026, 9, 1), date(2026, 9, 30))
+    assert c is not None
+    assert c["employee_id"] == 1
+
+    # 2. Contract ending on exact first day of period (2026-09-01)
+    c_start_boundary = Contract(
+        id=101,
+        employee_id=2,
+        wage=Decimal("42000.00"),
+        contract_type="full_time",
+        start_date=date(2026, 6, 1),
+        end_date=date(2026, 9, 1),
+        status="active"
+    )
+    # Remove previous contract 2 to test boundary cleanly
+    db_session.query(Contract).filter(Contract.employee_id == 2).delete()
+    db_session.add(c_start_boundary)
+    db_session.commit()
+
+    res = resolve_active_contract(db_session, 2, date(2026, 9, 1), date(2026, 9, 30))
+    assert res is not None
+    assert res["id"] == 101
+
+    # 3. Contract starting on exact last day of period (2026-09-30)
+    c_end_boundary = Contract(
+        id=102,
+        employee_id=2,
+        wage=Decimal("48000.00"),
+        contract_type="full_time",
+        start_date=date(2026, 9, 30),
+        end_date=date(2026, 12, 31),
+        status="active"
+    )
+    db_session.add(c_end_boundary)
+    db_session.commit()
+
+    res_latest = resolve_active_contract(db_session, 2, date(2026, 9, 1), date(2026, 9, 30))
+    assert res_latest is not None
+    # ORDER BY start_date DESC should pick the one starting on 2026-09-30
+    assert res_latest["id"] == 102
+    assert res_latest["wage"] == Decimal("48000.00")
+
+
+def test_expired_and_cancelled_contracts_outside_period_not_selected(db_session):
+    """
+    R1.1: Test that expired contracts outside period and cancelled contracts are NOT selected.
+    """
+    db_session.query(Contract).filter(Contract.employee_id == 2).delete()
+    # Contract ending 1 day before period starts (2026-08-31)
+    c_expired = Contract(
+        id=201,
+        employee_id=2,
+        wage=Decimal("38000.00"),
+        contract_type="full_time",
+        start_date=date(2026, 1, 1),
+        end_date=date(2026, 8, 31),
+        status="expired"
+    )
+    # Contract starting 1 day after period ends (2026-10-01)
+    c_future = Contract(
+        id=202,
+        employee_id=2,
+        wage=Decimal("52000.00"),
+        contract_type="full_time",
+        start_date=date(2026, 10, 1),
+        end_date=date(2026, 12, 31),
+        status="active"
+    )
+    # Cancelled contract covering the period
+    c_canc = Contract(
+        id=203,
+        employee_id=2,
+        wage=Decimal("99000.00"),
+        contract_type="full_time",
+        start_date=date(2026, 9, 1),
+        end_date=date(2026, 9, 30),
+        status="cancelled"
+    )
+    db_session.add_all([c_expired, c_future, c_canc])
+    db_session.commit()
+
+    res = resolve_active_contract(db_session, 2, date(2026, 9, 1), date(2026, 9, 30))
+    assert res is None
+
+
+def test_working_schedule_hour_calculation_with_schedule_lines(db_session):
+    """
+    R1.3: Test working schedule hour calculation using employee's working_schedule_id and daily lines.
+    Schedule: 4-day 33h schedule (Mon-Wed 8h each, Thu 9h).
+    Period: September 2026 (2026-09-01 to 2026-09-30).
+    Expected: 18 working days, 148.00 total hours.
+    """
+    sched = WorkingSchedule(name="4-day 33h Schedule", hours_per_week=Decimal("33.00"))
+    db_session.add(sched)
+    db_session.commit()
+
+    # Mon (0): 9-18 - 1h break = 8h
+    # Tue (1): 9-18 - 1h break = 8h
+    # Wed (2): 9-18 - 1h break = 8h
+    # Thu (3): 9-19 - 1h break = 9h
+    days = [
+        WorkingScheduleDay(schedule_id=sched.id, day_of_week=0, start_time="09:00", end_time="18:00", break_hours=Decimal("1.00")),
+        WorkingScheduleDay(schedule_id=sched.id, day_of_week=1, start_time="09:00", end_time="18:00", break_hours=Decimal("1.00")),
+        WorkingScheduleDay(schedule_id=sched.id, day_of_week=2, start_time="09:00", end_time="18:00", break_hours=Decimal("1.00")),
+        WorkingScheduleDay(schedule_id=sched.id, day_of_week=3, start_time="09:00", end_time="19:00", break_hours=Decimal("1.00")),
+    ]
+    db_session.add_all(days)
+    
+    emp = db_session.query(Employee).filter(Employee.id == 1).first()
+    emp.working_schedule_id = sched.id
+    db_session.commit()
+
+    # Create payslip
+    payslip = Payslip(
+        employee_id=1,
+        date_from=date(2026, 9, 1),
+        date_to=date(2026, 9, 30),
+        status="draft"
+    )
+    db_session.add(payslip)
+    db_session.commit()
+
+    computed_slip = compute_single_payslip(db_session, payslip.id)
+    assert computed_slip.working_days == 18
+    assert computed_slip.total_working_hours == Decimal("148.00")
+    assert computed_slip.status == "computed"
+
+
+def test_working_schedule_hour_calculation_fallback(db_session):
+    """
+    R1.3: Test working schedule hour calculation fallback to standard 5-day / 40-hr calendar workdays (8h/day, excluding Sat/Sun).
+    Employee with working_schedule_id = None.
+    Period: September 2026 (2026-09-01 to 2026-09-30, 30 days, 8 weekend days).
+    Expected: 22 working days, 176.00 total hours.
+    """
+    emp = db_session.query(Employee).filter(Employee.id == 1).first()
+    emp.working_schedule_id = None
+    db_session.commit()
+
+    payslip = Payslip(
+        employee_id=1,
+        date_from=date(2026, 9, 1),
+        date_to=date(2026, 9, 30),
+        status="draft"
+    )
+    db_session.add(payslip)
+    db_session.commit()
+
+    computed_slip = compute_single_payslip(db_session, payslip.id)
+    assert computed_slip.working_days == 22
+    assert computed_slip.total_working_hours == Decimal("176.00")
+    assert computed_slip.status == "computed"

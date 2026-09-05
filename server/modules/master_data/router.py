@@ -470,7 +470,7 @@ def list_contracts(
     if employee_id:
         query = query.filter(Contract.employee_id == employee_id)
     if status:
-        query = query.filter(Contract.status == status)
+        query = query.filter(func.lower(func.trim(Contract.status)) == status.lower().strip())
     return query.order_by(Contract.start_date.desc()).offset(skip).limit(limit).all()
 
 
@@ -481,6 +481,8 @@ def create_contract(
     db: Session = Depends(get_db)
 ):
     """Creates contract with date validation and overlapping active contract rejection."""
+    if contract_in.status:
+        contract_in.status = str(contract_in.status).lower().strip()
     return create_employee_contract(db, contract_in)
 
 
@@ -504,17 +506,20 @@ def update_contract(
     db: Session = Depends(get_db)
 ):
     """Updates contract with validation on dates and active overlap rules."""
+    if contract_in.status:
+        contract_in.status = str(contract_in.status).lower().strip()
     return update_employee_contract(db, contract_id, contract_in)
 
 
 @router.patch("/contracts/{contract_id}/status", response_model=ContractResponse, tags=["Contracts"])
 def update_contract_status(
     contract_id: int,
-    new_status: str = Query(..., pattern="^(draft|active|running|expired|cancelled)$"),
+    new_status: str = Query(..., pattern="^(?i)(draft|active|running|expired|cancelled)$"),
     current_user: User = Depends(require_hr()),
     db: Session = Depends(get_db)
 ):
     """Updates contract status with overlap validation for active/running state."""
+    new_status = new_status.lower().strip()
     return update_employee_contract(db, contract_id, ContractUpdate(status=new_status))
 
 
@@ -527,6 +532,19 @@ def delete_contract(
     contract = db.query(Contract).filter(Contract.id == contract_id).first()
     if not contract:
         raise HTTPException(status_code=404, detail="Contract not found")
+
+    # Historical Payroll Immutability (R5.4): prevent deletion of contracts linked to paid payslips
+    from server.modules.payroll.models import Payslip
+    paid_payslips = db.query(Payslip).filter(
+        Payslip.contract_id == contract_id,
+        Payslip.status == "paid"
+    ).count()
+    if paid_payslips > 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Cannot delete contract #{contract_id} linked to {paid_payslips} paid payslip(s)."
+        )
+
     db.delete(contract)
     db.commit()
 
