@@ -270,24 +270,84 @@ def test_hr_payroll_user_payrun_access_and_readonly_structures():
 # Role 4: HR Payroll Manager Boundary Tests
 # ==============================================================================
 
+def test_hr_payroll_manager_has_all_hr_payroll_user_permissions():
+    token = create_access_token({"user_id": 4, "email": "payrollmanager@peoplepay360.com", "role": ROLE_HR_PAYROLL_MANAGER, "employee_id": 4})
+    headers = {"Authorization": f"Bearer {token}"}
+
+    # 1. Full HR access: employees, contracts, shifts, attendance, time off
+    assert client.get("/api/v1/master-data/employees", headers=headers).status_code == 200
+    assert client.get("/api/v1/master-data/contracts", headers=headers).status_code == 200
+    assert client.get("/api/v1/attendance/shifts", headers=headers).status_code == 200
+    assert client.get("/api/v1/attendance/daily-summary", headers=headers).status_code == 200
+    assert client.get("/api/v1/master-data/leave-requests", headers=headers).status_code == 200
+
+    # 2. Payruns and payslips read access
+    assert client.get("/api/v1/payroll/payruns", headers=headers).status_code == 200
+    assert client.get("/api/v1/payroll/payslips", headers=headers).status_code == 200
+
+
 def test_hr_payroll_manager_full_payroll_crud_but_no_user_management():
     token = create_access_token({"user_id": 4, "email": "payrollmanager@peoplepay360.com", "role": ROLE_HR_PAYROLL_MANAGER, "employee_id": 4})
     headers = {"Authorization": f"Bearer {token}"}
 
-    # 1. Full CRUD: Can create salary structure -> 201 Created
+    # 1. Full CRUD Structures: Create
     res_create_struct = client.post("/api/v1/payroll/structures", json={
         "name": "Manager Structure", "code": "MGR_STRUCT_01"
     }, headers=headers)
     assert res_create_struct.status_code == 201
     struct_id = res_create_struct.json()["id"]
 
-    # 2. Full CRUD: Can delete salary structure -> 204 No Content
+    # 2. Full CRUD Structures: Read
+    res_get_struct = client.get(f"/api/v1/payroll/structures/{struct_id}", headers=headers)
+    assert res_get_struct.status_code == 200
+
+    # 3. Full CRUD Structures: Update
+    res_update_struct = client.put(f"/api/v1/payroll/structures/{struct_id}", json={
+        "name": "Manager Structure Updated"
+    }, headers=headers)
+    assert res_update_struct.status_code == 200
+
+    # 4. Full CRUD Rules: Create rule
+    res_add_rule = client.post(f"/api/v1/payroll/structures/{struct_id}/rules", json={
+        "structure_id": struct_id,
+        "name": "Manager Special Bonus",
+        "code": "MGR_BONUS",
+        "category": "ALLOWANCE",
+        "sequence": 15,
+        "amount_type": "fixed",
+        "amount": 5000,
+    }, headers=headers)
+    assert res_add_rule.status_code == 201
+    rule_id = res_add_rule.json()["id"]
+
+    # 5. Full CRUD Rules: Update rule
+    res_update_rule = client.put(f"/api/v1/payroll/rules/{rule_id}", json={
+        "name": "Manager Performance Bonus",
+        "amount": 6000,
+    }, headers=headers)
+    assert res_update_rule.status_code == 200
+
+    # 6. Full CRUD Rules: Delete rule
+    res_del_rule = client.delete(f"/api/v1/payroll/rules/{rule_id}", headers=headers)
+    assert res_del_rule.status_code == 204
+
+    # 7. Full CRUD Structures: Delete
     res_del_struct = client.delete(f"/api/v1/payroll/structures/{struct_id}", headers=headers)
     assert res_del_struct.status_code == 204
 
-    # 3. CANNOT access user management -> 403 Forbidden
+    # 8. Full control over HR & Payroll metrics & analytics
+    res_metrics = client.get("/api/v1/payroll/metrics", headers=headers)
+    assert res_metrics.status_code == 200
+    res_analytics = client.get("/api/v1/analytics/dashboard", headers=headers)
+    assert res_analytics.status_code == 200
+
+    # 9. REMOVE THE REST: User management & system administration are strictly forbidden
     res_users = client.get("/api/v1/auth/users", headers=headers)
     assert res_users.status_code == 403
+    res_create_user = client.post("/api/v1/auth/users", json={
+        "email": "hacker@test.com", "password": "Password@123", "role": "employee"
+    }, headers=headers)
+    assert res_create_user.status_code == 403
 
 
 # ==============================================================================

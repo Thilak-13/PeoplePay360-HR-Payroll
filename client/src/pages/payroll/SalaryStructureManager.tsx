@@ -127,6 +127,24 @@ export const SalaryStructureManager: React.FC<SalaryStructureManagerProps> = ({
     }
   };
 
+  const handleDeleteStructure = async (structureId: number) => {
+    if (!confirm(`Are you sure you want to delete structure "${selectedStructure?.name}"?`)) return;
+    try {
+      const res = await fetch(`/api/v1/payroll/structures/${structureId}`, {
+        method: 'DELETE',
+      });
+      if (res.ok) {
+        setSelectedStructure(null);
+        fetchStructures();
+      } else {
+        const err = await res.json();
+        alert(err.detail || 'Failed to delete salary structure');
+      }
+    } catch (err) {
+      console.error('Error deleting structure:', err);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -203,12 +221,20 @@ export const SalaryStructureManager: React.FC<SalaryStructureManagerProps> = ({
                 </div>
               </div>
               {selectedStructure && canEditPayrollConfig && (
-                <button
-                  onClick={() => setShowAddRuleModal(true)}
-                  className="px-3 py-1.5 bg-slate-900 hover:bg-black text-white rounded-lg text-xs font-semibold shadow-sm"
-                >
-                  + Add Salary Rule
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handleDeleteStructure(selectedStructure.id)}
+                    className="px-3 py-1.5 border border-rose-200 text-rose-600 hover:bg-rose-50 rounded-lg text-xs font-semibold shadow-2xs transition"
+                  >
+                    Delete Structure
+                  </button>
+                  <button
+                    onClick={() => setShowAddRuleModal(true)}
+                    className="px-3 py-1.5 bg-slate-900 hover:bg-black text-white rounded-lg text-xs font-semibold shadow-sm"
+                  >
+                    + Add Salary Rule
+                  </button>
+                </div>
               )}
             </div>
 
