@@ -67,5 +67,60 @@ PeoplePay360 HR & Payroll system. Multi-developer module architecture.
   - `PayrunList.tsx`: Dashboard with metrics KPI cards, tab filters, and search.
   - `SalaryStructureManager.tsx`: Interactive salary structure and sequenced rule pipeline manager.
   - `index.ts`: Barrel exports.
-- **Status**: Complete & Verified (Ready for integration)
 
+---
+
+### Section 6: Developer 2 — Sprint 1 Final Verification Checklist
+
+**Verified by**: Developer 2
+**Branch**: `feat/dev2-payroll-engine`
+**Verification Date**: 2026-09-05
+**Verification Time**: 14:24 IST
+
+#### ✅ Test Suite — 6/6 PASSED
+
+| # | Test Name | Result |
+|---|---|---|
+| 1 | `test_temporal_contract_resolution` | ✅ PASSED |
+| 2 | `test_compliance_audit_warnings` | ✅ PASSED |
+| 3 | `test_sequenced_salary_rules_pipeline` | ✅ PASSED |
+| 4 | `test_payrun_creation_and_computation` | ✅ PASSED |
+| 5 | `test_validation_barrier_enforcement` | ✅ PASSED |
+| 6 | `test_terminal_lock_enforcement` | ✅ PASSED |
+
+**Runner**: `python -m pytest server/modules/payroll/test_payroll.py -v`
+**Result**: `6 passed, 218 warnings in 0.49s` (warnings are cosmetic SQLite adapter deprecations — non-blocking)
+
+---
+
+#### ✅ Behavioral Verification — 4 Core Invariants
+
+| Invariant | Mechanism | Verified |
+|---|---|---|
+| **Temporal Contract Resolution** | `engine.py` filters contracts where `start_date <= period_end AND (end_date IS NULL OR end_date >= period_start)`; only active-period employees are enrolled in batch | ✅ `test_temporal_contract_resolution` PASSED |
+| **Compliance Warning Detection** | Pre-compute audit in `engine.py` sets `has_warning = True` on payslips with missing bank account, missing IFSC code, or duplicate payslip overlap for same employee in same period | ✅ `test_compliance_audit_warnings` PASSED |
+| **Validation Barrier Block** | `POST /payruns/{id}/transition?target_status=validated` in `router.py` inspects all payslips; raises `HTTP 400` with detail `"Compliance warnings must be resolved before validation"` if any `has_warning == True` | ✅ `test_validation_barrier_enforcement` PASSED |
+| **Terminal Lock Immutability** | `POST /payruns/{id}/transition` raises `HTTP 400` with detail `"Payrun is already in terminal state 'paid' and cannot be modified"` once status is `paid`; payslips and payruns in `paid` state are permanently immutable | ✅ `test_terminal_lock_enforcement` PASSED |
+
+---
+
+#### ✅ Sprint 1 Commit Log — Developer 2
+
+| Commit | Message | Scope |
+|---|---|---|
+| `2111ec1` | `feat(payroll): implement two-step payrun setup endpoints` | Backend — wizard Step 1 & Step 2 endpoints |
+| `d0cb542` | `feat(payroll): implement compliance warning audit rules` | Backend — `engine.py` compliance pre-audit |
+| `8b8a085` | `feat(payroll): build sequenced calculation accumulator` | Backend — `engine.py` rule pipeline |
+| `2042ab3` | `feat(payroll): complete batch compute engine` | Backend — `compute_payrun_batch()` |
+| `7779d78` | `feat(payroll): implement state machine guards and terminal lock` | Backend — `router.py` validation barrier + terminal lock |
+| `8c29c9b` | `feat(payroll): expose payslip and lines inspection API` | Backend — sorted payslip line inspection |
+| `58ced76` | `feat(payroll): scaffold payroll frontend API client` | Frontend — `api.ts`, `types.ts`, `index.ts` |
+| `889334c` | `feat(payroll): build step 1 of payrun creation wizard` | Frontend — `PayrunWizardModal.tsx` Step 1 |
+| `8c1180e` | `feat(payroll): complete step 2 employee selection modal` | Frontend — `PayrunWizardModal.tsx` Step 2 |
+| `939e060` | `feat(payroll): build payrun statusbar and lifecycle buttons` | Frontend — `PayrunDetail.tsx` progress bar + action bar |
+| `0f4d12d` | `feat(payroll): render payslip batch table with warning badges` | Frontend — `PayrunDetail.tsx` payslip table + warning pills |
+| `98bd402` | `feat(payroll): build payslip line items breakdown drawer` | Frontend — `PayslipDetail.tsx` gross/deduction panels |
+
+**Total Sprint 1 Commits (Developer 2)**: 12
+**Domain Boundary Compliance**: ✅ Strictly adhered — no modifications outside `server/modules/payroll/` and `client/src/pages/payroll/`
+**Sprint 1 Status**: 🟢 **COMPLETE & VERIFIED — Ready for handover / integration testing**
