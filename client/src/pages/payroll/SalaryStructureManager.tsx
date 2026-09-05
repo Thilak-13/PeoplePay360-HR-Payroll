@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { SalaryStructure, SalaryRule } from './types';
+import { useRole } from '../../components/shared/RoleContext';
 
 interface SalaryStructureManagerProps {
   onBack?: () => void;
@@ -8,6 +9,7 @@ interface SalaryStructureManagerProps {
 export const SalaryStructureManager: React.FC<SalaryStructureManagerProps> = ({
   onBack,
 }) => {
+  const { canEditPayrollConfig } = useRole();
   const [structures, setStructures] = useState<SalaryStructure[]>([]);
   const [selectedStructure, setSelectedStructure] = useState<SalaryStructure | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -143,13 +145,28 @@ export const SalaryStructureManager: React.FC<SalaryStructureManagerProps> = ({
             Configure sequenced calculation pipelines across BASIC, ALLOWANCE, GROSS, DEDUCTION, and NET.
           </p>
         </div>
-        <button
-          onClick={() => setShowCreateStructModal(true)}
-          className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold shadow-sm"
-        >
-          + New Structure
-        </button>
+        {canEditPayrollConfig ? (
+          <button
+            onClick={() => setShowCreateStructModal(true)}
+            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold shadow-sm"
+          >
+            + New Structure
+          </button>
+        ) : (
+          <span className="px-3 py-1.5 bg-slate-100 text-slate-600 rounded-xl text-xs font-semibold border border-slate-200 inline-flex items-center gap-1.5">
+            🔒 Read-Only (HR Payroll User)
+          </span>
+        )}
       </div>
+
+      {!canEditPayrollConfig && (
+        <div className="p-3 bg-amber-50 border border-amber-200 text-amber-800 rounded-xl text-xs flex items-center gap-2">
+          <span>ℹ</span>
+          <span>
+            <strong>Read-Only Access:</strong> As an HR Payroll User, you can view salary structures and calculation rules. Editing or creating structures and rules is restricted to HR Payroll Managers and Admins.
+          </span>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Structure List Sidebar */}
@@ -185,7 +202,7 @@ export const SalaryStructureManager: React.FC<SalaryStructureManagerProps> = ({
                   Code: {selectedStructure?.code}
                 </div>
               </div>
-              {selectedStructure && (
+              {selectedStructure && canEditPayrollConfig && (
                 <button
                   onClick={() => setShowAddRuleModal(true)}
                   className="px-3 py-1.5 bg-slate-900 hover:bg-black text-white rounded-lg text-xs font-semibold shadow-sm"
@@ -236,12 +253,16 @@ export const SalaryStructureManager: React.FC<SalaryStructureManagerProps> = ({
                                 : `₹${Number(r.amount).toLocaleString('en-IN')}`}
                             </td>
                             <td className="py-2.5 px-3 text-right">
-                              <button
-                                onClick={() => handleDeleteRule(r.id)}
-                                className="text-rose-500 hover:text-rose-700 font-semibold text-[11px]"
-                              >
-                                Delete
-                              </button>
+                              {canEditPayrollConfig ? (
+                                <button
+                                  onClick={() => handleDeleteRule(r.id)}
+                                  className="text-rose-500 hover:text-rose-700 font-semibold text-[11px]"
+                                >
+                                  Delete
+                                </button>
+                              ) : (
+                                <span className="text-slate-400 text-[11px] italic">View only</span>
+                              )}
                             </td>
                           </tr>
                         ))}

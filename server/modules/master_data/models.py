@@ -17,6 +17,20 @@ from sqlalchemy_utils.types.encrypted.encrypted_type import AesEngine
 from server.modules.master_data.database import Base
 
 
+class SafeAesEngine(AesEngine):
+    """AES Engine with graceful fallback for unencrypted plaintext values in DB."""
+    def decrypt(self, value):
+        try:
+            return super().decrypt(value)
+        except Exception:
+            if isinstance(value, bytes):
+                try:
+                    return value.decode("utf-8", errors="ignore")
+                except Exception:
+                    pass
+            return str(value) if value is not None else None
+
+
 def _get_encryption_key():
     return os.getenv("ENCRYPTION_KEY", "default_secret_encryption_key_32b")
 
@@ -78,8 +92,8 @@ class Employee(Base):
     department_id = Column(Integer, ForeignKey("departments.id", ondelete="SET NULL"), nullable=True)
     working_schedule_id = Column(Integer, ForeignKey("working_schedules.id", ondelete="SET NULL"), nullable=True)
     job_title = Column(String(100), nullable=True)
-    bank_account_number = Column(StringEncryptedType(String, _get_encryption_key, AesEngine), nullable=True)
-    bank_ifsc = Column(StringEncryptedType(String, _get_encryption_key, AesEngine), nullable=True)
+    bank_account_number = Column(StringEncryptedType(String, _get_encryption_key, SafeAesEngine), nullable=True)
+    bank_ifsc = Column(StringEncryptedType(String, _get_encryption_key, SafeAesEngine), nullable=True)
     hire_date = Column(Date, nullable=True, default=date.today)
     status = Column(String(20), default="active", nullable=False)  # 'active', 'inactive', 'on_leave'
     created_at = Column(DateTime(timezone=True), server_default=func.now(), default=lambda: datetime.now(timezone.utc))

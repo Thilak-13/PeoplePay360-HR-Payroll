@@ -11,6 +11,9 @@ from server.modules.auth.schemas import (
     UserCreate,
     UserCreate as RegisterRequest,
     UserResponse,
+    UserDetailResponse,
+    RoleUpdateRequest,
+    StatusUpdateRequest,
     TokenResponse,
     ChangePasswordRequest,
     AuditLogResponse,
@@ -21,6 +24,14 @@ from server.modules.auth.security import (
     create_access_token,
     get_current_user,
     require_role,
+    require_admin,
+    ADMIN_ROLES,
+    ROLE_ADMIN,
+    ROLE_SUPER_ADMIN,
+    ROLE_HR_PAYROLL_MANAGER,
+    ROLE_HR_PAYROLL_USER,
+    ROLE_HR_MANAGER,
+    ROLE_EMPLOYEE,
 )
 
 # Ensure auth tables exist
@@ -122,7 +133,6 @@ def register(
     req: UserCreate,
     request: Request,
     db: Session = Depends(get_db),
-    # Optional guard: only super_admin/hr_manager can register, unless it is first system user
 ):
     """Register a new user account."""
     existing = db.query(User).filter(User.email == req.email.lower().strip()).first()
@@ -189,26 +199,198 @@ def change_password(
     return {"status": "success", "message": "Password updated successfully"}
 
 
+# ==========================================================
+# Admin System Administration & User Management
+# ==========================================================
+
+@router.get("/users", response_model=List[UserDetailResponse], tags=["User Management"])
+def list_users(
+    current_user: User = Depends(require_role(ADMIN_ROLES)),
+    db: Session = Depends(get_db),
+):
+    """List all system users with role assignments and linked employee metadata (Admin only)."""
+    users = db.query(User).order_by(User.id.asc()).all()
+    results = []
+    for u in users:
+        emp_name = None
+        if u.employee:
+            emp_name = f"{u.employee.first_name} {u.employee.last_name}"
+        data = UserDetailResponse(
+            id=u.id,
+            email=u.email,
+            role=u.role,
+            employee_id=u.employee_id,
+            is_active=u.is_active,
+            created_at=u.created_at,
+            updated_at=u.updated_at,
+            employee_name=emp_name,
+        )
+        results.append(data)
+    return results
+
+
+@router.post("/users", response_model=UserResponse, status_code=status.HTTP_201_CREATED, tags=["User Management"])
+def create_user_admin(
+    req: UserCreate,
+    current_user: User = Depends(require_role(ADMIN_ROLES)),
+    db: Session = Depends(get_db),
+):
+    """Create a new user with assigned role and linked employee (Admin only)."""
+    existing = db.query(User).filter(User.email == req.email.lower().strip()).first()
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="A user with this email address already exists.",
+        )
+
+    user = User(
+        email=req.email.lower().strip(),
+        hashed_password=hash_password(req.password),
+        role=req.role,
+        employee_id=req.employee_id,
+        is_active=req.is_active,
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+
+    log_audit(
+        db=db,
+        action="USER_CREATED_BY_ADMIN",
+        resource="user_management",
+        user_id=current_user.id,
+        details={"created_user_id": user.id, "email": user.email, "role": user.role}
+    )
+    return UserResponse.model_validate(user)
+
+
+@router.put("/users/{user_id}/role", response_model=UserResponse, tags=["User Management"])
+def update_user_role(
+    user_id: int,
+    req: RoleUpdateRequest,
+    current_user: User = Depends(require_role(ADMIN_ROLES)),
+    db: Session = Depends(get_db),
+):
+    """Update role assignment for a system user (Admin only)."""
+    valid_roles = [
+        ROLE_ADMIN,
+        ROLE_SUPER_ADMIN,
+        ROLE_HR_PAYROLL_MANAGER,
+        ROLE_HR_PAYROLL_USER,
+        ROLE_HR_MANAGER,
+        ROLE_EMPLOYEE,
+        "payroll_officer",
+        "dept_manager",
+    ]
+    if req.role not in valid_roles:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid role '{req.role}'. Valid roles: {valid_roles}",
+        )
+
+    target_user = db.query(User).filter(User.id == user_id).first()
+    if not target_user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"User #{user_id} not found")
+
+    old_role = target_user.role
+    target_user.role = req.role
+    db.commit()
+    db.refresh(target_user)
+
+    log_audit(
+        db=db,
+        action="USER_ROLE_UPDATED",
+        resource="user_management",
+        user_id=current_user.id,
+        details={"target_user_id": user_id, "old_role": old_role, "new_role": req.role}
+    )
+    return UserResponse.model_validate(target_user)
+
+
+@router.put("/users/{user_id}/status", response_model=UserResponse, tags=["User Management"])
+def update_user_status(
+    user_id: int,
+    req: StatusUpdateRequest,
+    current_user: User = Depends(require_role(ADMIN_ROLES)),
+    db: Session = Depends(get_db),
+):
+    """Activate or deactivate a user account (Admin only)."""
+    if target_user := db.query(User).filter(User.id == user_id).first():
+        if user_id == current_user.id and not req.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Administrators cannot deactivate their own active account.",
+            )
+        target_user.is_active = req.is_active
+        db.commit()
+        db.refresh(target_user)
+
+        log_audit(
+            db=db,
+            action="USER_STATUS_UPDATED",
+            resource="user_management",
+            user_id=current_user.id,
+            details={"target_user_id": user_id, "is_active": req.is_active}
+        )
+        return UserResponse.model_validate(target_user)
+
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"User #{user_id} not found")
+
+
+@router.delete("/users/{user_id}", tags=["User Management"])
+def delete_user(
+    user_id: int,
+    current_user: User = Depends(require_role(ADMIN_ROLES)),
+    db: Session = Depends(get_db),
+):
+    """Permanently delete a user account (Admin only)."""
+    if user_id == current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot delete current active administrator account.",
+        )
+
+    target_user = db.query(User).filter(User.id == user_id).first()
+    if not target_user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"User #{user_id} not found")
+
+    email = target_user.email
+    db.delete(target_user)
+    db.commit()
+
+    log_audit(
+        db=db,
+        action="USER_DELETED",
+        resource="user_management",
+        user_id=current_user.id,
+        details={"deleted_user_id": user_id, "email": email}
+    )
+    return {"status": "success", "message": f"User #{user_id} ({email}) deleted successfully."}
+
+
 @router.get("/audit-logs", response_model=List[AuditLogResponse], tags=["Auth"])
 def get_audit_logs(
     limit: int = 50,
-    current_user: User = Depends(require_role(["super_admin", "hr_manager", "payroll_officer"])),
+    current_user: User = Depends(require_role(ADMIN_ROLES)),
     db: Session = Depends(get_db),
 ):
-    """Fetch system audit trail logs (Admin/HR/Payroll only)."""
+    """Fetch system audit trail logs (Admin only)."""
     logs = db.query(AuditLog).order_by(desc(AuditLog.timestamp)).limit(limit).all()
     return [AuditLogResponse.model_validate(log) for log in logs]
 
 
 @router.post("/seed-default-users", tags=["Auth"])
 def seed_default_users(db: Session = Depends(get_db)):
-    """Seed baseline demo accounts for testing each system role."""
+    """Seed baseline demo accounts for the 5 system roles with verified credentials."""
     demo_users = [
-        ("admin@peoplepay360.com", "Admin@123", "super_admin", 1),
-        ("hr@peoplepay360.com", "Hr@12345", "hr_manager", 2),
-        ("payroll@peoplepay360.com", "Payroll@123", "payroll_officer", 3),
-        ("manager@peoplepay360.com", "Manager@123", "dept_manager", 4),
-        ("employee@peoplepay360.com", "Employee@123", "employee", 5),
+        ("admin@peoplepay360.com", "Admin@123", ROLE_ADMIN, 1),
+        ("superadmin@peoplepay360.com", "Admin@123", ROLE_SUPER_ADMIN, 1),
+        ("hr@peoplepay360.com", "Hr@12345", ROLE_HR_MANAGER, 2),
+        ("hrmanager@peoplepay360.com", "Hr@12345", ROLE_HR_MANAGER, 2),
+        ("payrolluser@peoplepay360.com", "PayrollUser@123", ROLE_HR_PAYROLL_USER, 3),
+        ("payroll@peoplepay360.com", "Payroll@123", ROLE_HR_PAYROLL_USER, 3),
+        ("payrollmanager@peoplepay360.com", "PayrollMgr@123", ROLE_HR_PAYROLL_MANAGER, 4),
+        ("employee@peoplepay360.com", "Employee@123", ROLE_EMPLOYEE, 5),
     ]
     created = []
     for email, pwd, role, emp_id in demo_users:
@@ -222,12 +404,12 @@ def seed_default_users(db: Session = Depends(get_db)):
                 is_active=True
             )
             db.add(u)
-            created.append(email)
+            created.append(f"{email} ({role})")
         else:
             existing.hashed_password = hash_password(pwd)
             existing.role = role
             existing.employee_id = emp_id
             existing.is_active = True
-            created.append(f"{email} (synced)")
+            created.append(f"{email} ({role} - synced)")
     db.commit()
     return {"status": "seeded", "created_users": created}

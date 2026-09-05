@@ -36,6 +36,7 @@ import {
 import {
   NotificationCenter,
 } from '../../pages/notifications';
+import { UserManagement } from '../../pages/admin/UserManagement';
 import { X } from 'lucide-react';
 
 export const AppShell: React.FC = () => {
@@ -285,6 +286,11 @@ export const AppShell: React.FC = () => {
               payslipId={selectedPayslipId || 1}
               onBack={() => setActiveTab('analytics')}
             />
+          )}
+
+          {/* 10. Admin User Management & RBAC */}
+          {activeTab === 'user-management' && (
+            <UserManagement />
           )}
         </main>
       </div>

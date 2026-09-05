@@ -19,6 +19,12 @@ from server.modules.attendance.schemas import (
     ShiftAssignmentResponse,
 )
 from server.modules.attendance.services import AttendanceService
+from server.modules.auth.models import User
+from server.modules.auth.security import (
+    get_current_user,
+    require_hr,
+    ROLE_EMPLOYEE,
+)
 
 # Ensure attendance tables exist
 Base.metadata.create_all(bind=engine)
@@ -33,8 +39,18 @@ def ping():
 
 
 @router.post("/punch", response_model=AttendanceRecordResponse, tags=["Attendance"])
-def record_punch(req: PunchRequest, db: Session = Depends(get_db)):
+def record_punch(
+    req: PunchRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
     """Record clock-in or clock-out punch for an employee."""
+    if current_user.role == ROLE_EMPLOYEE and req.employee_id != current_user.employee_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Employees can only record attendance punches for themselves."
+        )
+
     try:
         record = AttendanceService.record_punch(
             db=db,
@@ -53,9 +69,10 @@ def record_punch(req: PunchRequest, db: Session = Depends(get_db)):
 @router.get("/daily-summary", response_model=DailySummaryResponse, tags=["Attendance"])
 def get_daily_summary(
     target_date: Optional[date] = Query(default=None, alias="date"),
+    current_user: User = Depends(require_hr()),
     db: Session = Depends(get_db)
 ):
-    """Get aggregate attendance punches and metrics for a specific date."""
+    """Get aggregate attendance punches and metrics for a specific date (HR & Admin only)."""
     d = target_date or date.today()
     summary = AttendanceService.get_daily_summary(db, d)
     return DailySummaryResponse(
@@ -75,9 +92,16 @@ def get_employee_monthly_attendance(
     employee_id: int,
     year: Optional[int] = Query(default=None),
     month: Optional[int] = Query(default=None),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Get full monthly punch details and aggregate hours for an employee."""
+    if current_user.role == ROLE_EMPLOYEE and employee_id != current_user.employee_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied. Employees can only view their own attendance records."
+        )
+
     now = datetime.now(timezone.utc)
     y = year or now.year
     m = month or now.month
@@ -101,6 +125,7 @@ def get_unpaid_absences(
     employee_id: int,
     start_date: date = Query(...),
     end_date: date = Query(...),
+    current_user: User = Depends(require_hr()),
     db: Session = Depends(get_db)
 ):
     """Query LOP (unpaid absenteeism) within a period for payroll deductions."""
@@ -111,14 +136,21 @@ def get_unpaid_absences(
 
 
 @router.get("/shifts", response_model=List[ShiftResponse], tags=["Attendance"])
-def list_shifts(db: Session = Depends(get_db)):
+def list_shifts(
+    current_user: User = Depends(require_hr()),
+    db: Session = Depends(get_db)
+):
     """List all company working shifts."""
     shifts = db.query(Shift).all()
     return [ShiftResponse.model_validate(s) for s in shifts]
 
 
 @router.post("/shifts", response_model=ShiftResponse, status_code=status.HTTP_201_CREATED, tags=["Attendance"])
-def create_shift(req: ShiftCreate, db: Session = Depends(get_db)):
+def create_shift(
+    req: ShiftCreate,
+    current_user: User = Depends(require_hr()),
+    db: Session = Depends(get_db)
+):
     """Create a new working shift."""
     shift = Shift(
         name=req.name,
@@ -136,6 +168,7 @@ def create_shift(req: ShiftCreate, db: Session = Depends(get_db)):
 @router.get("/shift-assignments", response_model=List[ShiftAssignmentResponse], tags=["Attendance"])
 def list_shift_assignments(
     employee_id: Optional[int] = Query(default=None),
+    current_user: User = Depends(require_hr()),
     db: Session = Depends(get_db)
 ):
     """List employee shift assignments."""
@@ -147,7 +180,11 @@ def list_shift_assignments(
 
 
 @router.post("/shift-assignments", response_model=ShiftAssignmentResponse, status_code=status.HTTP_201_CREATED, tags=["Attendance"])
-def assign_shift(req: ShiftAssignmentCreate, db: Session = Depends(get_db)):
+def assign_shift(
+    req: ShiftAssignmentCreate,
+    current_user: User = Depends(require_hr()),
+    db: Session = Depends(get_db)
+):
     """Assign an employee to a shift."""
     emp = db.query(Employee).filter(Employee.id == req.employee_id).first()
     if not emp:

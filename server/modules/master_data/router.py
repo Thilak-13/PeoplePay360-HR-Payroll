@@ -54,6 +54,12 @@ from server.modules.master_data.services import (
     get_leave_balance,
     get_employee_smart_stats,
 )
+from server.modules.auth.models import User
+from server.modules.auth.security import (
+    get_current_user,
+    require_hr,
+    ROLE_EMPLOYEE,
+)
 
 # Auto-create tables if they don't exist
 try:
@@ -114,12 +120,21 @@ def calculate_schedule_get(
 
 
 @router.get("/working-schedules", response_model=List[WorkingScheduleResponse], tags=["Schedules"])
-def list_working_schedules(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+def list_working_schedules(
+    skip: int = 0,
+    limit: int = 100,
+    current_user: User = Depends(require_hr()),
+    db: Session = Depends(get_db)
+):
     return db.query(WorkingSchedule).offset(skip).limit(limit).all()
 
 
 @router.post("/working-schedules", response_model=WorkingScheduleResponse, status_code=status.HTTP_201_CREATED, tags=["Schedules"])
-def create_working_schedule(sched_in: WorkingScheduleCreate, db: Session = Depends(get_db)):
+def create_working_schedule(
+    sched_in: WorkingScheduleCreate,
+    current_user: User = Depends(require_hr()),
+    db: Session = Depends(get_db)
+):
     sched_data = sched_in.model_dump(exclude={"days"})
     days_data = sched_in.days
 
@@ -148,7 +163,11 @@ def create_working_schedule(sched_in: WorkingScheduleCreate, db: Session = Depen
 
 
 @router.get("/working-schedules/{schedule_id}", response_model=WorkingScheduleResponse, tags=["Schedules"])
-def get_working_schedule(schedule_id: int, db: Session = Depends(get_db)):
+def get_working_schedule(
+    schedule_id: int,
+    current_user: User = Depends(require_hr()),
+    db: Session = Depends(get_db)
+):
     schedule = db.query(WorkingSchedule).filter(WorkingSchedule.id == schedule_id).first()
     if not schedule:
         raise HTTPException(status_code=404, detail="Working schedule not found")
@@ -156,7 +175,12 @@ def get_working_schedule(schedule_id: int, db: Session = Depends(get_db)):
 
 
 @router.put("/working-schedules/{schedule_id}", response_model=WorkingScheduleResponse, tags=["Schedules"])
-def update_working_schedule(schedule_id: int, sched_in: WorkingScheduleUpdate, db: Session = Depends(get_db)):
+def update_working_schedule(
+    schedule_id: int,
+    sched_in: WorkingScheduleUpdate,
+    current_user: User = Depends(require_hr()),
+    db: Session = Depends(get_db)
+):
     schedule = db.query(WorkingSchedule).filter(WorkingSchedule.id == schedule_id).first()
     if not schedule:
         raise HTTPException(status_code=404, detail="Working schedule not found")
@@ -185,7 +209,11 @@ def update_working_schedule(schedule_id: int, sched_in: WorkingScheduleUpdate, d
 
 
 @router.delete("/working-schedules/{schedule_id}", status_code=status.HTTP_204_NO_CONTENT, tags=["Schedules"])
-def delete_working_schedule(schedule_id: int, db: Session = Depends(get_db)):
+def delete_working_schedule(
+    schedule_id: int,
+    current_user: User = Depends(require_hr()),
+    db: Session = Depends(get_db)
+):
     schedule = db.query(WorkingSchedule).filter(WorkingSchedule.id == schedule_id).first()
     if not schedule:
         raise HTTPException(status_code=404, detail="Working schedule not found")
@@ -203,7 +231,11 @@ def list_departments(skip: int = 0, limit: int = 100, db: Session = Depends(get_
 
 
 @router.post("/departments", response_model=DepartmentResponse, status_code=status.HTTP_201_CREATED, tags=["Departments"])
-def create_department(dept_in: DepartmentCreate, db: Session = Depends(get_db)):
+def create_department(
+    dept_in: DepartmentCreate,
+    current_user: User = Depends(require_hr()),
+    db: Session = Depends(get_db)
+):
     if dept_in.code:
         existing = db.query(Department).filter(Department.code == dept_in.code).first()
         if existing:
@@ -224,7 +256,12 @@ def get_department(dept_id: int, db: Session = Depends(get_db)):
 
 
 @router.put("/departments/{dept_id}", response_model=DepartmentResponse, tags=["Departments"])
-def update_department(dept_id: int, dept_in: DepartmentUpdate, db: Session = Depends(get_db)):
+def update_department(
+    dept_id: int,
+    dept_in: DepartmentUpdate,
+    current_user: User = Depends(require_hr()),
+    db: Session = Depends(get_db)
+):
     dept = db.query(Department).filter(Department.id == dept_id).first()
     if not dept:
         raise HTTPException(status_code=404, detail="Department not found")
@@ -241,7 +278,11 @@ def update_department(dept_id: int, dept_in: DepartmentUpdate, db: Session = Dep
 
 
 @router.delete("/departments/{dept_id}", status_code=status.HTTP_204_NO_CONTENT, tags=["Departments"])
-def delete_department(dept_id: int, db: Session = Depends(get_db)):
+def delete_department(
+    dept_id: int,
+    current_user: User = Depends(require_hr()),
+    db: Session = Depends(get_db)
+):
     dept = db.query(Department).filter(Department.id == dept_id).first()
     if not dept:
         raise HTTPException(status_code=404, detail="Department not found")
@@ -260,9 +301,15 @@ def list_employees(
     status: Optional[str] = None,
     skip: int = 0,
     limit: int = 100,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """List employees with optional text search and department/status filtering."""
+    """List employees with optional text search and department/status filtering (Employees restricted to self)."""
+    if current_user.role == ROLE_EMPLOYEE:
+        if not current_user.employee_id:
+            return []
+        return db.query(Employee).filter(Employee.id == current_user.employee_id).all()
+
     query = db.query(Employee)
     if department_id:
         query = query.filter(Employee.department_id == department_id)
@@ -282,7 +329,11 @@ def list_employees(
 
 
 @router.post("/employees", response_model=EmployeeResponse, status_code=status.HTTP_201_CREATED, tags=["Employees"])
-def create_employee(emp_in: EmployeeCreate, db: Session = Depends(get_db)):
+def create_employee(
+    emp_in: EmployeeCreate,
+    current_user: User = Depends(require_hr()),
+    db: Session = Depends(get_db)
+):
     existing = db.query(Employee).filter(Employee.email == emp_in.email).first()
     if existing:
         raise HTTPException(status_code=400, detail=f"Employee with email '{emp_in.email}' already exists.")
@@ -294,7 +345,14 @@ def create_employee(emp_in: EmployeeCreate, db: Session = Depends(get_db)):
 
 
 @router.get("/employees/{employee_id}", response_model=EmployeeResponse, tags=["Employees"])
-def get_employee(employee_id: int, db: Session = Depends(get_db)):
+def get_employee(
+    employee_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    if current_user.role == ROLE_EMPLOYEE and current_user.employee_id != employee_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied. Employees can only view their own record.")
+
     emp = db.query(Employee).filter(Employee.id == employee_id).first()
     if not emp:
         raise HTTPException(status_code=404, detail="Employee not found")
@@ -302,8 +360,15 @@ def get_employee(employee_id: int, db: Session = Depends(get_db)):
 
 
 @router.get("/employees/{employee_id}/smart-stats", response_model=EmployeeSmartStats, tags=["Employees"])
-def get_employee_smart_stats_endpoint(employee_id: int, db: Session = Depends(get_db)):
+def get_employee_smart_stats_endpoint(
+    employee_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
     """Returns top smart-stat counts: contracts_count, time_off_count, allocations_count."""
+    if current_user.role == ROLE_EMPLOYEE and current_user.employee_id != employee_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied. Employees can only view their own stats.")
+
     emp = db.query(Employee).filter(Employee.id == employee_id).first()
     if not emp:
         raise HTTPException(status_code=404, detail="Employee not found")
@@ -311,11 +376,18 @@ def get_employee_smart_stats_endpoint(employee_id: int, db: Session = Depends(ge
 
 
 @router.get("/employees/{employee_id}/detail", response_model=EmployeeDetailResponse, tags=["Employees"])
-def get_employee_detail(employee_id: int, db: Session = Depends(get_db)):
+def get_employee_detail(
+    employee_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
     """
     Returns full employee details including related contracts, leave requests,
     allocations, and aggregate smart-stat counts.
     """
+    if current_user.role == ROLE_EMPLOYEE and current_user.employee_id != employee_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied. Employees can only view their own details.")
+
     emp = db.query(Employee).filter(Employee.id == employee_id).first()
     if not emp:
         raise HTTPException(status_code=404, detail="Employee not found")
@@ -347,7 +419,12 @@ def get_employee_detail(employee_id: int, db: Session = Depends(get_db)):
 
 
 @router.put("/employees/{employee_id}", response_model=EmployeeResponse, tags=["Employees"])
-def update_employee(employee_id: int, emp_in: EmployeeUpdate, db: Session = Depends(get_db)):
+def update_employee(
+    employee_id: int,
+    emp_in: EmployeeUpdate,
+    current_user: User = Depends(require_hr()),
+    db: Session = Depends(get_db)
+):
     emp = db.query(Employee).filter(Employee.id == employee_id).first()
     if not emp:
         raise HTTPException(status_code=404, detail="Employee not found")
@@ -364,7 +441,11 @@ def update_employee(employee_id: int, emp_in: EmployeeUpdate, db: Session = Depe
 
 
 @router.delete("/employees/{employee_id}", status_code=status.HTTP_204_NO_CONTENT, tags=["Employees"])
-def delete_employee(employee_id: int, db: Session = Depends(get_db)):
+def delete_employee(
+    employee_id: int,
+    current_user: User = Depends(require_hr()),
+    db: Session = Depends(get_db)
+):
     emp = db.query(Employee).filter(Employee.id == employee_id).first()
     if not emp:
         raise HTTPException(status_code=404, detail="Employee not found")
@@ -382,6 +463,7 @@ def list_contracts(
     status: Optional[str] = None,
     skip: int = 0,
     limit: int = 100,
+    current_user: User = Depends(require_hr()),
     db: Session = Depends(get_db),
 ):
     query = db.query(Contract)
@@ -393,13 +475,21 @@ def list_contracts(
 
 
 @router.post("/contracts", response_model=ContractResponse, status_code=status.HTTP_201_CREATED, tags=["Contracts"])
-def create_contract(contract_in: ContractCreate, db: Session = Depends(get_db)):
+def create_contract(
+    contract_in: ContractCreate,
+    current_user: User = Depends(require_hr()),
+    db: Session = Depends(get_db)
+):
     """Creates contract with date validation and overlapping active contract rejection."""
     return create_employee_contract(db, contract_in)
 
 
 @router.get("/contracts/{contract_id}", response_model=ContractResponse, tags=["Contracts"])
-def get_contract(contract_id: int, db: Session = Depends(get_db)):
+def get_contract(
+    contract_id: int,
+    current_user: User = Depends(require_hr()),
+    db: Session = Depends(get_db)
+):
     contract = db.query(Contract).filter(Contract.id == contract_id).first()
     if not contract:
         raise HTTPException(status_code=404, detail="Contract not found")
@@ -407,19 +497,33 @@ def get_contract(contract_id: int, db: Session = Depends(get_db)):
 
 
 @router.put("/contracts/{contract_id}", response_model=ContractResponse, tags=["Contracts"])
-def update_contract(contract_id: int, contract_in: ContractUpdate, db: Session = Depends(get_db)):
+def update_contract(
+    contract_id: int,
+    contract_in: ContractUpdate,
+    current_user: User = Depends(require_hr()),
+    db: Session = Depends(get_db)
+):
     """Updates contract with validation on dates and active overlap rules."""
     return update_employee_contract(db, contract_id, contract_in)
 
 
 @router.patch("/contracts/{contract_id}/status", response_model=ContractResponse, tags=["Contracts"])
-def update_contract_status(contract_id: int, new_status: str = Query(..., pattern="^(draft|active|running|expired|cancelled)$"), db: Session = Depends(get_db)):
+def update_contract_status(
+    contract_id: int,
+    new_status: str = Query(..., pattern="^(draft|active|running|expired|cancelled)$"),
+    current_user: User = Depends(require_hr()),
+    db: Session = Depends(get_db)
+):
     """Updates contract status with overlap validation for active/running state."""
     return update_employee_contract(db, contract_id, ContractUpdate(status=new_status))
 
 
 @router.delete("/contracts/{contract_id}", status_code=status.HTTP_204_NO_CONTENT, tags=["Contracts"])
-def delete_contract(contract_id: int, db: Session = Depends(get_db)):
+def delete_contract(
+    contract_id: int,
+    current_user: User = Depends(require_hr()),
+    db: Session = Depends(get_db)
+):
     contract = db.query(Contract).filter(Contract.id == contract_id).first()
     if not contract:
         raise HTTPException(status_code=404, detail="Contract not found")
@@ -438,6 +542,7 @@ def list_leave_allocations(
     year: Optional[int] = None,
     skip: int = 0,
     limit: int = 100,
+    current_user: User = Depends(require_hr()),
     db: Session = Depends(get_db),
 ):
     query = db.query(LeaveAllocation)
@@ -451,7 +556,11 @@ def list_leave_allocations(
 
 
 @router.post("/leave-allocations", response_model=LeaveAllocationResponse, status_code=status.HTTP_201_CREATED, tags=["Leave Allocations"])
-def create_leave_allocation(alloc_in: LeaveAllocationCreate, db: Session = Depends(get_db)):
+def create_leave_allocation(
+    alloc_in: LeaveAllocationCreate,
+    current_user: User = Depends(require_hr()),
+    db: Session = Depends(get_db)
+):
     emp = db.query(Employee).filter(Employee.id == alloc_in.employee_id).first()
     if not emp:
         raise HTTPException(status_code=404, detail=f"Employee #{alloc_in.employee_id} not found")
@@ -463,7 +572,11 @@ def create_leave_allocation(alloc_in: LeaveAllocationCreate, db: Session = Depen
 
 
 @router.get("/leave-allocations/{alloc_id}", response_model=LeaveAllocationResponse, tags=["Leave Allocations"])
-def get_leave_allocation(alloc_id: int, db: Session = Depends(get_db)):
+def get_leave_allocation(
+    alloc_id: int,
+    current_user: User = Depends(require_hr()),
+    db: Session = Depends(get_db)
+):
     alloc = db.query(LeaveAllocation).filter(LeaveAllocation.id == alloc_id).first()
     if not alloc:
         raise HTTPException(status_code=404, detail="Leave allocation not found")
@@ -471,7 +584,12 @@ def get_leave_allocation(alloc_id: int, db: Session = Depends(get_db)):
 
 
 @router.put("/leave-allocations/{alloc_id}", response_model=LeaveAllocationResponse, tags=["Leave Allocations"])
-def update_leave_allocation(alloc_id: int, alloc_in: LeaveAllocationUpdate, db: Session = Depends(get_db)):
+def update_leave_allocation(
+    alloc_id: int,
+    alloc_in: LeaveAllocationUpdate,
+    current_user: User = Depends(require_hr()),
+    db: Session = Depends(get_db)
+):
     alloc = db.query(LeaveAllocation).filter(LeaveAllocation.id == alloc_id).first()
     if not alloc:
         raise HTTPException(status_code=404, detail="Leave allocation not found")
@@ -483,7 +601,11 @@ def update_leave_allocation(alloc_id: int, alloc_in: LeaveAllocationUpdate, db: 
 
 
 @router.delete("/leave-allocations/{alloc_id}", status_code=status.HTTP_204_NO_CONTENT, tags=["Leave Allocations"])
-def delete_leave_allocation(alloc_id: int, db: Session = Depends(get_db)):
+def delete_leave_allocation(
+    alloc_id: int,
+    current_user: User = Depends(require_hr()),
+    db: Session = Depends(get_db)
+):
     alloc = db.query(LeaveAllocation).filter(LeaveAllocation.id == alloc_id).first()
     if not alloc:
         raise HTTPException(status_code=404, detail="Leave allocation not found")
@@ -492,8 +614,16 @@ def delete_leave_allocation(alloc_id: int, db: Session = Depends(get_db)):
 
 
 @router.get("/leave-allocations/balance/{employee_id}", tags=["Leave Allocations"])
-def get_employee_leave_balances(employee_id: int, year: Optional[int] = None, db: Session = Depends(get_db)):
+def get_employee_leave_balances(
+    employee_id: int,
+    year: Optional[int] = None,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
     """Returns allocations, used days, and remaining balances per holiday type."""
+    if current_user.role == ROLE_EMPLOYEE and current_user.employee_id != employee_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied. Employees can only view their own leave balances.")
+
     emp = db.query(Employee).filter(Employee.id == employee_id).first()
     if not emp:
         raise HTTPException(status_code=404, detail="Employee not found")
@@ -524,8 +654,12 @@ def list_leave_requests(
     holiday_type: Optional[str] = None,
     skip: int = 0,
     limit: int = 100,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    if current_user.role == ROLE_EMPLOYEE:
+        employee_id = current_user.employee_id or -1
+
     query = db.query(LeaveRequest)
     if employee_id:
         query = query.filter(LeaveRequest.employee_id == employee_id)
@@ -537,21 +671,41 @@ def list_leave_requests(
 
 
 @router.post("/leave-requests", response_model=LeaveRequestResponse, status_code=status.HTTP_201_CREATED, tags=["Leave Requests"])
-def create_leave_request_endpoint(req_in: LeaveRequestCreate, db: Session = Depends(get_db)):
+def create_leave_request_endpoint(
+    req_in: LeaveRequestCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
     """Submits leave request and verifies allocation availability."""
+    if current_user.role == ROLE_EMPLOYEE and req_in.employee_id != current_user.employee_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Employees can only create Time Off Requests for themselves."
+        )
     return submit_leave_request(db, req_in)
 
 
 @router.get("/leave-requests/{request_id}", response_model=LeaveRequestResponse, tags=["Leave Requests"])
-def get_leave_request(request_id: int, db: Session = Depends(get_db)):
+def get_leave_request(
+    request_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
     req = db.query(LeaveRequest).filter(LeaveRequest.id == request_id).first()
     if not req:
         raise HTTPException(status_code=404, detail="Leave request not found")
+    if current_user.role == ROLE_EMPLOYEE and req.employee_id != current_user.employee_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied.")
     return req
 
 
 @router.put("/leave-requests/{request_id}", response_model=LeaveRequestResponse, tags=["Leave Requests"])
-def update_leave_request(request_id: int, req_in: LeaveRequestUpdate, db: Session = Depends(get_db)):
+def update_leave_request(
+    request_id: int,
+    req_in: LeaveRequestUpdate,
+    current_user: User = Depends(require_hr()),
+    db: Session = Depends(get_db)
+):
     req = db.query(LeaveRequest).filter(LeaveRequest.id == request_id).first()
     if not req:
         raise HTTPException(status_code=404, detail="Leave request not found")
@@ -565,8 +719,12 @@ def update_leave_request(request_id: int, req_in: LeaveRequestUpdate, db: Sessio
 
 
 @router.post("/leave-requests/{request_id}/approve", response_model=LeaveActionResponse, tags=["Leave Requests"])
-def approve_leave_request_endpoint(request_id: int, db: Session = Depends(get_db)):
-    """Approves leave request with atomic allocation deduction."""
+def approve_leave_request_endpoint(
+    request_id: int,
+    current_user: User = Depends(require_hr()),
+    db: Session = Depends(get_db)
+):
+    """Approves leave request with atomic allocation deduction (HR & Admin only)."""
     req, remaining = approve_leave_request(db, request_id)
     return LeaveActionResponse(
         message=f"Leave request #{request_id} successfully approved. Remaining allocation: {remaining} days.",
@@ -576,8 +734,12 @@ def approve_leave_request_endpoint(request_id: int, db: Session = Depends(get_db
 
 
 @router.post("/leave-requests/{request_id}/refuse", response_model=LeaveActionResponse, tags=["Leave Requests"])
-def refuse_leave_request_endpoint(request_id: int, db: Session = Depends(get_db)):
-    """Refuses/rejects a leave request."""
+def refuse_leave_request_endpoint(
+    request_id: int,
+    current_user: User = Depends(require_hr()),
+    db: Session = Depends(get_db)
+):
+    """Refuses/rejects a leave request (HR & Admin only)."""
     req = refuse_leave_request(db, request_id)
     return LeaveActionResponse(
         message=f"Leave request #{request_id} was refused.",
@@ -586,7 +748,11 @@ def refuse_leave_request_endpoint(request_id: int, db: Session = Depends(get_db)
 
 
 @router.post("/leave-requests/{request_id}/reset-to-draft", response_model=LeaveRequestResponse, tags=["Leave Requests"])
-def reset_leave_request_to_draft(request_id: int, db: Session = Depends(get_db)):
+def reset_leave_request_to_draft(
+    request_id: int,
+    current_user: User = Depends(require_hr()),
+    db: Session = Depends(get_db)
+):
     req = db.query(LeaveRequest).filter(LeaveRequest.id == request_id).first()
     if not req:
         raise HTTPException(status_code=404, detail="Leave request not found")
@@ -597,7 +763,11 @@ def reset_leave_request_to_draft(request_id: int, db: Session = Depends(get_db))
 
 
 @router.delete("/leave-requests/{request_id}", status_code=status.HTTP_204_NO_CONTENT, tags=["Leave Requests"])
-def delete_leave_request(request_id: int, db: Session = Depends(get_db)):
+def delete_leave_request(
+    request_id: int,
+    current_user: User = Depends(require_hr()),
+    db: Session = Depends(get_db)
+):
     req = db.query(LeaveRequest).filter(LeaveRequest.id == request_id).first()
     if not req:
         raise HTTPException(status_code=404, detail="Leave request not found")

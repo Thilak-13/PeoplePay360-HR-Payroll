@@ -1,4 +1,17 @@
-export type UserRole = "super_admin" | "hr_manager" | "payroll_officer" | "dept_manager" | "employee";
+export type UserRole =
+  | "admin"
+  | "super_admin"
+  | "hr_manager"
+  | "hr_payroll_user"
+  | "hr_payroll_manager"
+  | "employee"
+  | "payroll_officer"
+  | "dept_manager"
+  | "Admin"
+  | "HR Manager"
+  | "HR Payroll User"
+  | "HR Payroll Manager"
+  | "Employee";
 
 export interface User {
   id: number;
@@ -56,13 +69,13 @@ export interface DemoAccount {
 
 export const DEMO_ACCOUNTS: DemoAccount[] = [
   {
-    role: "super_admin",
-    label: "Super Admin",
+    role: "admin",
+    label: "Admin",
     email: "admin@peoplepay360.com",
     password: "Admin@123",
     color: "text-purple-600",
     bg: "bg-purple-50/70 border-purple-200 hover:border-purple-400 hover:bg-purple-50",
-    description: "Full system administration, DDL management, audit logs, and cross-domain access."
+    description: "Full access across all modules, user management, role assignment, and complete system administration."
   },
   {
     role: "hr_manager",
@@ -71,25 +84,25 @@ export const DEMO_ACCOUNTS: DemoAccount[] = [
     password: "Hr@12345",
     color: "text-blue-600",
     bg: "bg-blue-50/70 border-blue-200 hover:border-blue-400 hover:bg-blue-50",
-    description: "Employee directory, contracts, attendance rosters, leaves, and tax proof verification."
+    description: "Full CRUD access to Employees, Attendance, Contracts, Schedules, Time Off approval (no payroll)."
   },
   {
-    role: "payroll_officer",
-    label: "Payroll Officer",
-    email: "payroll@peoplepay360.com",
-    password: "Payroll@123",
+    role: "hr_payroll_user",
+    label: "HR Payroll User",
+    email: "payrolluser@peoplepay360.com",
+    password: "PayrollUser@123",
+    color: "text-teal-600",
+    bg: "bg-teal-50/70 border-teal-200 hover:border-teal-400 hover:bg-teal-50",
+    description: "HR Manager access + Create/Read/Update Payruns & Payslips; Read-only Salary Structures & Rules."
+  },
+  {
+    role: "hr_payroll_manager",
+    label: "HR Payroll Manager",
+    email: "payrollmanager@peoplepay360.com",
+    password: "PayrollMgr@123",
     color: "text-emerald-600",
     bg: "bg-emerald-50/70 border-emerald-200 hover:border-emerald-400 hover:bg-emerald-50",
-    description: "Payrun batch computation, wizard verification, salary structures, and payment disbursement."
-  },
-  {
-    role: "dept_manager",
-    label: "Dept Manager",
-    email: "manager@peoplepay360.com",
-    password: "Manager@123",
-    color: "text-amber-600",
-    bg: "bg-amber-50/70 border-amber-200 hover:border-amber-400 hover:bg-amber-50",
-    description: "Team management, leave approvals, and expense claim authorizations."
+    description: "Full CRUD access to Payruns, Payslips, Salary Structures, Salary Rules, and HR/payroll configurations."
   },
   {
     role: "employee",
@@ -98,7 +111,7 @@ export const DEMO_ACCOUNTS: DemoAccount[] = [
     password: "Employee@123",
     color: "text-indigo-600",
     bg: "bg-indigo-50/70 border-indigo-200 hover:border-indigo-400 hover:bg-indigo-50",
-    description: "Self-service portal: view personal payslips, punch attendance, request loans, and submit claims."
+    description: "View own profile, attendance, leave balances; clock in/out and submit leave requests."
   }
 ];
 

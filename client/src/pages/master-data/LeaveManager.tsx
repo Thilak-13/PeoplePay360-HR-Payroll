@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { LeaveAllocation, LeaveRequest } from './types';
+import { useAuth } from '../auth/AuthContext';
+import { useRole } from '../../components/shared/RoleContext';
 
 interface LeaveManagerProps {
   employeeId?: number;
@@ -20,6 +22,9 @@ export const LeaveManager: React.FC<LeaveManagerProps> = ({
   initialTab = 'requests',
   onUpdated,
 }) => {
+  const { user } = useAuth();
+  const { canApproveTimeOff, canManageHR, isSelfServiceOnly } = useRole();
+  const effectiveEmployeeId = employeeId || user?.employee_id || 1;
   const [activeSubTab, setActiveSubTab] = useState<'requests' | 'allocations'>(initialTab);
   const [requests, setRequests] = useState<LeaveRequest[]>([]);
   const [allocations, setAllocations] = useState<LeaveAllocation[]>([]);
@@ -87,9 +92,8 @@ export const LeaveManager: React.FC<LeaveManagerProps> = ({
   };
 
   const fetchBalances = async () => {
-    if (!employeeId) return;
     try {
-      const res = await fetch(`/api/v1/master-data/leave-allocations/balance/${employeeId}`);
+      const res = await fetch(`/api/v1/master-data/leave-allocations/balance/${effectiveEmployeeId}`);
       if (res.ok) {
         const data = await res.json();
         setBalances(data.balances || []);
@@ -102,7 +106,6 @@ export const LeaveManager: React.FC<LeaveManagerProps> = ({
   const handleCreateRequest = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
-    if (!employeeId) return;
 
     if (requestForm.date_from > requestForm.date_to) {
       setErrorMsg('Date From cannot be after Date To.');
@@ -114,7 +117,7 @@ export const LeaveManager: React.FC<LeaveManagerProps> = ({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          employee_id: employeeId,
+          employee_id: effectiveEmployeeId,
           holiday_type: requestForm.holiday_type,
           date_from: requestForm.date_from,
           date_to: requestForm.date_to,
@@ -143,14 +146,13 @@ export const LeaveManager: React.FC<LeaveManagerProps> = ({
   const handleCreateAllocation = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
-    if (!employeeId) return;
 
     try {
       const res = await fetch('/api/v1/master-data/leave-allocations', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          employee_id: employeeId,
+          employee_id: effectiveEmployeeId,
           holiday_type: allocForm.holiday_type,
           number_of_days: parseFloat(allocForm.number_of_days),
           year: allocForm.year,
@@ -257,16 +259,18 @@ export const LeaveManager: React.FC<LeaveManagerProps> = ({
             >
               Leave Requests ({requests.length})
             </button>
-            <button
-              onClick={() => setActiveSubTab('allocations')}
-              className={`text-sm font-bold pb-1 transition-all ${
-                activeSubTab === 'allocations'
-                  ? 'text-indigo-600 border-b-2 border-indigo-600'
-                  : 'text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              Allocations ({allocations.length})
-            </button>
+            {canManageHR && (
+              <button
+                onClick={() => setActiveSubTab('allocations')}
+                className={`text-sm font-bold pb-1 transition-all ${
+                  activeSubTab === 'allocations'
+                    ? 'text-indigo-600 border-b-2 border-indigo-600'
+                    : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                Allocations ({allocations.length})
+              </button>
+            )}
           </div>
 
           <div className="flex items-center gap-3">
@@ -283,7 +287,7 @@ export const LeaveManager: React.FC<LeaveManagerProps> = ({
                 </svg>
                 Request Time Off
               </button>
-            ) : (
+            ) : canManageHR ? (
               <button
                 onClick={() => {
                   setErrorMsg(null);
@@ -296,7 +300,7 @@ export const LeaveManager: React.FC<LeaveManagerProps> = ({
                 </svg>
                 Allocate Days
               </button>
-            )}
+            ) : null}
           </div>
         </div>
 
@@ -314,7 +318,9 @@ export const LeaveManager: React.FC<LeaveManagerProps> = ({
                     <th className="py-3 px-4">Period (From &rarr; To)</th>
                     <th className="py-3 px-4">Days</th>
                     <th className="py-3 px-4">Status</th>
-                    <th className="py-3 px-4 text-right">Approval Actions</th>
+                    <th className="py-3 px-4 text-right">
+                      {canApproveTimeOff ? 'Approval Actions' : 'Status Info'}
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-sm">
@@ -329,21 +335,33 @@ export const LeaveManager: React.FC<LeaveManagerProps> = ({
                       <td className="py-3 px-4 font-bold text-slate-800">{r.number_of_days}d</td>
                       <td className="py-3 px-4">{getStatusBadge(r.status)}</td>
                       <td className="py-3 px-4 text-right space-x-2">
-                        {r.status !== 'approved' && (
-                          <button
-                            onClick={() => handleApprove(r.id)}
-                            className="px-2.5 py-1 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded text-xs font-semibold"
-                          >
-                            Approve
-                          </button>
-                        )}
-                        {r.status !== 'refused' && (
-                          <button
-                            onClick={() => handleRefuse(r.id)}
-                            className="px-2.5 py-1 bg-rose-50 text-rose-700 hover:bg-rose-100 rounded text-xs font-semibold"
-                          >
-                            Refuse
-                          </button>
+                        {canApproveTimeOff ? (
+                          <>
+                            {r.status !== 'approved' && (
+                              <button
+                                onClick={() => handleApprove(r.id)}
+                                className="px-2.5 py-1 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded text-xs font-semibold"
+                              >
+                                Approve
+                              </button>
+                            )}
+                            {r.status !== 'refused' && (
+                              <button
+                                onClick={() => handleRefuse(r.id)}
+                                className="px-2.5 py-1 bg-rose-50 text-rose-700 hover:bg-rose-100 rounded text-xs font-semibold"
+                              >
+                                Refuse
+                              </button>
+                            )}
+                          </>
+                        ) : (
+                          <span className="text-slate-400 text-xs italic">
+                            {r.status === 'approved'
+                              ? 'Approved by HR'
+                              : r.status === 'refused'
+                              ? 'Refused by HR'
+                              : 'Pending HR Approval'}
+                          </span>
                         )}
                       </td>
                     </tr>

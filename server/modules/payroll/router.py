@@ -35,6 +35,17 @@ from server.modules.payroll.schemas import (
 )
 from server.modules.payroll.services import PayrollService
 from server.modules.payroll.engine import get_eligible_employees
+from server.modules.auth.models import User
+from server.modules.auth.security import (
+    get_current_user,
+    require_payroll_read,
+    require_payroll_write,
+    require_payroll_delete,
+    require_payroll_config,
+    PAYROLL_READ_ROLES,
+    ROLE_HR_MANAGER,
+    ROLE_EMPLOYEE,
+)
 
 router = APIRouter()
 
@@ -53,7 +64,10 @@ def ping():
 # ==========================================
 
 @router.get("/metrics", response_model=PayrollSummaryMetrics, tags=["Payroll Analytics"])
-def get_payroll_metrics(db: Session = Depends(get_db)):
+def get_payroll_metrics(
+    current_user: User = Depends(require_payroll_read()),
+    db: Session = Depends(get_db)
+):
     """Retrieve aggregate payroll KPI metrics."""
     return PayrollService.get_payroll_metrics(db)
 
@@ -63,13 +77,20 @@ def get_payroll_metrics(db: Session = Depends(get_db)):
 # ==========================================
 
 @router.get("/structures", response_model=List[SalaryStructureResponse], tags=["Salary Structures"])
-def list_salary_structures(db: Session = Depends(get_db)):
+def list_salary_structures(
+    current_user: User = Depends(require_payroll_read()),
+    db: Session = Depends(get_db)
+):
     """List all available salary structures."""
     return PayrollService.list_structures(db)
 
 
 @router.post("/structures", response_model=SalaryStructureResponse, status_code=status.HTTP_201_CREATED, tags=["Salary Structures"])
-def create_salary_structure(data: SalaryStructureCreate, db: Session = Depends(get_db)):
+def create_salary_structure(
+    data: SalaryStructureCreate,
+    current_user: User = Depends(require_payroll_config()),
+    db: Session = Depends(get_db)
+):
     """Create a new salary structure with optional nested rules."""
     try:
         return PayrollService.create_structure(db, data)
@@ -78,7 +99,11 @@ def create_salary_structure(data: SalaryStructureCreate, db: Session = Depends(g
 
 
 @router.get("/structures/{structure_id}", response_model=SalaryStructureDetailResponse, tags=["Salary Structures"])
-def get_salary_structure(structure_id: int, db: Session = Depends(get_db)):
+def get_salary_structure(
+    structure_id: int,
+    current_user: User = Depends(require_payroll_read()),
+    db: Session = Depends(get_db)
+):
     """Get salary structure details with sequenced rules."""
     struct = PayrollService.get_structure_by_id(db, structure_id)
     if not struct:
@@ -87,7 +112,12 @@ def get_salary_structure(structure_id: int, db: Session = Depends(get_db)):
 
 
 @router.put("/structures/{structure_id}", response_model=SalaryStructureResponse, tags=["Salary Structures"])
-def update_salary_structure(structure_id: int, data: SalaryStructureUpdate, db: Session = Depends(get_db)):
+def update_salary_structure(
+    structure_id: int,
+    data: SalaryStructureUpdate,
+    current_user: User = Depends(require_payroll_config()),
+    db: Session = Depends(get_db)
+):
     """Update salary structure metadata."""
     try:
         return PayrollService.update_structure(db, structure_id, data)
@@ -96,7 +126,11 @@ def update_salary_structure(structure_id: int, data: SalaryStructureUpdate, db: 
 
 
 @router.delete("/structures/{structure_id}", status_code=status.HTTP_204_NO_CONTENT, tags=["Salary Structures"])
-def delete_salary_structure(structure_id: int, db: Session = Depends(get_db)):
+def delete_salary_structure(
+    structure_id: int,
+    current_user: User = Depends(require_payroll_config()),
+    db: Session = Depends(get_db)
+):
     """Delete salary structure."""
     try:
         PayrollService.delete_structure(db, structure_id)
@@ -105,7 +139,12 @@ def delete_salary_structure(structure_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/structures/{structure_id}/rules", response_model=SalaryRuleResponse, status_code=status.HTTP_201_CREATED, tags=["Salary Rules"])
-def add_salary_rule(structure_id: int, data: SalaryRuleCreate, db: Session = Depends(get_db)):
+def add_salary_rule(
+    structure_id: int,
+    data: SalaryRuleCreate,
+    current_user: User = Depends(require_payroll_config()),
+    db: Session = Depends(get_db)
+):
     """Add a sequenced calculation rule to a structure."""
     try:
         return PayrollService.add_rule_to_structure(db, structure_id, data)
@@ -114,7 +153,12 @@ def add_salary_rule(structure_id: int, data: SalaryRuleCreate, db: Session = Dep
 
 
 @router.put("/rules/{rule_id}", response_model=SalaryRuleResponse, tags=["Salary Rules"])
-def update_salary_rule(rule_id: int, data: SalaryRuleUpdate, db: Session = Depends(get_db)):
+def update_salary_rule(
+    rule_id: int,
+    data: SalaryRuleUpdate,
+    current_user: User = Depends(require_payroll_config()),
+    db: Session = Depends(get_db)
+):
     """Update an individual salary rule."""
     try:
         return PayrollService.update_rule(db, rule_id, data)
@@ -123,7 +167,11 @@ def update_salary_rule(rule_id: int, data: SalaryRuleUpdate, db: Session = Depen
 
 
 @router.delete("/rules/{rule_id}", status_code=status.HTTP_204_NO_CONTENT, tags=["Salary Rules"])
-def delete_salary_rule(rule_id: int, db: Session = Depends(get_db)):
+def delete_salary_rule(
+    rule_id: int,
+    current_user: User = Depends(require_payroll_config()),
+    db: Session = Depends(get_db)
+):
     """Delete a salary rule."""
     try:
         PayrollService.delete_rule(db, rule_id)
@@ -136,7 +184,11 @@ def delete_salary_rule(rule_id: int, db: Session = Depends(get_db)):
 # ==========================================
 
 @router.post("/payruns/wizard/step1-validate", response_model=PayrunWizardStep1ValidateResponse, tags=["Payrun Wizard"])
-def wizard_step1_validate(req: PayrunWizardStep1ValidateRequest, db: Session = Depends(get_db)):
+def wizard_step1_validate(
+    req: PayrunWizardStep1ValidateRequest,
+    current_user: User = Depends(require_payroll_write()),
+    db: Session = Depends(get_db)
+):
     """Step 1 validation: date range, structure validation, and overlap detection."""
     return PayrollService.wizard_step1_validate(db, req)
 
@@ -145,6 +197,7 @@ def wizard_step1_validate(req: PayrunWizardStep1ValidateRequest, db: Session = D
 def get_wizard_eligible_employees(
     date_start: date = Query(..., description="Payrun start date"),
     date_end: date = Query(..., description="Payrun end date"),
+    current_user: User = Depends(require_payroll_read()),
     db: Session = Depends(get_db)
 ):
     """Step 2: Query active employees with valid contracts covering period, with pre-validation warning flags."""
@@ -152,7 +205,11 @@ def get_wizard_eligible_employees(
 
 
 @router.post("/payruns/wizard/step2-confirm", response_model=PayrunResponse, status_code=status.HTTP_201_CREATED, tags=["Payrun Wizard"])
-def wizard_step2_confirm(req: PayrunWizardStep2ConfirmRequest, db: Session = Depends(get_db)):
+def wizard_step2_confirm(
+    req: PayrunWizardStep2ConfirmRequest,
+    current_user: User = Depends(require_payroll_write()),
+    db: Session = Depends(get_db)
+):
     """Step 2 confirmation: create payrun batch and generate draft payslips for chosen employees."""
     try:
         return PayrollService.wizard_step2_confirm_and_create(db, req)
@@ -170,6 +227,7 @@ def list_payruns(
     search: Optional[str] = Query(None, description="Search payruns by name"),
     limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0),
+    current_user: User = Depends(require_payroll_read()),
     db: Session = Depends(get_db)
 ):
     """List payrun batches."""
@@ -178,7 +236,11 @@ def list_payruns(
 
 
 @router.post("/payruns", response_model=PayrunResponse, status_code=status.HTTP_201_CREATED, tags=["Payruns"])
-def create_payrun(data: PayrunCreate, db: Session = Depends(get_db)):
+def create_payrun(
+    data: PayrunCreate,
+    current_user: User = Depends(require_payroll_write()),
+    db: Session = Depends(get_db)
+):
     """Create a new payrun."""
     try:
         return PayrollService.create_payrun(db, data)
@@ -187,7 +249,11 @@ def create_payrun(data: PayrunCreate, db: Session = Depends(get_db)):
 
 
 @router.get("/payruns/{payrun_id}", response_model=PayrunDetailResponse, tags=["Payruns"])
-def get_payrun_detail(payrun_id: int, db: Session = Depends(get_db)):
+def get_payrun_detail(
+    payrun_id: int,
+    current_user: User = Depends(require_payroll_read()),
+    db: Session = Depends(get_db)
+):
     """Get full details of a payrun including its payslip list and warnings."""
     payrun = PayrollService.get_payrun_by_id(db, payrun_id)
     if not payrun:
@@ -246,11 +312,15 @@ def get_payrun_detail(payrun_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/payruns/{payrun_id}/compute", response_model=PayrunDetailResponse, tags=["Payrun Execution"])
-def compute_payrun(payrun_id: int, db: Session = Depends(get_db)):
+def compute_payrun(
+    payrun_id: int,
+    current_user: User = Depends(require_payroll_write()),
+    db: Session = Depends(get_db)
+):
     """Execute computation pipeline on all payslips in a payrun."""
     try:
         PayrollService.compute_payrun(db, payrun_id)
-        return get_payrun_detail(payrun_id, db)
+        return get_payrun_detail(payrun_id, current_user, db)
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
@@ -259,6 +329,7 @@ def compute_payrun(payrun_id: int, db: Session = Depends(get_db)):
 def transition_payrun_state(
     payrun_id: int,
     req: StateTransitionRequest,
+    current_user: User = Depends(require_payroll_write()),
     db: Session = Depends(get_db)
 ):
     """
@@ -273,7 +344,11 @@ def transition_payrun_state(
 
 
 @router.delete("/payruns/{payrun_id}", status_code=status.HTTP_204_NO_CONTENT, tags=["Payruns"])
-def delete_payrun(payrun_id: int, db: Session = Depends(get_db)):
+def delete_payrun(
+    payrun_id: int,
+    current_user: User = Depends(require_payroll_delete()),
+    db: Session = Depends(get_db)
+):
     """Delete payrun batch (allowed if not locked in paid status)."""
     try:
         PayrollService.delete_payrun(db, payrun_id)
@@ -292,9 +367,24 @@ def list_payslips(
     status: Optional[str] = Query(None),
     limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """List payslips with optional filtering."""
+    if current_user.role == ROLE_HR_MANAGER:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied. HR Managers have no access to payroll features."
+        )
+    if current_user.role == ROLE_EMPLOYEE:
+        # Self-service: can only view own payslips
+        employee_id = current_user.employee_id or -1
+    elif current_user.role not in PAYROLL_READ_ROLES and current_user.role not in ["admin", "super_admin"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied to payroll features."
+        )
+
     payslips, _ = PayrollService.list_payslips(db, payrun_id=payrun_id, employee_id=employee_id, status=status, limit=limit, offset=offset)
     
     res = []
@@ -327,11 +417,32 @@ def list_payslips(
 
 
 @router.get("/payslips/{payslip_id}", response_model=PayslipDetailResponse, tags=["Payslips"])
-def get_payslip_detail(payslip_id: int, db: Session = Depends(get_db)):
+def get_payslip_detail(
+    payslip_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
     """Get single payslip with itemized rule breakdown snapshot lines."""
+    if current_user.role == ROLE_HR_MANAGER:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied. HR Managers have no access to payroll features."
+        )
     s = PayrollService.get_payslip_by_id(db, payslip_id)
     if not s:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Payslip #{payslip_id} not found")
+
+    if current_user.role == ROLE_EMPLOYEE:
+        if s.employee_id != current_user.employee_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied. Employees can only view their own payslips."
+            )
+    elif current_user.role not in PAYROLL_READ_ROLES and current_user.role not in ["admin", "super_admin"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied to payroll features."
+        )
 
     emp = db.execute(text("""
         SELECT e.first_name, e.last_name, e.email, e.job_title, d.name 
@@ -387,10 +498,14 @@ def get_payslip_detail(payslip_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/payslips/{payslip_id}/compute", response_model=PayslipDetailResponse, tags=["Payslips"])
-def compute_single_payslip_endpoint(payslip_id: int, db: Session = Depends(get_db)):
+def compute_single_payslip_endpoint(
+    payslip_id: int,
+    current_user: User = Depends(require_payroll_write()),
+    db: Session = Depends(get_db)
+):
     """Recompute individual payslip."""
     try:
         PayrollService.compute_payslip(db, payslip_id)
-        return get_payslip_detail(payslip_id, db)
+        return get_payslip_detail(payslip_id, current_user, db)
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))

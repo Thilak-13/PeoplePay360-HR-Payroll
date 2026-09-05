@@ -22,6 +22,18 @@ class UserResponse(UserBase):
     updated_at: datetime
 
 
+class UserDetailResponse(UserResponse):
+    employee_name: Optional[str] = None
+
+
+class RoleUpdateRequest(BaseModel):
+    role: str = Field(description="Role: admin, super_admin, hr_manager, hr_payroll_user, hr_payroll_manager, employee")
+
+
+class StatusUpdateRequest(BaseModel):
+    is_active: bool
+
+
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str

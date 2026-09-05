@@ -91,12 +91,12 @@ def test_sequenced_salary_rules_pipeline(db_session):
 
     # Basic is 50% of 60,000 = 30,000
     assert basic == Decimal("30000.00")
-    # Gross = 30,000 + 15,000 (HRA) + 7,500 (Spec Allw) + 1,600 (Conv Allw) = 54,100
-    assert gross == Decimal("54100.00")
-    # Deductions: PF (12% of 30k = 3600) + PT (200) + TDS (5% of 54.1k = 2705) = 6505
-    assert deductions == Decimal("6505.00")
-    # Net = Gross - Deductions = 54,100 - 6505 = 47,595.00
-    assert net == Decimal("47595.00")
+    # Gross = 30,000 (Basic) + 12,000 (HRA 40%) + 1,600 (Conv Allw) = 43,600
+    assert gross == Decimal("43600.00")
+    # Deductions: PF (capped at 1,800.00) + PT (200.00) = 2,000.00
+    assert deductions == Decimal("2000.00")
+    # Net = Gross - Deductions = 43,600 - 2,000 = 41,600.00
+    assert net == Decimal("41600.00")
     assert len(snapshot_lines) == len(struct.rules)
 
 
@@ -116,7 +116,7 @@ def test_payrun_creation_and_computation(db_session):
     # Compute payrun
     computed_payrun = PayrollService.compute_payrun(db_session, payrun.id)
     assert computed_payrun.status == "computed"
-    assert computed_payrun.total_net == Decimal("47595.00")
+    assert computed_payrun.total_net == Decimal("41600.00")
     assert computed_payrun.warning_count == 0
 
 

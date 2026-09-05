@@ -12,13 +12,21 @@ export interface RoleInfo {
 }
 
 export const ROLE_DEFINITIONS: Record<string, RoleInfo> = {
-  super_admin: {
-    id: 'super_admin',
-    name: 'Super Admin',
+  admin: {
+    id: 'admin',
+    name: 'Admin',
     badgeColor: 'text-purple-700',
     badgeBg: 'bg-purple-100',
     badgeBorder: 'border-purple-300',
-    description: 'Full system administration, DDL management, and unrestricted cross-domain access.',
+    description: 'Full access across all modules, user management, role assignment, and system administration.',
+  },
+  super_admin: {
+    id: 'admin',
+    name: 'Admin',
+    badgeColor: 'text-purple-700',
+    badgeBg: 'bg-purple-100',
+    badgeBorder: 'border-purple-300',
+    description: 'Full access across all modules, user management, role assignment, and system administration.',
   },
   hr_manager: {
     id: 'hr_manager',
@@ -26,23 +34,23 @@ export const ROLE_DEFINITIONS: Record<string, RoleInfo> = {
     badgeColor: 'text-blue-700',
     badgeBg: 'bg-blue-100',
     badgeBorder: 'border-blue-300',
-    description: 'Employee profiles, contract lifecycle, and leave allocation/approval authority.',
+    description: 'Full CRUD to Employees, Attendance, Contracts, Schedules, Time Off approval (no payroll).',
   },
-  payroll_officer: {
-    id: 'payroll_officer',
-    name: 'Payroll Officer',
+  hr_payroll_user: {
+    id: 'hr_payroll_user',
+    name: 'HR Payroll User',
+    badgeColor: 'text-teal-700',
+    badgeBg: 'bg-teal-100',
+    badgeBorder: 'border-teal-300',
+    description: 'HR Manager access + Create/Read/Update Payruns & Payslips; Read-only Salary Structures & Rules.',
+  },
+  hr_payroll_manager: {
+    id: 'hr_payroll_manager',
+    name: 'HR Payroll Manager',
     badgeColor: 'text-emerald-700',
     badgeBg: 'bg-emerald-100',
     badgeBorder: 'border-emerald-300',
-    description: 'Payrun batch computation, wizard verification, and draft payslip calculation.',
-  },
-  dept_manager: {
-    id: 'dept_manager',
-    name: 'Dept Manager',
-    badgeColor: 'text-amber-700',
-    badgeBg: 'bg-amber-100',
-    badgeBorder: 'border-amber-300',
-    description: 'Team management, attendance oversight, and expense claim approval.',
+    description: 'Full CRUD to Payruns, Payslips, Salary Structures, Salary Rules, and HR/payroll configurations.',
   },
   employee: {
     id: 'employee',
@@ -50,16 +58,16 @@ export const ROLE_DEFINITIONS: Record<string, RoleInfo> = {
     badgeColor: 'text-slate-700',
     badgeBg: 'bg-slate-100',
     badgeBorder: 'border-slate-300',
-    description: 'Self-service portal: view personal payslips, leave balances, and profile info.',
+    description: 'View own employee details, attendance, leave balances; clock in/out and submit leave requests.',
   },
   // Legacy aliases
   Admin: {
-    id: 'super_admin',
-    name: 'Super Admin',
+    id: 'admin',
+    name: 'Admin',
     badgeColor: 'text-purple-700',
     badgeBg: 'bg-purple-100',
     badgeBorder: 'border-purple-300',
-    description: 'Full system administration, DDL management, and unrestricted cross-domain access.',
+    description: 'Full access across all modules, user management, role assignment, and system administration.',
   },
   'HR Manager': {
     id: 'hr_manager',
@@ -67,23 +75,31 @@ export const ROLE_DEFINITIONS: Record<string, RoleInfo> = {
     badgeColor: 'text-blue-700',
     badgeBg: 'bg-blue-100',
     badgeBorder: 'border-blue-300',
-    description: 'Employee profiles, contract lifecycle, and leave allocation/approval authority.',
+    description: 'Full CRUD to Employees, Attendance, Contracts, Schedules, Time Off approval (no payroll).',
+  },
+  payroll_officer: {
+    id: 'hr_payroll_user',
+    name: 'HR Payroll User',
+    badgeColor: 'text-teal-700',
+    badgeBg: 'bg-teal-100',
+    badgeBorder: 'border-teal-300',
+    description: 'HR Manager access + Create/Read/Update Payruns & Payslips; Read-only Salary Structures & Rules.',
   },
   'HR Payroll User': {
-    id: 'payroll_officer',
-    name: 'Payroll Officer',
-    badgeColor: 'text-emerald-700',
-    badgeBg: 'bg-emerald-100',
-    badgeBorder: 'border-emerald-300',
-    description: 'Payrun batch computation, wizard verification, and draft payslip calculation.',
+    id: 'hr_payroll_user',
+    name: 'HR Payroll User',
+    badgeColor: 'text-teal-700',
+    badgeBg: 'bg-teal-100',
+    badgeBorder: 'border-teal-300',
+    description: 'HR Manager access + Create/Read/Update Payruns & Payslips; Read-only Salary Structures & Rules.',
   },
   'HR Payroll Manager': {
-    id: 'payroll_officer',
-    name: 'Payroll Officer',
+    id: 'hr_payroll_manager',
+    name: 'HR Payroll Manager',
     badgeColor: 'text-emerald-700',
     badgeBg: 'bg-emerald-100',
     badgeBorder: 'border-emerald-300',
-    description: 'Salary rule configuration, payroll batch validation barrier approval, and payment dispatch.',
+    description: 'Full CRUD to Payruns, Payslips, Salary Structures, Salary Rules, and HR/payroll configurations.',
   },
   Employee: {
     id: 'employee',
@@ -93,6 +109,14 @@ export const ROLE_DEFINITIONS: Record<string, RoleInfo> = {
     badgeBorder: 'border-slate-300',
     description: 'Self-service portal: view personal payslips, leave balances, and profile info.',
   },
+  dept_manager: {
+    id: 'hr_manager',
+    name: 'HR Manager',
+    badgeColor: 'text-blue-700',
+    badgeBg: 'bg-blue-100',
+    badgeBorder: 'border-blue-300',
+    description: 'Full CRUD to Employees, Attendance, Contracts, Schedules, Time Off approval.',
+  },
 };
 
 interface RoleContextType {
@@ -100,8 +124,15 @@ interface RoleContextType {
   roleInfo: RoleInfo;
   allRoles: DemoAccount[];
   switchPersona: (role: UserRole) => Promise<void>;
+  isAdmin: boolean;
+  canManageHR: boolean;
   canManageEmployees: boolean;
+  canApproveTimeOff: boolean;
+  canAccessPayroll: boolean;
   canRunPayroll: boolean;
+  canEditPayrollConfig: boolean;
+  canDeletePayruns: boolean;
+  canManageUsers: boolean;
   canManageShifts: boolean;
   canApproveLoans: boolean;
   canApproveExpenses: boolean;
@@ -113,9 +144,10 @@ const RoleContext = createContext<RoleContextType | undefined>(undefined);
 
 export const RoleProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { user, quickDemoLogin } = useAuth();
-  const currentRole: UserRole = (user?.role as UserRole) || 'employee';
+  const rawRole = (user?.role as string) || 'employee';
+  const currentRole: UserRole = (rawRole as UserRole);
 
-  const roleInfo = ROLE_DEFINITIONS[currentRole] || ROLE_DEFINITIONS.employee;
+  const roleInfo = ROLE_DEFINITIONS[rawRole] || ROLE_DEFINITIONS.employee;
 
   const switchPersona = async (targetRole: UserRole) => {
     const demo = DEMO_ACCOUNTS.find((d) => d.role === targetRole);
@@ -124,11 +156,19 @@ export const RoleProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  const isSuperAdmin = currentRole === 'super_admin' || currentRole === 'Admin';
-  const isHrManager = currentRole === 'hr_manager' || currentRole === 'HR Manager';
-  const isPayrollOfficer = currentRole === 'payroll_officer' || currentRole === 'HR Payroll User' || currentRole === 'HR Payroll Manager';
-  const isDeptManager = currentRole === 'dept_manager';
-  const isEmployeeOnly = currentRole === 'employee' || currentRole === 'Employee';
+  const isAdmin = rawRole === 'admin' || rawRole === 'super_admin' || rawRole === 'Admin';
+  const isHrPayrollManager = rawRole === 'hr_payroll_manager' || rawRole === 'HR Payroll Manager';
+  const isHrPayrollUser = rawRole === 'hr_payroll_user' || rawRole === 'HR Payroll User' || rawRole === 'payroll_officer';
+  const isHrManager = rawRole === 'hr_manager' || rawRole === 'HR Manager' || rawRole === 'dept_manager';
+  const isEmployeeOnly = rawRole === 'employee' || rawRole === 'Employee';
+
+  // Specific role capabilities
+  const canManageHR = isAdmin || isHrPayrollManager || isHrPayrollUser || isHrManager;
+  const canApproveTimeOff = canManageHR;
+  const canAccessPayroll = isAdmin || isHrPayrollManager || isHrPayrollUser; // HR Manager has NO payroll access!
+  const canEditPayrollConfig = isAdmin || isHrPayrollManager; // HR Payroll User is read-only for structures & rules!
+  const canDeletePayruns = isAdmin || isHrPayrollManager; // HR Payroll User cannot delete payruns!
+  const canManageUsers = isAdmin;
 
   return (
     <RoleContext.Provider
@@ -137,12 +177,19 @@ export const RoleProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         roleInfo,
         allRoles: DEMO_ACCOUNTS,
         switchPersona,
-        canManageEmployees: isSuperAdmin || isHrManager,
-        canRunPayroll: isSuperAdmin || isPayrollOfficer,
-        canManageShifts: isSuperAdmin || isHrManager,
-        canApproveLoans: isSuperAdmin || isPayrollOfficer || isHrManager,
-        canApproveExpenses: isSuperAdmin || isHrManager || isDeptManager,
-        canVerifyTax: isSuperAdmin || isHrManager || isPayrollOfficer,
+        isAdmin,
+        canManageHR,
+        canManageEmployees: canManageHR,
+        canApproveTimeOff,
+        canAccessPayroll,
+        canRunPayroll: canAccessPayroll,
+        canEditPayrollConfig,
+        canDeletePayruns,
+        canManageUsers,
+        canManageShifts: canManageHR,
+        canApproveLoans: canAccessPayroll || isHrManager,
+        canApproveExpenses: canManageHR,
+        canVerifyTax: canAccessPayroll || isHrManager,
         isSelfServiceOnly: isEmployeeOnly,
       }}
     >
@@ -158,4 +205,5 @@ export const useRole = (): RoleContextType => {
   }
   return context;
 };
+
 

@@ -52,6 +52,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
     isSelfServiceOnly,
     canManageEmployees,
     canRunPayroll,
+    canAccessPayroll,
+    canManageUsers,
   } = useRole();
 
   const [roleDropdownOpen, setRoleDropdownOpen] = useState(false);
@@ -143,16 +145,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {
           id: 'payroll',
           subTab: 'payruns',
-          label: isSelfServiceOnly ? 'My Payslips' : 'Payrun Batches',
+          label: 'Payrun Batches',
           icon: CreditCard,
-          visible: canRunPayroll || isSelfServiceOnly,
+          visible: canAccessPayroll,
         },
         {
           id: 'payroll',
           subTab: 'structures',
           label: 'Salary Structures',
           icon: Sliders,
-          visible: canRunPayroll,
+          visible: canAccessPayroll,
         },
       ],
     },
@@ -207,6 +209,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
           label: 'Sample Payslip',
           icon: Printer,
           visible: true,
+        },
+      ],
+    },
+    {
+      title: 'Administration',
+      items: [
+        {
+          id: 'user-management',
+          label: 'User Management',
+          icon: Shield,
+          visible: canManageUsers,
         },
       ],
     },

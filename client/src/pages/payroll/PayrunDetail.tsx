@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Payrun, Payslip } from './types';
+import { useRole } from '../../components/shared/RoleContext';
 
 interface PayrunDetailProps {
   payrunId: number;
@@ -12,6 +13,7 @@ export const PayrunDetail: React.FC<PayrunDetailProps> = ({
   onBack,
   onSelectPayslip,
 }) => {
+  const { canDeletePayruns } = useRole();
   const [payrun, setPayrun] = useState<Payrun | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [actionLoading, setActionLoading] = useState<boolean>(false);
@@ -80,6 +82,25 @@ export const PayrunDetail: React.FC<PayrunDetailProps> = ({
     } catch (err: any) {
       setErrorMsg(err.message || 'State transition error');
     } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleDeletePayrun = async () => {
+    if (!confirm(`Are you sure you want to delete payrun #${payrunId} (${payrun?.name})?`)) return;
+    setActionLoading(true);
+    setErrorMsg(null);
+    try {
+      const res = await fetch(`/api/v1/payroll/payruns/${payrunId}`, {
+        method: 'DELETE',
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.detail || 'Failed to delete payrun');
+      }
+      onBack();
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Delete error');
       setActionLoading(false);
     }
   };
@@ -189,6 +210,16 @@ export const PayrunDetail: React.FC<PayrunDetailProps> = ({
                   className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold shadow-sm disabled:opacity-50"
                 >
                   Confirm & Mark Paid (Lock)
+                </button>
+              )}
+
+              {canDeletePayruns && (
+                <button
+                  onClick={handleDeletePayrun}
+                  disabled={actionLoading}
+                  className="px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-xs font-semibold shadow-sm disabled:opacity-50 transition"
+                >
+                  Delete Payrun
                 </button>
               )}
             </>
