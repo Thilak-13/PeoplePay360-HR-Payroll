@@ -35,7 +35,9 @@ from server.modules.master_data.schemas import (
     LeaveActionResponse,
     EmployeeCreate,
     EmployeeUpdate,
+    EmployeeRead,
     EmployeeResponse,
+    EmployeeDetail,
     EmployeeDetailResponse,
     EmployeeSmartStats,
 )
@@ -209,7 +211,7 @@ def delete_department(dept_id: int, db: Session = Depends(get_db)):
 # 3. EMPLOYEES & DETAIL WITH SMART STATS
 # ==============================================================================
 
-@router.get("/employees", response_model=List[EmployeeResponse], tags=["Employees"])
+@router.get("/employees", response_model=List[EmployeeRead], tags=["Employees"])
 def list_employees(
     search: Optional[str] = None,
     department_id: Optional[int] = None,
@@ -237,7 +239,7 @@ def list_employees(
     return query.offset(skip).limit(limit).all()
 
 
-@router.post("/employees", response_model=EmployeeResponse, status_code=status.HTTP_201_CREATED, tags=["Employees"])
+@router.post("/employees", response_model=EmployeeRead, status_code=status.HTTP_201_CREATED, tags=["Employees"])
 def create_employee(emp_in: EmployeeCreate, db: Session = Depends(get_db)):
     existing = db.query(Employee).filter(Employee.email == emp_in.email).first()
     if existing:
