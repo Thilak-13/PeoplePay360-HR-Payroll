@@ -39,6 +39,8 @@ class TestAnalyticsModule(unittest.TestCase):
                     department_id INTEGER,
                     working_schedule_id INTEGER,
                     job_title VARCHAR(100),
+                    bank_account_number VARCHAR(50),
+                    bank_ifsc VARCHAR(20),
                     hire_date DATE,
                     status VARCHAR(20) DEFAULT 'active'
                 );
@@ -110,9 +112,9 @@ class TestAnalyticsModule(unittest.TestCase):
                 (2, 'Sales', 'SALES');
             """))
             conn.execute(text("""
-                INSERT INTO employees (id, first_name, last_name, email, phone, department_id, status) VALUES
-                (1, 'Alice', 'Smith', 'alice@test.local', '+1-555-0101', 1, 'active'),
-                (2, 'Bob', 'Jones', 'bob@test.local', NULL, 2, 'active');
+                INSERT INTO employees (id, first_name, last_name, email, phone, department_id, bank_account_number, bank_ifsc, status) VALUES
+                (1, 'Alice', 'Smith', 'alice@test.local', '+1-555-0101', 1, 'ACCT00010101', 'PPAY0001234', 'active'),
+                (2, 'Bob', 'Jones', 'bob@test.local', NULL, 2, NULL, NULL, 'active');
             """))
             conn.execute(text("""
                 INSERT INTO contracts (id, employee_id, wage, start_date, status) VALUES

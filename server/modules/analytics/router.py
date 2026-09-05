@@ -150,21 +150,40 @@ def get_dashboard_analytics(db: Session = Depends(get_db)):
     # ------------------------------------------------------
     compliance_alerts: List[ComplianceAlertItem] = []
 
-    # A. Missing Banking Information (phone is NULL or bank_account is NULL)
-    missing_bank_query = text("""
-        SELECT 
-            e.id, 
-            e.first_name, 
-            e.last_name, 
-            e.email, 
-            d.name AS department_name
-        FROM employees e
-        LEFT JOIN departments d ON e.department_id = d.id
-        WHERE e.status = 'active'
-          AND (e.phone IS NULL OR TRIM(e.phone) = '')
-        ORDER BY e.id ASC
-    """)
-    missing_bank_rows = db.execute(missing_bank_query).fetchall()
+    # A. Missing Banking Information (bank_account_number / bank_ifsc / phone is NULL)
+    try:
+        missing_bank_query = text("""
+            SELECT 
+                e.id, 
+                e.first_name, 
+                e.last_name, 
+                e.email, 
+                d.name AS department_name
+            FROM employees e
+            LEFT JOIN departments d ON e.department_id = d.id
+            WHERE e.status = 'active'
+              AND (
+                e.bank_account_number IS NULL OR TRIM(e.bank_account_number) = ''
+                OR e.bank_ifsc IS NULL OR TRIM(e.bank_ifsc) = ''
+              )
+            ORDER BY e.id ASC
+        """)
+        missing_bank_rows = db.execute(missing_bank_query).fetchall()
+    except Exception:
+        missing_bank_query = text("""
+            SELECT 
+                e.id, 
+                e.first_name, 
+                e.last_name, 
+                e.email, 
+                d.name AS department_name
+            FROM employees e
+            LEFT JOIN departments d ON e.department_id = d.id
+            WHERE e.status = 'active'
+              AND (e.phone IS NULL OR TRIM(e.phone) = '')
+            ORDER BY e.id ASC
+        """)
+        missing_bank_rows = db.execute(missing_bank_query).fetchall()
     for row in missing_bank_rows:
         emp_id = row[0]
         emp_name = f"{row[1]} {row[2]}".strip()
