@@ -68,35 +68,35 @@ export const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
   };
 
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-6 text-slate-100 max-w-xl mx-auto my-6">
+    <div className="bg-white border border-slate-200/80 rounded-xl p-6 shadow-2xs space-y-6 text-slate-800 max-w-xl mx-auto my-6">
       {/* Header */}
-      <div className="flex justify-between items-center border-b border-slate-800 pb-4">
+      <div className="flex justify-between items-center border-b border-slate-200/80 pb-4">
         <div className="flex items-center space-x-3">
-          <div className="p-2.5 bg-blue-600/20 text-blue-400 rounded-xl border border-blue-500/30">
-            <Clock className="w-6 h-6" />
+          <div className="p-2 bg-slate-100 text-slate-700 rounded-lg border border-slate-200/60">
+            <Clock className="w-5 h-5" />
           </div>
           <div>
-            <h2 className="text-lg font-bold text-white">Biometric Clock-In & Punches</h2>
-            <p className="text-xs text-slate-400">Live Time & Attendance Punch Terminal</p>
+            <h2 className="text-sm font-semibold text-slate-900">Attendance Punch Terminal</h2>
+            <p className="text-xs text-slate-500">Record daily check-in and check-out timestamps</p>
           </div>
         </div>
         {!isSelfServiceOnly && (
           <button
             onClick={handleSeed}
-            className="text-xs flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg border border-slate-700 transition"
+            className="text-xs flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-slate-50 text-slate-700 rounded-lg border border-slate-200 transition shadow-2xs"
           >
-            <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+            <Sparkles className="w-3.5 h-3.5 text-amber-500" />
             Seed Demo
           </button>
         )}
       </div>
 
       {/* Live Digital Clock */}
-      <div className="bg-slate-950 border border-slate-800/80 rounded-2xl p-6 text-center space-y-1">
-        <div className="text-4xl font-black font-mono tracking-wider text-emerald-400">
+      <div className="bg-slate-50/80 border border-slate-200/80 rounded-xl p-5 text-center space-y-0.5">
+        <div className="text-3xl font-bold font-mono tracking-tight text-slate-900">
           {currentTime.toLocaleTimeString()}
         </div>
-        <div className="text-xs text-slate-400 font-medium">
+        <div className="text-xs text-slate-500 font-medium">
           {currentTime.toLocaleDateString(undefined, { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
         </div>
       </div>
@@ -104,16 +104,16 @@ export const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
       {/* Status Feedback */}
       {msg && (
         <div
-          className={`p-3.5 rounded-xl text-xs flex items-center gap-2.5 ${
+          className={`p-3 rounded-lg text-xs flex items-center gap-2.5 ${
             msg.type === "success"
-              ? "bg-emerald-950/80 border border-emerald-500/50 text-emerald-200"
-              : "bg-red-950/80 border border-red-500/50 text-red-200"
+              ? "bg-emerald-50 border border-emerald-200 text-emerald-800 font-medium"
+              : "bg-rose-50 border border-rose-200 text-rose-800 font-medium"
           }`}
         >
           {msg.type === "success" ? (
-            <CheckCircle2 className="w-4 h-4 flex-shrink-0 text-emerald-400" />
+            <CheckCircle2 className="w-4 h-4 flex-shrink-0 text-emerald-600" />
           ) : (
-            <AlertCircle className="w-4 h-4 flex-shrink-0 text-red-400" />
+            <AlertCircle className="w-4 h-4 flex-shrink-0 text-rose-600" />
           )}
           <span>{msg.text}</span>
         </div>
@@ -123,11 +123,11 @@ export const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
       <div className="space-y-4">
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
+            <label className="block text-xs font-medium text-slate-700 mb-1">
               {isSelfServiceOnly ? "Clocking In As" : "Employee ID"}
             </label>
             {isSelfServiceOnly ? (
-              <div className="w-full bg-slate-800/60 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-indigo-300 font-mono font-bold">
+              <div className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-800 font-mono font-medium">
                 Employee #{selectedEmpId} ({user?.email})
               </div>
             ) : (
@@ -136,12 +136,12 @@ export const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                 min={1}
                 value={selectedEmpId}
                 onChange={(e) => setSelectedEmpId(parseInt(e.target.value) || 1)}
-                className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-900 focus:border-slate-900"
               />
             )}
           </div>
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
+            <label className="block text-xs font-medium text-slate-700 mb-1">
               Punch Notes (Optional)
             </label>
             <input
@@ -149,27 +149,27 @@ export const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="e.g. Remote / Field Visit"
-              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-900 focus:border-slate-900"
             />
           </div>
         </div>
 
         {/* Action Buttons */}
-        <div className="grid grid-cols-2 gap-4 pt-2">
+        <div className="grid grid-cols-2 gap-3 pt-2">
           <button
             onClick={() => handlePunch("in")}
             disabled={loading}
-            className="flex items-center justify-center gap-2 py-3 bg-emerald-600 hover:bg-emerald-500 disabled:bg-emerald-800 text-white font-bold rounded-xl shadow-lg shadow-emerald-900/30 transition cursor-pointer"
+            className="flex items-center justify-center gap-1.5 py-2.5 bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white font-medium text-xs rounded-lg shadow-2xs transition cursor-pointer"
           >
-            <Play className="w-4 h-4" />
+            <Play className="w-3.5 h-3.5 fill-current" />
             Clock In (Punch IN)
           </button>
           <button
             onClick={() => handlePunch("out")}
             disabled={loading}
-            className="flex items-center justify-center gap-2 py-3 bg-amber-600 hover:bg-amber-500 disabled:bg-amber-800 text-white font-bold rounded-xl shadow-lg shadow-amber-900/30 transition cursor-pointer"
+            className="flex items-center justify-center gap-1.5 py-2.5 bg-white hover:bg-slate-50 disabled:opacity-50 text-slate-700 border border-slate-200 font-medium text-xs rounded-lg shadow-2xs transition cursor-pointer"
           >
-            <Square className="w-4 h-4" />
+            <Square className="w-3.5 h-3.5 fill-current" />
             Clock Out (Punch OUT)
           </button>
         </div>
