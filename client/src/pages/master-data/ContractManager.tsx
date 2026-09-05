@@ -176,42 +176,54 @@ export const ContractManager: React.FC<ContractManagerProps> = ({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-sm">
-              {contracts.map((c) => (
-                <tr key={c.id} className="hover:bg-slate-50/60">
-                  <td className="py-3 px-4 font-semibold text-slate-800">#{c.id}</td>
-                  <td className="py-3 px-4 text-slate-600 capitalize">{c.contract_type.replace('_', ' ')}</td>
-                  <td className="py-3 px-4 font-bold text-slate-900">${Number(c.wage).toLocaleString()}</td>
-                  <td className="py-3 px-4 text-slate-600">{c.start_date}</td>
-                  <td className="py-3 px-4 text-slate-600">{c.end_date || 'Open Ended'}</td>
-                  <td className="py-3 px-4">{getStatusBadge(c.status)}</td>
-                  <td className="py-3 px-4 text-right space-x-2">
-                    {c.status === 'draft' && (
-                      <button
-                        onClick={() => handleStatusChange(c.id, 'active')}
-                        className="px-2.5 py-1 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded text-xs font-semibold"
-                      >
-                        Activate
-                      </button>
-                    )}
-                    {c.status === 'active' && (
-                      <button
-                        onClick={() => handleStatusChange(c.id, 'expired')}
-                        className="px-2.5 py-1 bg-gray-50 text-gray-700 hover:bg-gray-100 rounded text-xs font-semibold"
-                      >
-                        Expire
-                      </button>
-                    )}
-                    {c.status !== 'cancelled' && (
-                      <button
-                        onClick={() => handleStatusChange(c.id, 'cancelled')}
-                        className="px-2.5 py-1 bg-rose-50 text-rose-700 hover:bg-rose-100 rounded text-xs font-semibold"
-                      >
-                        Cancel
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))}
+              {contracts.map((c) => {
+                const isActive = c.status === 'active' || c.status === 'running';
+                return (
+                  <tr
+                    key={c.id}
+                    className={`transition-colors ${
+                      isActive
+                        ? 'bg-emerald-50/40 border-l-4 border-l-emerald-500 font-medium'
+                        : 'hover:bg-slate-50/60 border-l-4 border-l-transparent'
+                    }`}
+                  >
+                    <td className="py-3 px-4 font-semibold text-slate-800">
+                      #{c.id} {isActive && <span className="text-[10px] text-emerald-600 font-bold ml-1">(Current)</span>}
+                    </td>
+                    <td className="py-3 px-4 text-slate-600 capitalize">{c.contract_type.replace('_', ' ')}</td>
+                    <td className="py-3 px-4 font-bold text-slate-900">${Number(c.wage).toLocaleString()}</td>
+                    <td className="py-3 px-4 text-slate-600">{c.start_date}</td>
+                    <td className="py-3 px-4 text-slate-600">{c.end_date || 'Open Ended'}</td>
+                    <td className="py-3 px-4">{getStatusBadge(c.status)}</td>
+                    <td className="py-3 px-4 text-right space-x-2">
+                      {c.status === 'draft' && (
+                        <button
+                          onClick={() => handleStatusChange(c.id, 'active')}
+                          className="px-2.5 py-1 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded text-xs font-semibold"
+                        >
+                          Activate
+                        </button>
+                      )}
+                      {c.status === 'active' && (
+                        <button
+                          onClick={() => handleStatusChange(c.id, 'expired')}
+                          className="px-2.5 py-1 bg-gray-50 text-gray-700 hover:bg-gray-100 rounded text-xs font-semibold"
+                        >
+                          Expire
+                        </button>
+                      )}
+                      {c.status !== 'cancelled' && (
+                        <button
+                          onClick={() => handleStatusChange(c.id, 'cancelled')}
+                          className="px-2.5 py-1 bg-rose-50 text-rose-700 hover:bg-rose-100 rounded text-xs font-semibold"
+                        >
+                          Cancel
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
