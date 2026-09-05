@@ -353,6 +353,12 @@ def list_contracts(
     return query.order_by(Contract.start_date.desc()).offset(skip).limit(limit).all()
 
 
+@router.get("/contracts/employee/{emp_id}", response_model=List[ContractResponse], tags=["Contracts"])
+def list_contracts_for_employee(emp_id: int, db: Session = Depends(get_db)):
+    """Returns all contracts for a specific employee ordered by start_date DESC."""
+    return db.query(Contract).filter(Contract.employee_id == emp_id).order_by(Contract.start_date.desc()).all()
+
+
 @router.post("/contracts", response_model=ContractResponse, status_code=status.HTTP_201_CREATED, tags=["Contracts"])
 def create_contract(contract_in: ContractCreate, db: Session = Depends(get_db)):
     """Creates contract with date validation and overlapping active contract rejection."""
