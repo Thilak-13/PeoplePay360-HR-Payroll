@@ -144,7 +144,7 @@ def check_compliance_warnings(
         ifsc_code = "PPAY0001234"
     else:
         # No bank data and no phone – hard flag
-        return True, "Missing Bank Account or IFSC details", None, None
+        return True, "Missing verified bank account number and IFSC code", None, None
 
     # ------------------------------------------------------------------
     # 2. Duplicate payslip check (validated / paid payruns only)
@@ -611,6 +611,14 @@ def compute_single_payslip(
 def compute_payrun_batch(db: Session, payrun_id: int) -> Payrun:
     """
     Compute all payslips in a payrun batch, updating summary statistics.
+    
+    Steps:
+    - Assert payrun status is not 'paid' (Terminal Lock check).
+    - Loop through each payslip: resolve contract, execute compliance audit,
+      calculate sequenced rules, update payslip summary columns, and persist
+      itemized PayslipLine snapshots.
+    - Update Payrun totals (total_basic, total_gross, total_net, warning_count),
+      set status = 'computed', and commit.
     """
     payrun = db.query(Payrun).filter(Payrun.id == payrun_id).first()
     if not payrun:
@@ -639,5 +647,7 @@ def compute_payrun_batch(db: Session, payrun_id: int) -> Payrun:
     payrun.warning_count = warning_cnt
     payrun.status = "computed"
 
-    db.flush()
+    db.commit()
+    db.refresh(payrun)
     return payrun
+
