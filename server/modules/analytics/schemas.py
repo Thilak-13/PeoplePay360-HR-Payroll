@@ -41,13 +41,14 @@ class MonthlyTrendItem(BaseModel):
 
 
 class ComplianceAlertItem(BaseModel):
-    id: str
-    type: str  # 'missing_banking', 'duplicate_batch', 'uncontracted'
-    title: str
-    message: str
-    severity: str  # 'critical', 'warning', 'info'
     employee_id: Optional[int] = None
     employee_name: Optional[str] = None
+    issue: str = "Missing Bank Account or IFSC Details"
+    severity: str = "warning"  # 'critical', 'warning', 'info'
+    id: str = ""
+    type: str = "missing_banking"  # 'missing_banking', 'duplicate_batch', 'uncontracted'
+    title: str = ""
+    message: str = ""
     department_name: Optional[str] = None
     action_url: Optional[str] = None
 
@@ -59,6 +60,9 @@ class DashboardAnalyticsResponse(BaseModel):
     monthly_trends: List[MonthlyTrendItem] = []
     monthly_spend_trend: List[MonthlyTrendItem] = []
     compliance_alerts: List[ComplianceAlertItem] = []
+    attention_items: List[ComplianceAlertItem] = []
+    attention_alerts: List[ComplianceAlertItem] = []
+    alerts: List[ComplianceAlertItem] = []
     total_net_paid: Optional[float] = None
     total_payslips: Optional[int] = None
     avg_salary: Optional[float] = None

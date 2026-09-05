@@ -172,6 +172,12 @@ class TestAnalyticsModule(unittest.TestCase):
         missing_bank_alerts = [a for a in data.compliance_alerts if a.type == "missing_banking"]
         self.assertEqual(len(missing_bank_alerts), 1)
         self.assertEqual(missing_bank_alerts[0].employee_id, 2)
+        self.assertEqual(missing_bank_alerts[0].issue, "Missing Bank Account or IFSC Details")
+        self.assertEqual(missing_bank_alerts[0].severity, "warning")
+        self.assertEqual(len(data.attention_alerts), 1)
+        self.assertEqual(data.attention_alerts[0].employee_id, 2)
+        self.assertEqual(data.attention_alerts[0].issue, "Missing Bank Account or IFSC Details")
+        self.assertEqual(data.attention_alerts[0].severity, "warning")
 
     def test_export_bank_file(self):
         response = export_bank_file(1, self.db)
