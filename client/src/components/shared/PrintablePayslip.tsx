@@ -140,7 +140,7 @@ export const PrintablePayslip: React.FC<PrintablePayslipProps> = ({
             margin: 0 !important;
             padding: 0 !important;
           }
-          .no-print {
+          nav, header, button, .no-print {
             display: none !important;
           }
           .print-container {
