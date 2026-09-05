@@ -189,12 +189,12 @@ class PayrollService:
 
         # Check overlapping payruns
         overlap_query = db.query(Payrun).filter(
-            Payrun.date_start <= req.date_end,
-            Payrun.date_end >= req.date_start,
+            Payrun.period_start <= req.date_end,
+            Payrun.period_end >= req.date_start,
             Payrun.status != "cancelled"
         ).all()
 
-        overlapping_names = [f"{p.name} ({p.date_start} to {p.date_end}) [{p.status}]" for p in overlap_query]
+        overlapping_names = [f"{p.name} ({p.period_start} to {p.period_end}) [{p.status}]" for p in overlap_query]
 
         # Check structure
         structure_name = None
@@ -295,7 +295,7 @@ class PayrollService:
             query = query.filter(Payrun.name.ilike(f"%{search}%"))
 
         total = query.count()
-        payruns = query.order_by(desc(Payrun.date_start), desc(Payrun.id)).offset(offset).limit(limit).all()
+        payruns = query.order_by(desc(Payrun.period_start), desc(Payrun.id)).offset(offset).limit(limit).all()
         return payruns, total
 
     @staticmethod
@@ -474,7 +474,7 @@ class PayrollService:
         current_year = date.today().year
         cur_month_net = sum(
             p.total_net for p in all_payruns 
-            if p.date_start.month == current_month and p.date_start.year == current_year and p.status in ("computed", "validated", "paid")
+            if p.period_start.month == current_month and p.period_start.year == current_year and p.status in ("computed", "validated", "paid")
         )
 
         pending_warnings = sum(p.warning_count for p in all_payruns if p.status != "cancelled")

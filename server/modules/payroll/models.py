@@ -10,6 +10,7 @@ from sqlalchemy import (
     ForeignKey,
     Text,
     CheckConstraint,
+    UniqueConstraint,
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -67,18 +68,41 @@ class Payrun(Base):
     __tablename__ = "payruns"
 
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String(100), nullable=False, index=True)
-    date_start = Column(Date, nullable=False)
-    date_end = Column(Date, nullable=False)
-    status = Column(String(20), default="draft", nullable=False)  # 'draft', 'computed', 'validated', 'paid', 'cancelled'
+    name = Column(String(100), unique=True, index=True, nullable=False)
     structure_id = Column(Integer, ForeignKey("salary_structures.id", ondelete="SET NULL"), nullable=True)
+    period_start = Column(Date, nullable=False)
+    period_end = Column(Date, nullable=False)
+    status = Column(String(20), default="draft", nullable=False)  # 'draft', 'computed', 'validated', 'paid'
     total_basic = Column(Numeric(12, 2), default=0.00, nullable=False)
     total_gross = Column(Numeric(12, 2), default=0.00, nullable=False)
     total_net = Column(Numeric(12, 2), default=0.00, nullable=False)
-    payslip_count = Column(Integer, default=0, nullable=False)
     warning_count = Column(Integer, default=0, nullable=False)
+    payslip_count = Column(Integer, default=0, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), default=datetime.utcnow)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=datetime.utcnow, default=datetime.utcnow)
+
+    def __init__(self, **kwargs):
+        if "date_start" in kwargs and "period_start" not in kwargs:
+            kwargs["period_start"] = kwargs.pop("date_start")
+        if "date_end" in kwargs and "period_end" not in kwargs:
+            kwargs["period_end"] = kwargs.pop("date_end")
+        super().__init__(**kwargs)
+
+    @property
+    def date_start(self):
+        return self.period_start
+
+    @date_start.setter
+    def date_start(self, value):
+        self.period_start = value
+
+    @property
+    def date_end(self):
+        return self.period_end
+
+    @date_end.setter
+    def date_end(self, value):
+        self.period_end = value
 
     # Relationships
     structure = relationship("SalaryStructure")
@@ -87,23 +111,26 @@ class Payrun(Base):
 
 class Payslip(Base):
     __tablename__ = "payslips"
+    __table_args__ = (
+        UniqueConstraint("payrun_id", "employee_id", name="uq_payslip_payrun_employee"),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     payrun_id = Column(Integer, ForeignKey("payruns.id", ondelete="CASCADE"), nullable=True, index=True)
-    employee_id = Column(Integer, ForeignKey("employees.id", ondelete="CASCADE"), nullable=False, index=True)
-    contract_id = Column(Integer, ForeignKey("contracts.id", ondelete="SET NULL"), nullable=True)
+    employee_id = Column(Integer, nullable=False, index=True)
+    contract_id = Column(Integer, nullable=True)
     structure_id = Column(Integer, ForeignKey("salary_structures.id", ondelete="SET NULL"), nullable=True)
     date_from = Column(Date, nullable=False)
     date_to = Column(Date, nullable=False)
     basic_wage = Column(Numeric(12, 2), default=0.00, nullable=False)
     gross_wage = Column(Numeric(12, 2), default=0.00, nullable=False)
-    net_wage = Column(Numeric(12, 2), default=0.00, nullable=False)
     total_deductions = Column(Numeric(12, 2), default=0.00, nullable=False)
-    status = Column(String(20), default="draft", nullable=False)  # 'draft', 'computed', 'validated', 'paid', 'cancelled'
+    net_wage = Column(Numeric(12, 2), default=0.00, nullable=False)
     has_warning = Column(Boolean, default=False, nullable=False)
     warning_message = Column(Text, nullable=True)
     bank_account = Column(String(50), nullable=True)
     ifsc_code = Column(String(20), nullable=True)
+    status = Column(String(20), default="draft", nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), default=datetime.utcnow)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=datetime.utcnow, default=datetime.utcnow)
 
