@@ -552,6 +552,24 @@ def refuse_leave_request_endpoint(request_id: int, db: Session = Depends(get_db)
     )
 
 
+@router.patch("/leave-requests/{request_id}/action", response_model=LeaveActionResponse, tags=["Leave Requests"])
+def action_leave_request_endpoint(request_id: int, action: str = Query(..., pattern="^(approve|refuse)$"), db: Session = Depends(get_db)):
+    """Executes atomic approval or refusal action on a leave request."""
+    if action == "approve":
+        req, remaining = approve_leave_request(db, request_id)
+        return LeaveActionResponse(
+            message=f"Leave request #{request_id} successfully approved. Remaining allocation: {remaining} days.",
+            leave_request=req,
+            remaining_allocation_days=float(remaining),
+        )
+    else:
+        req = refuse_leave_request(db, request_id)
+        return LeaveActionResponse(
+            message=f"Leave request #{request_id} was refused.",
+            leave_request=req,
+        )
+
+
 @router.post("/leave-requests/{request_id}/reset-to-draft", response_model=LeaveRequestResponse, tags=["Leave Requests"])
 def reset_leave_request_to_draft(request_id: int, db: Session = Depends(get_db)):
     req = db.query(LeaveRequest).filter(LeaveRequest.id == request_id).first()
