@@ -123,7 +123,11 @@ export const PayrollDashboard: React.FC<PayrollDashboardProps> = ({
         throw new Error('Failed to trigger payslip dispatch');
       }
       const result = await res.json();
-      setActiveToast(result.toast);
+      setActiveToast({
+        type: 'success',
+        title: result.toast?.title || 'Payslips Dispatched',
+        description: 'Payslips queued and dispatched to employee emails',
+      });
       fetchDashboardData();
     } catch (err: any) {
       setActiveToast({
@@ -251,8 +255,12 @@ export const PayrollDashboard: React.FC<PayrollDashboardProps> = ({
             className="inline-flex items-center space-x-2 px-4 py-2 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 rounded-lg text-sm font-medium shadow-sm transition disabled:opacity-50"
             title="Export standard bank payment CSV"
           >
-            <Download className="w-4 h-4 text-gray-500" />
-            <span>{isExporting ? 'Exporting...' : 'Export Bank File'}</span>
+            {isExporting ? (
+              <RefreshCw className="w-4 h-4 animate-spin text-gray-500" />
+            ) : (
+              <Download className="w-4 h-4 text-gray-500" />
+            )}
+            <span>{isExporting ? 'Exporting...' : 'Export Bank CSV'}</span>
           </button>
 
           <button
@@ -261,8 +269,12 @@ export const PayrollDashboard: React.FC<PayrollDashboardProps> = ({
             className="inline-flex items-center space-x-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium shadow-sm transition disabled:opacity-50"
             title="Batch dispatch payslip emails to employees"
           >
-            <Send className="w-4 h-4" />
-            <span>{isSendingEmails ? 'Dispatching...' : 'Dispatch Payslips'}</span>
+            {isSendingEmails ? (
+              <RefreshCw className="w-4 h-4 animate-spin text-white" />
+            ) : (
+              <Send className="w-4 h-4" />
+            )}
+            <span>{isSendingEmails ? 'Sending...' : 'Send Payslips'}</span>
           </button>
 
           {onViewPrintablePayslip && (
