@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Employee, Department } from './types';
+import { fetchEmployees, createEmployee } from './api';
 
 interface EmployeeListProps {
   onSelectEmployee?: (employeeId: number) => void;
@@ -26,23 +27,22 @@ export const EmployeeList: React.FC<EmployeeListProps> = ({
     email: '',
     phone: '',
     job_title: '',
+    bank_account_number: '',
+    bank_ifsc: '',
     department_id: '',
-    status: 'active',
+    status: 'active' as 'active' | 'inactive' | 'on_leave',
   });
 
   useEffect(() => {
-    fetchEmployees();
-    fetchDepartments();
+    loadEmployees();
+    loadDepartments();
   }, []);
 
-  const fetchEmployees = async () => {
+  const loadEmployees = async () => {
     try {
       setLoading(true);
-      const res = await fetch('/api/v1/master-data/employees');
-      if (res.ok) {
-        const data = await res.json();
-        setEmployees(data);
-      }
+      const data = await fetchEmployees();
+      setEmployees(data);
     } catch (err) {
       console.error('Failed to fetch employees', err);
     } finally {
@@ -50,7 +50,7 @@ export const EmployeeList: React.FC<EmployeeListProps> = ({
     }
   };
 
-  const fetchDepartments = async () => {
+  const loadDepartments = async () => {
     try {
       const res = await fetch('/api/v1/master-data/departments');
       if (res.ok) {
@@ -65,33 +65,26 @@ export const EmployeeList: React.FC<EmployeeListProps> = ({
   const handleCreateEmployee = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const payload = {
+      const payload: Partial<Employee> = {
         ...formData,
         department_id: formData.department_id ? parseInt(formData.department_id) : undefined,
       };
-      const res = await fetch('/api/v1/master-data/employees', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+      await createEmployee(payload);
+      setShowCreateModal(false);
+      setFormData({
+        first_name: '',
+        last_name: '',
+        email: '',
+        phone: '',
+        job_title: '',
+        bank_account_number: '',
+        bank_ifsc: '',
+        department_id: '',
+        status: 'active',
       });
-      if (res.ok) {
-        setShowCreateModal(false);
-        setFormData({
-          first_name: '',
-          last_name: '',
-          email: '',
-          phone: '',
-          job_title: '',
-          department_id: '',
-          status: 'active',
-        });
-        fetchEmployees();
-      } else {
-        const errorData = await res.json();
-        alert(`Error: ${errorData.detail || 'Failed to create employee'}`);
-      }
-    } catch (err) {
-      console.error('Failed to create employee', err);
+      loadEmployees();
+    } catch (err: any) {
+      alert(`Error: ${err.message || 'Failed to create employee'}`);
     }
   };
 
@@ -116,25 +109,25 @@ export const EmployeeList: React.FC<EmployeeListProps> = ({
     switch (status) {
       case 'active':
         return (
-          <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200">
+          <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">
             Active
           </span>
         );
       case 'on_leave':
         return (
-          <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 border border-amber-200">
+          <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-200">
             On Leave
           </span>
         );
       case 'inactive':
         return (
-          <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 border border-gray-200">
+          <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-800 border border-gray-200">
             Inactive
           </span>
         );
       default:
         return (
-          <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+          <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-800">
             {status}
           </span>
         );
@@ -143,14 +136,20 @@ export const EmployeeList: React.FC<EmployeeListProps> = ({
 
   return (
     <div className="p-6 bg-slate-50 min-h-screen">
-      {/* Top Header & Quick Stats */}
+      {/* Top Header & Total Count & View Switcher */}
       <div className="flex flex-col md:flex-row md:items-center justify-between pb-6 border-b border-slate-200 gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">Master Data — Employees</h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-bold text-slate-800">Master Data — Employees</h1>
+            <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+              {employees.length} Total Staff
+            </span>
+          </div>
           <p className="text-sm text-slate-500 mt-1">
-            Manage organization directory, employee contracts, working schedules & leave allocations.
+            Manage employee directory, organization departments, and contracts.
           </p>
         </div>
+
         <div className="flex items-center gap-3">
           {/* View Toggle */}
           <div className="inline-flex bg-white rounded-lg p-1 border border-slate-200 shadow-sm">
@@ -188,7 +187,7 @@ export const EmployeeList: React.FC<EmployeeListProps> = ({
 
           <button
             onClick={() => (onAddNewEmployee ? onAddNewEmployee() : setShowCreateModal(true))}
-            className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium text-sm shadow-sm transition-colors"
+            className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-semibold text-sm shadow-sm transition-colors"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -214,7 +213,7 @@ export const EmployeeList: React.FC<EmployeeListProps> = ({
             placeholder="Search by name, email, or job title..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent shadow-sm"
+            className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm"
           />
         </div>
 
@@ -251,19 +250,9 @@ export const EmployeeList: React.FC<EmployeeListProps> = ({
       ) : filteredEmployees.length === 0 ? (
         <div className="mt-8 p-12 bg-white rounded-xl border border-slate-200 text-center">
           <p className="text-slate-500 font-medium">No employees match your search criteria.</p>
-          <button
-            onClick={() => {
-              setSearchQuery('');
-              setSelectedDepartment('all');
-              setSelectedStatus('all');
-            }}
-            className="mt-3 text-sm text-indigo-600 font-semibold hover:underline"
-          >
-            Clear Filters
-          </button>
         </div>
       ) : viewMode === 'kanban' ? (
-        /* Kanban View */
+        /* Kanban Card Grid View */
         <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
           {filteredEmployees.map((emp) => (
             <div
@@ -282,7 +271,7 @@ export const EmployeeList: React.FC<EmployeeListProps> = ({
                       <h3 className="font-semibold text-slate-900 text-base leading-snug">
                         {emp.first_name} {emp.last_name}
                       </h3>
-                      <p className="text-xs text-slate-500">{emp.job_title || 'Employee'}</p>
+                      <p className="text-xs text-slate-500">{emp.job_title || 'Staff Member'}</p>
                     </div>
                   </div>
                   {getStatusBadge(emp.status)}
@@ -323,6 +312,7 @@ export const EmployeeList: React.FC<EmployeeListProps> = ({
                 <th className="py-3 px-4">Job Title</th>
                 <th className="py-3 px-4">Department</th>
                 <th className="py-3 px-4">Email</th>
+                <th className="py-3 px-4">Bank Details</th>
                 <th className="py-3 px-4">Status</th>
                 <th className="py-3 px-4 text-right">Action</th>
               </tr>
@@ -344,6 +334,17 @@ export const EmployeeList: React.FC<EmployeeListProps> = ({
                   <td className="py-3 px-4 text-slate-600">{emp.job_title || '—'}</td>
                   <td className="py-3 px-4 text-slate-600">{emp.department?.name || '—'}</td>
                   <td className="py-3 px-4 text-slate-600">{emp.email}</td>
+                  <td className="py-3 px-4">
+                    {emp.bank_account_number && emp.bank_ifsc ? (
+                      <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                        {emp.bank_ifsc}
+                      </span>
+                    ) : (
+                      <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-rose-50 text-rose-700 border border-rose-200">
+                        Missing Bank Info
+                      </span>
+                    )}
+                  </td>
                   <td className="py-3 px-4">{getStatusBadge(emp.status)}</td>
                   <td className="py-3 px-4 text-right text-indigo-600 font-semibold hover:underline">
                     Detail &rarr;
@@ -358,7 +359,7 @@ export const EmployeeList: React.FC<EmployeeListProps> = ({
       {/* Create Employee Modal */}
       {showCreateModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl shadow-xl max-w-lg w-full p-6 border border-slate-200 animate-in fade-in zoom-in-95">
+          <div className="bg-white rounded-2xl shadow-xl max-w-lg w-full p-6 border border-slate-200">
             <div className="flex items-center justify-between pb-4 border-b border-slate-100">
               <h2 className="text-lg font-bold text-slate-900">Add New Employee</h2>
               <button
@@ -424,6 +425,29 @@ export const EmployeeList: React.FC<EmployeeListProps> = ({
                 </div>
               </div>
 
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Bank Account Number</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. ACCT0014523"
+                    value={formData.bank_account_number}
+                    onChange={(e) => setFormData({ ...formData, bank_account_number: e.target.value })}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Bank IFSC Code</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. PPAY0001234"
+                    value={formData.bank_ifsc}
+                    onChange={(e) => setFormData({ ...formData, bank_ifsc: e.target.value })}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+              </div>
+
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">Department</label>
                 <select
@@ -450,7 +474,7 @@ export const EmployeeList: React.FC<EmployeeListProps> = ({
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium shadow-sm"
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-semibold shadow-sm"
                 >
                   Save Employee
                 </button>
