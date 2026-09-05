@@ -1,5 +1,6 @@
 import React from 'react';
 import { ChevronRight, Home } from 'lucide-react';
+import { useRole } from './RoleContext';
 
 export interface BreadcrumbItem {
   label: string;
@@ -32,58 +33,85 @@ export const Breadcrumbs: React.FC<BreadcrumbsProps> = ({
   onResetPayrun,
   onResetPayslip,
 }) => {
-  const items: BreadcrumbItem[] = [
-    {
-      label: 'Home',
-      tab: 'analytics',
-      onClick: () => onNavigate('analytics'),
-    },
-  ];
+  const { isSelfServiceOnly } = useRole();
+
+  const items: BreadcrumbItem[] = isSelfServiceOnly
+    ? [
+        {
+          label: 'Employee Portal',
+          onClick: () => onNavigate('master-data', 'employees'),
+        },
+      ]
+    : [
+        {
+          label: 'Home',
+          tab: 'analytics',
+          onClick: () => onNavigate('analytics'),
+        },
+      ];
 
   // Map tabs & subtabs to human-readable breadcrumb segments
   switch (activeTab) {
     case 'analytics':
-      items.push({ label: 'Dashboard', isCurrent: true });
+      if (!isSelfServiceOnly) {
+        items.push({ label: 'Dashboard', isCurrent: true });
+      }
       break;
 
     case 'master-data':
-      items.push({
-        label: 'Workforce',
-        onClick: () => {
-          onNavigate('master-data', 'employees');
-          if (onResetEmployee) onResetEmployee();
-        },
-      });
-      if (activeSubTab === 'employees') {
-        items.push({
-          label: 'Employees Directory',
-          onClick: selectedEmployeeId && onResetEmployee ? () => onResetEmployee() : undefined,
-          isCurrent: !selectedEmployeeId,
-        });
-        if (selectedEmployeeId) {
-          items.push({
-            label: `Employee #${selectedEmployeeId}`,
-            isCurrent: true,
-          });
+      if (isSelfServiceOnly) {
+        if (activeSubTab === 'leaves') {
+          items.push({ label: 'Leave Balances & Time Off', isCurrent: true });
+        } else {
+          items.push({ label: 'My Details', isCurrent: true });
         }
-      } else if (activeSubTab === 'contracts') {
-        items.push({ label: 'Contracts Manager', isCurrent: true });
-      } else if (activeSubTab === 'leaves') {
-        items.push({ label: 'Time Off & Leaves', isCurrent: true });
+      } else {
+        items.push({
+          label: 'Workforce',
+          onClick: () => {
+            onNavigate('master-data', 'employees');
+            if (onResetEmployee) onResetEmployee();
+          },
+        });
+        if (activeSubTab === 'employees') {
+          items.push({
+            label: 'Employees Directory',
+            onClick: selectedEmployeeId && onResetEmployee ? () => onResetEmployee() : undefined,
+            isCurrent: !selectedEmployeeId,
+          });
+          if (selectedEmployeeId) {
+            items.push({
+              label: `Employee #${selectedEmployeeId}`,
+              isCurrent: true,
+            });
+          }
+        } else if (activeSubTab === 'contracts') {
+          items.push({ label: 'Contracts Manager', isCurrent: true });
+        } else if (activeSubTab === 'leaves') {
+          items.push({ label: 'Time Off & Leaves', isCurrent: true });
+        }
       }
       break;
 
     case 'attendance':
-      items.push({
-        label: 'Attendance',
-        onClick: () => onNavigate('attendance', 'tracker'),
-      });
-      if (activeSubTab === 'tracker') {
-        items.push({ label: 'Clock-In & Status', isCurrent: true });
-      } else if (activeSubTab === 'daily') {
-        items.push({ label: 'Daily Punches Matrix', isCurrent: true });
-      } else if (activeSubTab === 'shifts') {
-        items.push({ label: 'Shift Rosters', isCurrent: true });
+      if (isSelfServiceOnly) {
+        if (activeSubTab === 'daily') {
+          items.push({ label: 'Attendance Records', isCurrent: true });
+        } else {
+          items.push({ label: 'Clock-In Entry', isCurrent: true });
+        }
+      } else {
+        items.push({
+          label: 'Attendance',
+          onClick: () => onNavigate('attendance', 'tracker'),
+        });
+        if (activeSubTab === 'tracker') {
+          items.push({ label: 'Clock-In & Status', isCurrent: true });
+        } else if (activeSubTab === 'daily') {
+          items.push({ label: 'Daily Punches Matrix', isCurrent: true });
+        } else if (activeSubTab === 'shifts') {
+          items.push({ label: 'Shift Rosters', isCurrent: true });
+        }
       }
       break;
 

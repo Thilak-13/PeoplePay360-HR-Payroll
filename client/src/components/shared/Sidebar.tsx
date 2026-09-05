@@ -74,100 +74,144 @@ export const Sidebar: React.FC<SidebarProps> = ({
     }[];
   }
 
-  const sections: NavSection[] = [
-    {
-      title: 'Overview',
-      items: [
-        { id: 'analytics', label: 'Dashboard', icon: TrendingUp, visible: true },
-      ],
-    },
-    {
-      title: 'Workforce & HR',
-      items: [
+  const sections: NavSection[] = isSelfServiceOnly
+    ? [
         {
-          id: 'master-data',
-          subTab: 'employees',
-          label: isSelfServiceOnly ? 'My Details' : 'Employees',
-          icon: Users,
-          visible: true,
+          title: 'My Self-Service',
+          items: [
+            {
+              id: 'master-data',
+              subTab: 'employees',
+              label: 'My Details',
+              icon: Users,
+              visible: true,
+            },
+            {
+              id: 'attendance',
+              subTab: 'daily',
+              label: 'Attendance Records',
+              icon: CalendarDays,
+              visible: true,
+            },
+            {
+              id: 'master-data',
+              subTab: 'leaves',
+              label: 'Leave Balances & Time Off',
+              icon: Calendar,
+              visible: true,
+            },
+            {
+              id: 'attendance',
+              subTab: 'tracker',
+              label: 'Clock-In Entry',
+              icon: Clock,
+              visible: true,
+            },
+          ],
+        },
+      ]
+    : [
+        {
+          title: 'Overview',
+          items: [
+            { id: 'analytics', label: 'Dashboard', icon: TrendingUp, visible: true },
+          ],
         },
         {
-          id: 'master-data',
-          subTab: 'contracts',
-          label: 'Contracts',
-          icon: FileCheck,
-          visible: canManageEmployees,
+          title: 'Workforce & HR',
+          items: [
+            {
+              id: 'master-data',
+              subTab: 'employees',
+              label: 'Employees',
+              icon: Users,
+              visible: true,
+            },
+            {
+              id: 'master-data',
+              subTab: 'contracts',
+              label: 'Contracts',
+              icon: FileCheck,
+              visible: canManageEmployees,
+            },
+            {
+              id: 'attendance',
+              subTab: 'shifts',
+              label: 'Working Schedules',
+              icon: Shuffle,
+              visible: canManageEmployees,
+            },
+            {
+              id: 'master-data',
+              subTab: 'leaves',
+              label: 'Time Off & Leaves',
+              icon: Calendar,
+              visible: true,
+            },
+          ],
         },
         {
-          id: 'attendance',
-          subTab: 'shifts',
-          label: 'Working Schedules',
-          icon: Shuffle,
-          visible: canManageEmployees,
+          title: 'Attendance',
+          items: [
+            {
+              id: 'attendance',
+              subTab: 'tracker',
+              label: 'Clock-In & Status',
+              icon: Clock,
+              visible: true,
+            },
+            {
+              id: 'attendance',
+              subTab: 'daily',
+              label: 'Attendance Records',
+              icon: CalendarDays,
+              visible: true,
+            },
+          ],
         },
         {
-          id: 'master-data',
-          subTab: 'leaves',
-          label: isSelfServiceOnly ? 'My Time Off' : 'Time Off & Leaves',
-          icon: Calendar,
-          visible: true,
-        },
-      ],
-    },
-    {
-      title: 'Attendance',
-      items: [
-        {
-          id: 'attendance',
-          subTab: 'tracker',
-          label: isSelfServiceOnly ? 'Clock-In Entry' : 'Clock-In & Status',
-          icon: Clock,
-          visible: true,
-        },
-        {
-          id: 'attendance',
-          subTab: 'daily',
-          label: isSelfServiceOnly ? 'My Attendance Records' : 'Attendance Records',
-          icon: CalendarDays,
-          visible: true,
-        },
-      ],
-    },
-    {
-      title: 'Payroll',
-      items: [
-        {
-          id: 'payroll',
-          subTab: 'payruns',
-          label: 'Payruns & Payslips',
-          icon: CreditCard,
-          visible: canAccessPayroll,
+          title: 'Payroll',
+          items: [
+            {
+              id: 'payroll',
+              subTab: 'payruns',
+              label: 'Payruns & Payslips',
+              icon: CreditCard,
+              visible: canAccessPayroll,
+            },
+            {
+              id: 'payroll',
+              subTab: 'structures',
+              label: 'Salary Structures & Rules',
+              icon: Sliders,
+              visible: canAccessPayroll,
+            },
+          ],
         },
         {
-          id: 'payroll',
-          subTab: 'structures',
-          label: 'Salary Structures & Rules',
-          icon: Sliders,
-          visible: canAccessPayroll,
+          title: 'Administration',
+          items: [
+            {
+              id: 'user-management',
+              label: 'User Management & Roles',
+              icon: Shield,
+              visible: canManageUsers,
+            },
+          ],
         },
-      ],
-    },
-    {
-      title: 'Administration',
-      items: [
-        {
-          id: 'user-management',
-          label: 'User Management & Roles',
-          icon: Shield,
-          visible: canManageUsers,
-        },
-      ],
-    },
-  ];
+      ];
 
   const initials = user?.email
     ? user.email.split('@')[0].slice(0, 2).toUpperCase()
     : 'U';
+
+  const handleBrandClick = () => {
+    if (isSelfServiceOnly) {
+      onNavigate('master-data', 'employees');
+    } else {
+      onNavigate('analytics');
+    }
+  };
 
   return (
     <aside
@@ -180,7 +224,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {!isCollapsed ? (
           <div
             className="flex items-center space-x-2.5 cursor-pointer min-w-0"
-            onClick={() => onNavigate('analytics')}
+            onClick={handleBrandClick}
           >
             <div className="w-8 h-8 rounded-lg bg-slate-800 border border-slate-700 text-white flex items-center justify-center font-bold text-sm shadow-xs flex-shrink-0">
               P
@@ -190,14 +234,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 PeoplePay<span className="text-slate-400">360</span>
               </span>
               <span className="text-[10px] text-slate-400 font-medium tracking-wide truncate block">
-                HR &amp; Payroll Workspace
+                {isSelfServiceOnly ? 'Employee Portal' : 'HR & Payroll Workspace'}
               </span>
             </div>
           </div>
         ) : (
           <div
             className="w-8 h-8 rounded-lg bg-slate-800 border border-slate-700 text-white flex items-center justify-center font-bold text-sm shadow-xs mx-auto cursor-pointer"
-            onClick={() => onNavigate('analytics')}
+            onClick={handleBrandClick}
             title="PeoplePay360"
           >
             P

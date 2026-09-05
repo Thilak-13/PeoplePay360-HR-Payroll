@@ -29,8 +29,10 @@ export const AppShell: React.FC = () => {
   const { isAuthenticated, isLoading, user, logout } = useAuth();
   const { canManageEmployees, canRunPayroll, isSelfServiceOnly } = useRole();
 
-  const [activeTab, setActiveTab] = useState<string>('analytics');
-  const [selectedEmployeeId, setSelectedEmployeeId] = useState<number | null>(null);
+  const [activeTab, setActiveTab] = useState<string>(() => (isSelfServiceOnly ? 'master-data' : 'analytics'));
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState<number | null>(
+    isSelfServiceOnly && user?.employee_id ? user.employee_id : null
+  );
   const [selectedPayslipId, setSelectedPayslipId] = useState<number | null>(null);
   const [selectedPayrunId, setSelectedPayrunId] = useState<number | null>(null);
 
@@ -45,6 +47,25 @@ export const AppShell: React.FC = () => {
 
   // Profile modal
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+
+  // Sync and enforce strict Employee boundaries when role switches
+  React.useEffect(() => {
+    if (isSelfServiceOnly) {
+      if (activeTab === 'analytics' || activeTab === 'payroll' || activeTab === 'user-management') {
+        setActiveTab('master-data');
+        setMasterSubTab('employees');
+      }
+      if (activeTab === 'master-data' && (masterSubTab === 'contracts' || masterSubTab === 'schedules')) {
+        setMasterSubTab('employees');
+      }
+      if (activeTab === 'attendance' && attendanceSubTab === 'shifts') {
+        setAttendanceSubTab('tracker');
+      }
+      if (user?.employee_id) {
+        setSelectedEmployeeId(user.employee_id);
+      }
+    }
+  }, [isSelfServiceOnly, activeTab, masterSubTab, attendanceSubTab, user?.employee_id]);
 
   // 1. Loading screen
   if (isLoading) {
@@ -62,20 +83,36 @@ export const AppShell: React.FC = () => {
   }
 
   const handleNavigate = (tab: string, subTab?: string) => {
-    setActiveTab(tab);
-    if (tab === 'master-data') {
-      if (subTab) setMasterSubTab(subTab as any);
+    // If user is strictly employee, lock access out of payroll, analytics, and HR admin
+    let targetTab = tab;
+    let targetSubTab = subTab;
+    if (isSelfServiceOnly) {
+      if (targetTab === 'analytics' || targetTab === 'payroll' || targetTab === 'user-management') {
+        targetTab = 'master-data';
+        targetSubTab = 'employees';
+      }
+      if (targetTab === 'master-data' && (targetSubTab === 'contracts' || targetSubTab === 'schedules')) {
+        targetSubTab = 'employees';
+      }
+      if (targetTab === 'attendance' && targetSubTab === 'shifts') {
+        targetSubTab = 'tracker';
+      }
+    }
+
+    setActiveTab(targetTab);
+    if (targetTab === 'master-data') {
+      if (targetSubTab) setMasterSubTab(targetSubTab as any);
       if (isSelfServiceOnly && user?.employee_id) {
         setSelectedEmployeeId(user.employee_id);
       } else {
         setSelectedEmployeeId(null);
       }
-    } else if (tab === 'payroll') {
-      if (subTab) setPayrollSubTab(subTab as any);
+    } else if (targetTab === 'payroll') {
+      if (targetSubTab) setPayrollSubTab(targetSubTab as any);
       setSelectedPayrunId(null);
       setSelectedPayslipId(null);
-    } else if (tab === 'attendance') {
-      if (subTab) setAttendanceSubTab(subTab as any);
+    } else if (targetTab === 'attendance') {
+      if (targetSubTab) setAttendanceSubTab(targetSubTab as any);
     }
     setIsMobileSidebarOpen(false);
   };
@@ -167,8 +204,8 @@ export const AppShell: React.FC = () => {
 
         {/* Main Content Area */}
         <main className="flex-1 overflow-x-hidden">
-          {/* 1. Analytics Dashboard */}
-          {activeTab === 'analytics' && (
+          {/* 1. Analytics Dashboard (Not accessible to Employee role) */}
+          {activeTab === 'analytics' && !isSelfServiceOnly && (
             <PayrollDashboard
               onNavigateToEmployee={handleNavigateToEmployee}
               onNavigateToPayslip={handleNavigateToPayslip}

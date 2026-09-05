@@ -3,6 +3,7 @@ import { EmployeeDetail as EmployeeDetailType } from './types';
 import { ContractManager } from './ContractManager';
 import { LeaveManager } from './LeaveManager';
 import { StatusBadge } from '../../components/shared/StatusBadge';
+import { useRole } from '../../components/shared/RoleContext';
 
 interface EmployeeDetailProps {
   employeeId: number;
@@ -10,6 +11,7 @@ interface EmployeeDetailProps {
 }
 
 export const EmployeeDetail: React.FC<EmployeeDetailProps> = ({ employeeId, onBack }) => {
+  const { isSelfServiceOnly, canManageEmployees, canManageHR } = useRole();
   const [employee, setEmployee] = useState<EmployeeDetailType | null>(null);
   const [activeTab, setActiveTab] = useState<'profile' | 'contracts' | 'timeoff' | 'allocations'>('profile');
   const [loading, setLoading] = useState(true);
@@ -82,23 +84,25 @@ export const EmployeeDetail: React.FC<EmployeeDetailProps> = ({ employeeId, onBa
 
         {/* TOP SMART-STAT BUTTONS */}
         <div className="flex items-center gap-2">
-          {/* Contracts Smart-Stat Button */}
-          <button
-            onClick={() => setActiveTab('contracts')}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-medium transition cursor-pointer shadow-2xs ${
-              activeTab === 'contracts'
-                ? 'bg-slate-900 text-white border-slate-900'
-                : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
-            }`}
-          >
-            <svg className="w-3.5 h-3.5 opacity-80" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-            <div className="text-left">
-              <span className="text-[10px] text-slate-400 block uppercase leading-tight font-semibold">Contracts</span>
-              <span className="font-semibold">{employee.contracts_count} Active</span>
-            </div>
-          </button>
+          {/* Contracts Smart-Stat Button (HR only) */}
+          {canManageEmployees && !isSelfServiceOnly && (
+            <button
+              onClick={() => setActiveTab('contracts')}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-medium transition cursor-pointer shadow-2xs ${
+                activeTab === 'contracts'
+                  ? 'bg-slate-900 text-white border-slate-900'
+                  : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+              }`}
+            >
+              <svg className="w-3.5 h-3.5 opacity-80" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              <div className="text-left">
+                <span className="text-[10px] text-slate-400 block uppercase leading-tight font-semibold">Contracts</span>
+                <span className="font-semibold">{employee.contracts_count} Active</span>
+              </div>
+            </button>
+          )}
 
           {/* Time Off Smart-Stat Button */}
           <button
@@ -113,28 +117,32 @@ export const EmployeeDetail: React.FC<EmployeeDetailProps> = ({ employeeId, onBa
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
             </svg>
             <div className="text-left">
-              <span className="text-[10px] text-slate-400 block uppercase leading-tight font-semibold">Time Off</span>
+              <span className="text-[10px] text-slate-400 block uppercase leading-tight font-semibold">
+                {isSelfServiceOnly ? 'My Time Off' : 'Time Off'}
+              </span>
               <span className="font-semibold">{employee.time_off_count} Requests</span>
             </div>
           </button>
 
-          {/* Allocations Smart-Stat Button */}
-          <button
-            onClick={() => setActiveTab('allocations')}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-medium transition cursor-pointer shadow-2xs ${
-              activeTab === 'allocations'
-                ? 'bg-slate-900 text-white border-slate-900'
-                : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
-            }`}
-          >
-            <svg className="w-3.5 h-3.5 opacity-80" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-            </svg>
-            <div className="text-left">
-              <span className="text-[10px] text-slate-400 block uppercase leading-tight font-semibold">Allocations</span>
-              <span className="font-semibold">{employee.allocations_count} Quotas</span>
-            </div>
-          </button>
+          {/* Allocations Smart-Stat Button (HR only) */}
+          {canManageHR && !isSelfServiceOnly && (
+            <button
+              onClick={() => setActiveTab('allocations')}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-medium transition cursor-pointer shadow-2xs ${
+                activeTab === 'allocations'
+                  ? 'bg-slate-900 text-white border-slate-900'
+                  : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+              }`}
+            >
+              <svg className="w-3.5 h-3.5 opacity-80" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+              </svg>
+              <div className="text-left">
+                <span className="text-[10px] text-slate-400 block uppercase leading-tight font-semibold">Allocations</span>
+                <span className="font-semibold">{employee.allocations_count} Quotas</span>
+              </div>
+            </button>
+          )}
         </div>
       </div>
 
@@ -150,16 +158,18 @@ export const EmployeeDetail: React.FC<EmployeeDetailProps> = ({ employeeId, onBa
         >
           General Overview
         </button>
-        <button
-          onClick={() => setActiveTab('contracts')}
-          className={`pb-2.5 text-xs font-semibold border-b-2 transition-all cursor-pointer ${
-            activeTab === 'contracts'
-              ? 'border-slate-900 text-slate-900'
-              : 'border-transparent text-slate-500 hover:text-slate-800'
-          }`}
-        >
-          Contracts &amp; Salary ({employee.contracts_count})
-        </button>
+        {canManageEmployees && !isSelfServiceOnly && (
+          <button
+            onClick={() => setActiveTab('contracts')}
+            className={`pb-2.5 text-xs font-semibold border-b-2 transition-all cursor-pointer ${
+              activeTab === 'contracts'
+                ? 'border-slate-900 text-slate-900'
+                : 'border-transparent text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            Contracts &amp; Salary ({employee.contracts_count})
+          </button>
+        )}
         <button
           onClick={() => setActiveTab('timeoff')}
           className={`pb-2.5 text-xs font-semibold border-b-2 transition-all cursor-pointer ${
@@ -168,18 +178,20 @@ export const EmployeeDetail: React.FC<EmployeeDetailProps> = ({ employeeId, onBa
               : 'border-transparent text-slate-500 hover:text-slate-800'
           }`}
         >
-          Leave Requests ({employee.time_off_count})
+          {isSelfServiceOnly ? 'Leave Balances & Requests' : `Leave Requests (${employee.time_off_count})`}
         </button>
-        <button
-          onClick={() => setActiveTab('allocations')}
-          className={`pb-2.5 text-xs font-semibold border-b-2 transition-all cursor-pointer ${
-            activeTab === 'allocations'
-              ? 'border-slate-900 text-slate-900'
-              : 'border-transparent text-slate-500 hover:text-slate-800'
-          }`}
-        >
-          Leave Balances ({employee.allocations_count})
-        </button>
+        {canManageHR && !isSelfServiceOnly && (
+          <button
+            onClick={() => setActiveTab('allocations')}
+            className={`pb-2.5 text-xs font-semibold border-b-2 transition-all cursor-pointer ${
+              activeTab === 'allocations'
+                ? 'border-slate-900 text-slate-900'
+                : 'border-transparent text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            Leave Balances ({employee.allocations_count})
+          </button>
+        )}
       </div>
 
       {/* Tab Panels */}
