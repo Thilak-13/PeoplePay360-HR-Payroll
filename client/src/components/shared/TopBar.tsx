@@ -69,14 +69,14 @@ export const TopBar: React.FC<TopBarProps> = ({
         {/* Profile Pill Trigger */}
         <button
           onClick={onOpenProfile}
-          className="flex items-center gap-2 p-1 pr-2.5 rounded-lg border border-slate-200 hover:bg-slate-50 transition cursor-pointer"
+          className="flex items-center gap-2 p-1 pr-2.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 transition cursor-pointer shadow-2xs"
           title="Account Settings"
         >
-          <div className="w-6 h-6 rounded-md bg-indigo-600 text-white font-bold text-[11px] flex items-center justify-center">
+          <div className="w-6 h-6 rounded-md bg-slate-800 text-white font-medium text-[11px] flex items-center justify-center">
             {initials}
           </div>
           <div className="hidden sm:block text-left text-xs">
-            <span className="font-semibold text-slate-800 block leading-tight max-w-[100px] truncate">
+            <span className="font-medium text-slate-800 block leading-tight max-w-[120px] truncate">
               {user?.email ? user.email.split('@')[0] : 'Account'}
             </span>
           </div>

@@ -154,7 +154,7 @@ export const Breadcrumbs: React.FC<BreadcrumbsProps> = ({
               <button
                 type="button"
                 onClick={item.onClick}
-                className="hover:text-indigo-600 transition truncate cursor-pointer font-medium"
+                className="hover:text-slate-900 transition truncate cursor-pointer font-medium"
               >
                 {isFirst && <Home className="w-3.5 h-3.5 inline mr-1 -mt-0.5" />}
                 {item.label}
