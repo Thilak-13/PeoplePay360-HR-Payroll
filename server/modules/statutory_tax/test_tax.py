@@ -17,8 +17,8 @@ from server.modules.statutory_tax.tax_engine import (
     compare_regimes
 )
 
-test_app = FastAPI()
-test_app.include_router(tax_router, prefix='/api/v1/tax', tags=['Statutory Tax'])
+app = FastAPI()
+app.include_router(tax_router, prefix='/api/v1/tax', tags=['Statutory Tax'])
 
 TEST_DB_URL = 'sqlite:///:memory:'
 engine = create_engine(
@@ -36,8 +36,8 @@ def override_get_db():
     finally:
         db.close()
 
-test_app.dependency_overrides[get_db] = override_get_db
-client = TestClient(test_app)
+app.dependency_overrides[get_db] = override_get_db
+client = TestClient(app)
 
 @pytest.fixture(autouse=True)
 def seed_test_employees():

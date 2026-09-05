@@ -13,8 +13,8 @@ import server.modules.expenses.models
 from server.modules.expenses.router import router as expenses_router
 from server.modules.master_data.models import Employee
 
-test_app = FastAPI()
-test_app.include_router(expenses_router, prefix="/api/v1/expenses", tags=["Expenses"])
+app = FastAPI()
+app.include_router(expenses_router, prefix="/api/v1/expenses", tags=["Expenses"])
 
 TEST_DB_URL = "sqlite:///:memory:"
 engine = create_engine(
@@ -35,8 +35,8 @@ def override_get_db():
         db.close()
 
 
-test_app.dependency_overrides[get_db] = override_get_db
-client = TestClient(test_app)
+app.dependency_overrides[get_db] = override_get_db
+client = TestClient(app)
 
 
 @pytest.fixture(autouse=True)

@@ -14,8 +14,8 @@ from server.modules.attendance.router import router as attendance_router
 from server.modules.attendance.services import AttendanceService
 from server.modules.master_data.models import Employee, LeaveRequest
 
-test_app = FastAPI()
-test_app.include_router(attendance_router, prefix="/api/v1/attendance", tags=["Attendance"])
+app = FastAPI()
+app.include_router(attendance_router, prefix="/api/v1/attendance", tags=["Attendance"])
 
 TEST_DB_URL = "sqlite:///:memory:"
 engine = create_engine(
@@ -36,8 +36,8 @@ def override_get_db():
         db.close()
 
 
-test_app.dependency_overrides[get_db] = override_get_db
-client = TestClient(test_app)
+app.dependency_overrides[get_db] = override_get_db
+client = TestClient(app)
 
 
 @pytest.fixture(autouse=True)

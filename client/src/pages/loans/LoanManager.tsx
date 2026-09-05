@@ -113,7 +113,7 @@ export const LoanManager: React.FC = () => {
           </div>
           <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
             <span className="text-xs font-semibold uppercase text-amber-600">Pending Review</span>
-            <div className="text-2xl font-bold text-amber-700 mt-1">{metrics.pending_loans_count}</div>
+            <div className="text-2xl font-bold text-amber-700 mt-1">{metrics.pending_approval_count}</div>
           </div>
           <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
             <span className="text-xs font-semibold uppercase text-slate-500">Total Disbursed</span>

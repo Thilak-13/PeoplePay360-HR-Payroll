@@ -11,8 +11,8 @@ from server.modules.auth.security import hash_password, verify_password, create_
 from fastapi import FastAPI
 from server.modules.auth.router import router as auth_router
 
-test_app = FastAPI()
-test_app.include_router(auth_router, prefix="/api/v1/auth", tags=["Auth"])
+app = FastAPI()
+app.include_router(auth_router, prefix="/api/v1/auth", tags=["Auth"])
 
 TEST_DB_URL = "sqlite:///:memory:"
 engine = create_engine(
@@ -33,8 +33,8 @@ def override_get_db():
         db.close()
 
 
-test_app.dependency_overrides[get_db] = override_get_db
-client = TestClient(test_app)
+app.dependency_overrides[get_db] = override_get_db
+client = TestClient(app)
 
 
 def test_password_hashing():

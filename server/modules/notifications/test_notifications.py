@@ -11,8 +11,8 @@ from server.modules.notifications.models import NotificationLog
 from server.modules.notifications.router import router as notifications_router
 from server.modules.notifications.pdf_generator import generate_payslip_pdf
 
-test_app = FastAPI()
-test_app.include_router(notifications_router, prefix='/api/v1/notifications', tags=['Notifications'])
+app = FastAPI()
+app.include_router(notifications_router, prefix='/api/v1/notifications', tags=['Notifications'])
 
 TEST_DB_URL = 'sqlite:///:memory:'
 engine = create_engine(
@@ -30,8 +30,8 @@ def override_get_db():
     finally:
         db.close()
 
-test_app.dependency_overrides[get_db] = override_get_db
-client = TestClient(test_app)
+app.dependency_overrides[get_db] = override_get_db
+client = TestClient(app)
 
 def test_notifications_ping():
     res = client.get('/api/v1/notifications/ping')
