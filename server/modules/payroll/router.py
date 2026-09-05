@@ -381,7 +381,7 @@ def list_payslips(
 
 @router.get("/payslips/{payslip_id}", response_model=PayslipDetailResponse, tags=["Payslips"])
 def get_payslip_detail(payslip_id: int, db: Session = Depends(get_db)):
-    """Get single payslip with itemized rule breakdown snapshot lines."""
+    """Get single payslip with its sorted snapshot lines (code, name, category, amount, rate, sequence)."""
     s = PayrollService.get_payslip_by_id(db, payslip_id)
     if not s:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Payslip #{payslip_id} not found")
@@ -393,6 +393,7 @@ def get_payslip_detail(payslip_id: int, db: Session = Depends(get_db)):
         WHERE e.id = :id
     """), {"id": s.employee_id}).fetchone()
 
+    sorted_lines = sorted(s.lines, key=lambda l: (l.sequence or 10, l.id or 0))
     lines = [
         {
             "id": l.id,
@@ -408,7 +409,7 @@ def get_payslip_detail(payslip_id: int, db: Session = Depends(get_db)):
             "created_at": l.created_at,
             "updated_at": l.updated_at
         }
-        for l in s.lines
+        for l in sorted_lines
     ]
 
     return PayslipDetailResponse(
