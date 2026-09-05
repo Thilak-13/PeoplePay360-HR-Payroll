@@ -61,7 +61,7 @@ def generate_payslip_pdf(data: Dict[str, Any]) -> bytes:
     story = []
 
     # Header
-    story.append(Paragraph("<b>PeoplePay360 Global Technologies Ltd.</b>", title_style))
+    story.append(Paragraph("<b>PeoplePay360 Technologies Private Limited</b>", title_style))
     story.append(Paragraph("Confidential Employee Monthly Salary Slip", subtitle_style))
     pay_period = data.get('pay_period', datetime.now(timezone.utc).strftime('%B %Y'))
     story.append(Paragraph(f"Pay Period: <b>{pay_period}</b>", subtitle_style))

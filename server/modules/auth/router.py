@@ -407,11 +407,11 @@ def ensure_baseline_entities(db: Session):
 
     # 3. Baseline Employees (1 to 5)
     baseline_employees = [
-        (1, "John", "Doe", "john.doe@peoplepay360.com", "+1-555-0101", 1, "Principal Architect & Admin"),
-        (2, "Sarah", "Connor", "sarah.connor@peoplepay360.com", "+1-555-0102", 3, "HR Director"),
-        (3, "Alex", "Murphy", "alex.murphy@peoplepay360.com", "+1-555-0103", 1, "Payroll Specialist"),
-        (4, "Thilak", "I", "thilak@gmail.com", "+1-555-0104", 1, "Payroll Operations Director"),
-        (5, "Eleanor", "Vance", "employee@peoplepay360.com", "+1-555-0105", 1, "Software Engineer"),
+        (1, "Aditya", "Raman", "john.doe@peoplepay360.com", "+91-98401-23456", 1, "Principal Architect & Admin"),
+        (2, "Priya", "Sundaram", "sarah.connor@peoplepay360.com", "+91-98412-34567", 3, "HR Director"),
+        (3, "Karthik", "Subramanian", "alex.murphy@peoplepay360.com", "+91-94440-12345", 1, "Payroll Specialist"),
+        (4, "Thilak", "I", "thilak@gmail.com", "+91-98840-56789", 1, "Payroll Operations Director"),
+        (5, "Ananya", "Krishnan", "employee@peoplepay360.com", "+91-97909-12345", 1, "Software Engineer"),
     ]
 
     for emp_id, fname, lname, email, phone, d_id, title in baseline_employees:
@@ -430,7 +430,12 @@ def ensure_baseline_entities(db: Session):
                 hire_date=date(2025, 1, 1),
             )
             db.add(emp)
-            db.commit()
+        else:
+            emp.first_name = fname
+            emp.last_name = lname
+            emp.phone = phone
+            emp.job_title = title
+    db.commit()
 
     # 4. Contracts for Employees 1..5
     contracts_map = {1: 75000.00, 2: 60000.00, 3: 65000.00, 4: 70000.00, 5: 55000.00}

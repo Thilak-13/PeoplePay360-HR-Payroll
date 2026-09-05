@@ -113,7 +113,7 @@ class TestAnalyticsModule(unittest.TestCase):
             """))
             conn.execute(text("""
                 INSERT INTO employees (id, first_name, last_name, email, phone, department_id, bank_account_number, bank_ifsc, status) VALUES
-                (1, 'Alice', 'Smith', 'alice@test.local', '+1-555-0101', 1, 'ACCT00010101', 'PPAY0001234', 'active'),
+                (1, 'Alice', 'Smith', 'alice@test.local', '+91-98401-23456', 1, 'ACCT00010101', 'PPAY0001234', 'active'),
                 (2, 'Bob', 'Jones', 'bob@test.local', NULL, 2, NULL, NULL, 'active');
             """))
             conn.execute(text("""

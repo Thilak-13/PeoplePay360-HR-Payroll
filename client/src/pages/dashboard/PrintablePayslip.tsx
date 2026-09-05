@@ -57,30 +57,30 @@ interface PrintableData {
   verification_hash: string;
 }
 
-// Enterprise standard compliant baseline: Eleanor Vance, Aug 2026, Bengaluru (Karnataka) establishment
+// Enterprise standard compliant baseline: Aditya Raman, Aug 2026, Chennai (Tamil Nadu) establishment
 const DEFAULT_PRINTABLE_PAYSLIP: PrintableData = {
   id: 1,
   payrun_name: 'August 2026 Monthly Payroll',
   pay_period: '01-Aug-2026 to 31-Aug-2026',
   payment_date: '31-Aug-2026',
   employee_id: 1,
-  employee_name: 'Eleanor Vance',
+  employee_name: 'Aditya Raman',
   job_title: 'Chief Executive Officer',
   department: 'Executive Leadership',
-  email: 'eleanor.vance@peoplepay360.local',
-  phone: '+1-555-0101',
+  email: 'aditya.raman@peoplepay360.local',
+  phone: '+91 98401 23456',
   date_of_joining: '10-Jan-2022',
   bank_account: 'ACCT00010101',
   ifsc_code: 'PPAY0001234',
   pan_number: 'ABCDE1234F',
   working_days: 31,
   paid_days: 31,
-  pf_establishment_code: 'KN/BNG/0012345/000',
-  esic_code: '53000123450000001',
-  ptrc_number: 'PTRC29123456',
-  tan_number: 'BLRP12345E',
-  cin_number: 'U72200KA2022PTC123456',
-  gstin: '29AABCP1234D1Z8',
+  pf_establishment_code: 'TN/MAS/0012345/000',
+  esic_code: '51000123450000001',
+  ptrc_number: 'PTRC33123456',
+  tan_number: 'CHEP12345E',
+  cin_number: 'U72200TN2022PTC123456',
+  gstin: '33AABCP1234D1Z8',
   earnings: [
     { name: 'Basic Pay (Wage Code floor: 50% of CTC)', amount: 11000.00, note: 'Legal minimum floor' },
     { name: 'House Rent Allowance (HRA - 40% Basic)', amount: 4400.00 },
@@ -89,7 +89,7 @@ const DEFAULT_PRINTABLE_PAYSLIP: PrintableData = {
   statutory_deductions: [
     { name: 'Employee PF (12% of Basic, capped ₹15,000)', amount: 1320.00, note: 'EPF ceiling ₹15k' },
     { name: 'Employee ESI (0.75% of Gross, gross ≤ ₹21,000)', amount: 128.00, note: 'Rounded up to next ₹' },
-    { name: 'Professional Tax (Karnataka: nil below ₹25,000)', amount: 0.00, note: 'Amendment Act 2025' },
+    { name: 'Professional Tax (Tamil Nadu - Chennai: nil below ₹21,000)', amount: 0.00, note: 'Greater Chennai Corporation / TN PT Act' },
     { name: 'TDS (Income Tax - Projected New Regime)', amount: 0.00, note: 'Income below threshold' },
   ],
   other_deductions: [
@@ -281,7 +281,7 @@ export const PrintablePayslip: React.FC<PrintablePayslipProps> = ({
                 </div>
               </div>
               <p className="text-xs text-gray-500 mt-2">
-                Innovations Tower, 4th Floor, Tech Hub District, Bengaluru, Karnataka - 560100
+                Module 4B, 4th Floor, Phase II, Ascendas International Tech Park, CSIR Road, Taramani, Chennai, Tamil Nadu - 600113
               </p>
               {/* Secondary Corporate Registrations */}
               <p className="text-[11px] text-gray-400 mt-0.5">
@@ -531,7 +531,7 @@ export const PrintablePayslip: React.FC<PrintablePayslipProps> = ({
           </div>
 
           <p className="text-[10px] text-center text-gray-400 italic">
-            This computer-generated statement is issued under the Code on Wages, 2019, Code on Social Security, 2020, and Karnataka Tax on Professions Act, 2025. It does not require a physical seal. For tax queries, contact hr@peoplepay360.local.
+            This computer-generated statement is issued under the Code on Wages, 2019, Code on Social Security, 2020, and Tamil Nadu Tax on Professions, Trades, Callings and Employments Act, 1992 (Greater Chennai Corporation). It does not require a physical seal. For tax queries, contact hr@peoplepay360.local.
           </p>
         </div>
       </div>

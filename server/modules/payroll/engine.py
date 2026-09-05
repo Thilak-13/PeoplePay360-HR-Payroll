@@ -224,7 +224,7 @@ def get_or_create_default_structure(db: Session) -> SalaryStructure:
             # 4. Statutory Deductions
             {"name": "Employee PF (12% of Basic)", "code": "PF", "category": "DEDUCTION", "sequence": 110, "amount_type": "percentage", "amount": Decimal("12.00"), "percentage_base": "BASIC"},
             {"name": "Employee ESI (0.75% of Gross)", "code": "ESI", "category": "DEDUCTION", "sequence": 115, "amount_type": "percentage", "amount": Decimal("0.75"), "percentage_base": "GROSS"},
-            {"name": "Professional Tax (Karnataka)", "code": "PTAX", "category": "DEDUCTION", "sequence": 120, "amount_type": "fixed", "amount": Decimal("0.00"), "percentage_base": "GROSS"},
+            {"name": "Professional Tax (Tamil Nadu - Chennai)", "code": "PTAX", "category": "DEDUCTION", "sequence": 120, "amount_type": "fixed", "amount": Decimal("0.00"), "percentage_base": "GROSS"},
             {"name": "Tax Deducted at Source (TDS)", "code": "TDS", "category": "DEDUCTION", "sequence": 130, "amount_type": "fixed", "amount": Decimal("0.00"), "percentage_base": "GROSS"},
             # 5. Net
             {"name": "Net Salary Payout", "code": "NET", "category": "NET", "sequence": 200, "amount_type": "percentage", "amount": Decimal("100.00"), "percentage_base": "NET"}
@@ -251,12 +251,12 @@ def calculate_payslip_lines_pipeline(
     wage: Decimal,
     rules: List[SalaryRule],
     pay_date: Optional[date] = None,
-    state: str = "KA"
+    state: str = "TN"
 ) -> Tuple[Decimal, Decimal, Decimal, Decimal, List[Dict[str, Any]]]:
     """
     Execute rules ordered by sequence ASC across categories:
     (BASIC -> ALLOWANCE -> GROSS -> DEDUCTION -> NET)
-    Complies with Code on Wages (50% floor), EPF ceiling (₹15k), ESI ceiling (₹21k), and KA PT 2025 (₹25k threshold).
+    Complies with Code on Wages (50% floor), EPF ceiling (₹15k), ESI ceiling (₹21k), and Tamil Nadu / Chennai PT (Greater Chennai Corporation) regulations.
     Returns: (basic_wage, gross_wage, total_deductions, net_wage, snapshot_lines)
     """
     import math
@@ -336,10 +336,18 @@ def calculate_payslip_lines_pipeline(
                     line_total = Decimal("0.00")
 
             elif code_upper in ("PT", "PTAX"):
-                # Karnataka PT Amendment Act 2025: Nil below ₹25,000/month
+                # Professional Tax compliance (Tamil Nadu / Greater Chennai Corporation or Karnataka)
                 current_gross = category_totals["GROSS"]
                 rate = Decimal("100.00")
-                if state.upper() == "KA":
+                if state.upper() in ("TN", "TAMIL NADU", "CHENNAI"):
+                    # Tamil Nadu Tax on Professions, Trades, Callings and Employments Act, 1992
+                    # Greater Chennai Corporation: monthly standard deduction of ₹200.00 if gross >= ₹21,000 (nil below ₹21,000)
+                    if current_gross >= Decimal("21000.00"):
+                        line_total = Decimal("200.00")
+                    else:
+                        line_total = Decimal("0.00")
+                elif state.upper() == "KA":
+                    # Karnataka PT Amendment Act 2025: Nil below ₹25,000/month
                     if current_gross >= Decimal("25000.00"):
                         # Feb is ₹300, other months ₹200
                         line_total = Decimal("300.00") if (pay_date and pay_date.month == 2) else Decimal("200.00")
