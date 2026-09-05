@@ -185,10 +185,10 @@ export const PayrollDashboard: React.FC<PayrollDashboardProps> = ({
             </div>
             <div>
               <h1 className="text-2xl font-bold tracking-tight text-gray-900">
-                PeoplePay360 Executive Analytics
+                Executive Payroll Dashboard
               </h1>
               <p className="text-sm text-gray-500">
-                Live SQL aggregations, department payroll spend, and pre-validation compliance monitoring.
+                Live SQL aggregations, department gross payroll spend, and pre-validation compliance monitoring.
               </p>
             </div>
           </div>
