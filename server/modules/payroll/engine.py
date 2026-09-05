@@ -176,14 +176,26 @@ def get_eligible_employees(db: Session, period_start: date, period_end: date) ->
             db, emp_id, period_start, period_end
         )
 
+        emp_name = f"{row[1]} {row[2]}".strip()
+        dept = row[5] or "General"
+        contract_id = row[6]
+        wage_dec = Decimal(str(row[7]))
+
         eligible.append({
+            "id": emp_id,
+            "name": emp_name,
+            "department": dept,
+            "active_contract_id": contract_id,
+            "wage": wage_dec,
+            "has_warning": has_warn,
+            "warning_reason": warn_msg,
+            # Extended fields for full frontend and router support
             "employee_id": emp_id,
-            "employee_name": f"{row[1]} {row[2]}".strip(),
+            "employee_name": emp_name,
             "employee_email": row[3],
             "job_title": row[4],
-            "department_name": row[5] or "General",
-            "contract_id": row[6],
-            "wage": Decimal(str(row[7])),
+            "department_name": dept,
+            "contract_id": contract_id,
             "contract_type": row[8],
             "contract_start": row[9],
             "contract_end": row[10],
