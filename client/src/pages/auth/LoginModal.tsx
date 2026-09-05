@@ -45,7 +45,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin
   const handleSeedUsers = async () => {
     try {
       const res = await seedDefaultUsers();
-      setSeedStatus(Seeded  demo accounts!);
+      setSeedStatus(`Seeded ${res.created_users.length} demo accounts!`);
       setTimeout(() => setSeedStatus(null), 4000);
     } catch (err: any) {
       setError("Failed to seed users: " + err.message);

@@ -1,98 +1,64 @@
-export type LoanType = 'salary_advance' | 'emergency_loan' | 'equipment_loan';
-
-export type LoanStatus =
-  | 'draft'
-  | 'pending_approval'
-  | 'approved'
-  | 'active'
-  | 'repaid'
-  | 'rejected';
+export interface EmployeeSnippet {
+  id: number;
+  first_name: string;
+  last_name: string;
+  email: string;
+  job_title?: string | null;
+}
 
 export interface LoanRepayment {
   id: number;
   loan_id: number;
   payslip_id?: number | null;
-  amount_paid: number;
+  installment_number: number;
+  amount_paid: string | number;
   payment_date: string;
-  balance_after: number;
+  balance_after: string | number;
   notes?: string | null;
-  created_at?: string;
+  created_at: string;
 }
 
 export interface EmployeeLoan {
   id: number;
   employee_id: number;
-  employee_name?: string;
-  loan_type: LoanType;
-  principal_amount: number;
-  interest_rate: number;
+  loan_type: "salary_advance" | "emergency_loan" | "personal_loan" | "equipment_loan";
+  principal_amount: string | number;
+  interest_rate: string | number;
   tenure_months: number;
-  monthly_emi: number;
-  remaining_balance: number;
-  status: LoanStatus;
+  total_repayable: string | number;
+  monthly_emi: string | number;
+  remaining_balance: string | number;
+  status: "draft" | "pending_approval" | "approved" | "active" | "repaid" | "rejected";
   reason?: string | null;
   disbursement_date?: string | null;
-  created_at?: string;
-  updated_at?: string;
-  repayments?: LoanRepayment[];
+  created_at: string;
+  updated_at: string;
+  employee?: EmployeeSnippet | null;
+  repayments?: LoanRepayment[] | null;
 }
 
 export interface LoanApplyRequest {
   employee_id: number;
-  loan_type: LoanType;
+  loan_type: "salary_advance" | "emergency_loan" | "personal_loan" | "equipment_loan";
   principal_amount: number;
   tenure_months: number;
   interest_rate?: number;
   reason?: string;
 }
 
-export interface LoanApproveRequest {
-  approver_id?: number;
+export interface ActiveDeduction {
+  employee_id: number;
+  active_loan_count: number;
+  total_monthly_emi: string | number;
+  total_remaining_balance: string | number;
+  active_loans: EmployeeLoan[];
 }
 
-export interface LoanRejectRequest {
-  remarks?: string;
-}
-
-export interface RecordDeductionRequest {
-  loan_id: number;
-  amount: number;
-  payslip_id?: number;
-  payment_date?: string;
-  notes?: string;
-}
-
-export interface ActiveDeductionResponse {
-  loan_id: number | null;
-  monthly_emi: number;
-  remaining_balance: number;
-  loan_type?: LoanType | null;
-}
-
-export interface EMIScheduleItem {
-  installment_number: number;
-  due_date: string;
-  emi_amount: number;
-  principal_component?: number;
-  interest_component?: number;
-  balance_after: number;
-  is_paid?: boolean;
-}
-
-export interface CalculateEMIResponse {
-  principal_amount: number;
-  tenure_months: number;
-  interest_rate: number;
-  monthly_emi: number;
-  total_payable: number;
-  total_interest: number;
-  schedule: EMIScheduleItem[];
-}
-
-export interface LoansListResponse {
-  loans: EmployeeLoan[];
-  total_active_loans: number;
-  total_disbursed: number;
-  total_recovered: number;
-  pending_approvals: number;
+export interface LoanMetrics {
+  total_loans_count: number;
+  active_loans_count: number;
+  pending_approval_count: number;
+  total_disbursed: string | number;
+  total_recovered: string | number;
+  total_outstanding_balance: string | number;
 }

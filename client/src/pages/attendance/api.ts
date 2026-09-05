@@ -1,96 +1,58 @@
+import axios from 'axios';
 import { AttendanceRecord, DailySummary, MonthlyAttendanceSummary, UnpaidAbsence, Shift, ShiftAssignment, PunchRequest } from './types';
 
 const API_BASE = '/api/v1/attendance';
 
 export async function recordPunch(req: PunchRequest): Promise<AttendanceRecord> {
-  const res = await fetch(${API_BASE}/punch, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(req),
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: 'Punch failed' }));
-    throw new Error(err.detail || 'Failed to record punch');
-  }
-  return res.json();
+  const res = await axios.post<AttendanceRecord>(`${API_BASE}/punch`, req);
+  return res.data;
 }
 
 export async function fetchDailySummary(date?: string): Promise<DailySummary> {
-  const url = date ? ${API_BASE}/daily-summary?date= : ${API_BASE}/daily-summary;
-  const res = await fetch(url);
-  if (!res.ok) {
-    throw new Error('Failed to fetch daily attendance summary');
-  }
-  return res.json();
+  const params: Record<string, string> = {};
+  if (date) params.date = date;
+  const res = await axios.get<DailySummary>(`${API_BASE}/daily-summary`, { params });
+  return res.data;
 }
 
 export async function fetchEmployeeMonthly(employeeId: number, year?: number, month?: number): Promise<MonthlyAttendanceSummary> {
-  const params = new URLSearchParams();
-  if (year) params.append('year', year.toString());
-  if (month) params.append('month', month.toString());
-  const res = await fetch(${API_BASE}/employee//monthly?);
-  if (!res.ok) {
-    throw new Error('Failed to fetch monthly attendance details');
-  }
-  return res.json();
+  const params: Record<string, number> = {};
+  if (year) params.year = year;
+  if (month) params.month = month;
+  const res = await axios.get<MonthlyAttendanceSummary>(`${API_BASE}/employee/${employeeId}/monthly`, { params });
+  return res.data;
 }
 
 export async function fetchUnpaidAbsences(employeeId: number, startDate: string, endDate: string): Promise<UnpaidAbsence> {
-  const res = await fetch(${API_BASE}/unpaid-absences/?start_date=&end_date=);
-  if (!res.ok) {
-    throw new Error('Failed to fetch unpaid absences');
-  }
-  return res.json();
+  const res = await axios.get<UnpaidAbsence>(`${API_BASE}/unpaid-absences/${employeeId}`, {
+    params: { start_date: startDate, end_date: endDate },
+  });
+  return res.data;
 }
 
 export async function fetchShifts(): Promise<Shift[]> {
-  const res = await fetch(${API_BASE}/shifts);
-  if (!res.ok) {
-    throw new Error('Failed to fetch shifts');
-  }
-  return res.json();
+  const res = await axios.get<Shift[]>(`${API_BASE}/shifts`);
+  return res.data;
 }
 
 export async function createShift(shift: Omit<Shift, 'id' | 'created_at'>): Promise<Shift> {
-  const res = await fetch(${API_BASE}/shifts, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(shift),
-  });
-  if (!res.ok) {
-    throw new Error('Failed to create shift');
-  }
-  return res.json();
+  const res = await axios.post<Shift>(`${API_BASE}/shifts`, shift);
+  return res.data;
 }
 
 export async function fetchShiftAssignments(employeeId?: number): Promise<ShiftAssignment[]> {
-  const url = employeeId ? ${API_BASE}/shift-assignments?employee_id= : ${API_BASE}/shift-assignments;
-  const res = await fetch(url);
-  if (!res.ok) {
-    throw new Error('Failed to fetch shift assignments');
-  }
-  return res.json();
+  const params: Record<string, number> = {};
+  if (employeeId) params.employee_id = employeeId;
+  const res = await axios.get<ShiftAssignment[]>(`${API_BASE}/shift-assignments`, { params });
+  return res.data;
 }
 
 export async function assignShift(assignment: { employee_id: number; shift_id: number; start_date: string; end_date?: string }): Promise<ShiftAssignment> {
-  const res = await fetch(${API_BASE}/shift-assignments, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(assignment),
-  });
-  if (!res.ok) {
-    throw new Error('Failed to assign shift');
-  }
-  return res.json();
+  const res = await axios.post<ShiftAssignment>(`${API_BASE}/shift-assignments`, assignment);
+  return res.data;
 }
 
 export async function seedSampleAttendance(): Promise<{ status: string; records_created: number }> {
-  const res = await fetch(${API_BASE}/seed-sample-records, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-  });
-  if (!res.ok) {
-    throw new Error('Failed to seed sample attendance');
-  }
-  return res.json();
+  const res = await axios.post<{ status: string; records_created: number }>(`${API_BASE}/seed-sample-records`);
+  return res.data;
 }

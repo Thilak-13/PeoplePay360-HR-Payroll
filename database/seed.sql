@@ -281,3 +281,95 @@ WHERE p.payrun_id = 1 AND r.structure_id = 1;
 
 SELECT setval('payslip_lines_id_seq', (SELECT COALESCE(MAX(id), 1) FROM payslip_lines));
 
+-- ==========================================================
+-- 11. Authentication & System Users
+-- ==========================================================
+INSERT INTO users (id, email, hashed_password, role, employee_id, is_active, created_at, updated_at) VALUES
+(1, 'superadmin@peoplepay360.com', '$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW', 'super_admin', 1, TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(2, 'hr.manager@peoplepay360.com', '$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW', 'hr_manager', 6, TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(3, 'payroll.officer@peoplepay360.com', '$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW', 'payroll_officer', 9, TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(4, 'dept.manager@peoplepay360.com', '$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW', 'dept_manager', 2, TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(5, 'alex.johnson@peoplepay360.com', '$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW', 'employee', 3, TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+ON CONFLICT (id) DO UPDATE SET
+    email = EXCLUDED.email,
+    role = EXCLUDED.role,
+    employee_id = EXCLUDED.employee_id,
+    is_active = EXCLUDED.is_active;
+
+-- ==========================================================
+-- 12. Shifts & Shift Assignments
+-- ==========================================================
+INSERT INTO shifts (id, name, start_time, end_time, grace_period_mins, created_at) VALUES
+(1, 'General Day Shift (9 AM - 5 PM)', '09:00:00', '17:00:00', 15, CURRENT_TIMESTAMP),
+(2, 'Morning Production Shift (6 AM - 2 PM)', '06:00:00', '14:00:00', 15, CURRENT_TIMESTAMP),
+(3, 'Evening Support Shift (2 PM - 10 PM)', '14:00:00', '22:00:00', 15, CURRENT_TIMESTAMP)
+ON CONFLICT (id) DO UPDATE SET
+    name = EXCLUDED.name,
+    start_time = EXCLUDED.start_time,
+    end_time = EXCLUDED.end_time;
+
+INSERT INTO shift_assignments (id, employee_id, shift_id, start_date, is_active) VALUES
+(1, 1, 1, '2026-01-01', TRUE),
+(2, 2, 1, '2026-01-01', TRUE),
+(3, 3, 1, '2026-01-01', TRUE),
+(4, 4, 1, '2026-01-01', TRUE),
+(5, 5, 2, '2026-01-01', TRUE)
+ON CONFLICT (id) DO UPDATE SET
+    employee_id = EXCLUDED.employee_id,
+    shift_id = EXCLUDED.shift_id;
+
+-- ==========================================================
+-- 13. Attendance Records
+-- ==========================================================
+INSERT INTO attendance_records (id, employee_id, date, clock_in, clock_out, worked_hours, overtime_hours, status) VALUES
+(1, 1, '2026-08-01', '2026-08-01 09:02:00', '2026-08-01 17:35:00', 8.55, 0.55, 'present'),
+(2, 2, '2026-08-01', '2026-08-01 08:58:00', '2026-08-01 17:05:00', 8.12, 0.12, 'present'),
+(3, 3, '2026-08-01', '2026-08-01 09:20:00', '2026-08-01 17:00:00', 7.67, 0.00, 'late'),
+(4, 4, '2026-08-01', NULL, NULL, 0.00, 0.00, 'on_leave'),
+(5, 5, '2026-08-01', '2026-08-01 06:01:00', '2026-08-01 15:30:00', 9.48, 1.48, 'present')
+ON CONFLICT (id) DO UPDATE SET
+    worked_hours = EXCLUDED.worked_hours,
+    status = EXCLUDED.status;
+
+-- ==========================================================
+-- 14. Employee Loans & Salary Advances
+-- ==========================================================
+INSERT INTO employee_loans (id, employee_id, loan_type, principal_amount, interest_rate, tenure_months, monthly_emi, remaining_balance, status, created_at) VALUES
+(1, 3, 'personal_loan', 120000.00, 8.5, 12, 10467.58, 83740.64, 'active', CURRENT_TIMESTAMP),
+(2, 5, 'salary_advance', 25000.00, 0.0, 3, 8333.33, 16666.67, 'active', CURRENT_TIMESTAMP),
+(3, 7, 'emergency_loan', 50000.00, 5.0, 6, 8455.20, 50000.00, 'approved', CURRENT_TIMESTAMP)
+ON CONFLICT (id) DO UPDATE SET
+    remaining_balance = EXCLUDED.remaining_balance,
+    status = EXCLUDED.status;
+
+-- ==========================================================
+-- 15. Expense Claims & Reimbursements
+-- ==========================================================
+INSERT INTO expense_claims (id, employee_id, category, amount, currency, expense_date, description, receipt_url, status, approved_by, created_at, updated_at) VALUES
+(1, 3, 'travel', 4500.00, 'INR', '2026-08-10', 'Client site visit cab fares and regional train passes', 'https://example.com/receipts/cab_101.pdf', 'approved', 2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(2, 5, 'food', 1250.00, 'INR', '2026-08-12', 'Team quarterly retrospective dinner', 'https://example.com/receipts/dinner_202.pdf', 'approved', 2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(3, 2, 'office_supplies', 8900.00, 'INR', '2026-08-15', 'Ergonomic dual-monitor arms and desk accessories', 'https://example.com/receipts/monitor_arm.pdf', 'submitted', NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+ON CONFLICT (id) DO UPDATE SET
+    amount = EXCLUDED.amount,
+    status = EXCLUDED.status;
+
+-- ==========================================================
+-- 16. Statutory Tax Declarations
+-- ==========================================================
+INSERT INTO tax_declarations (id, employee_id, financial_year, regime, section_80c_amount, section_80d_amount, hra_rent_paid, home_loan_interest, status, remarks, created_at, updated_at) VALUES
+(1, 1, '2024-2025', 'new', 150000.00, 25000.00, 180000.00, 0.00, 'verified', 'Executive annual declaration approved', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(2, 3, '2024-2025', 'old', 150000.00, 25000.00, 144000.00, 120000.00, 'verified', 'Home loan certificate verified', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(3, 5, '2024-2025', 'new', 80000.00, 15000.00, 96000.00, 0.00, 'submitted', 'ELSS proof attached', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+ON CONFLICT (id) DO UPDATE SET
+    regime = EXCLUDED.regime,
+    status = EXCLUDED.status;
+
+-- ==========================================================
+-- 17. Notification Logs
+-- ==========================================================
+INSERT INTO notification_logs (id, recipient_email, recipient_name, notification_type, subject, body, attachment_name, status, sent_at, created_at) VALUES
+(1, 'john.doe@example.com', 'John Doe', 'payslip_email', 'PeoplePay360 Payslip for August 2026 - John Doe', 'Dear John, Please find attached your payslip.', 'Payslip_August_2026_John_Doe.pdf', 'sent', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(2, 'jane.smith@example.com', 'Jane Smith', 'payslip_email', 'PeoplePay360 Payslip for August 2026 - Jane Smith', 'Dear Jane, Please find attached your payslip.', 'Payslip_August_2026_Jane_Smith.pdf', 'sent', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(3, 'alex.johnson@peoplepay360.com', 'Alex Johnson', 'loan_update', 'Loan Application #1 Approved', 'Your loan application has been approved by HR.', NULL, 'sent', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+ON CONFLICT (id) DO UPDATE SET
+    status = EXCLUDED.status;

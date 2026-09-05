@@ -1,92 +1,92 @@
-from datetime import date, datetime
-from typing import Optional, List, Dict, Any
+from datetime import datetime, date
+from typing import Optional, List, Literal
+from decimal import Decimal
 from pydantic import BaseModel, Field, ConfigDict
 
 
+class EmployeeSnippet(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    first_name: str
+    last_name: str
+    email: str
+    job_title: Optional[str] = None
+
+
 class LoanApplyRequest(BaseModel):
-    employee_id: int = Field(..., description="Target employee ID")
-    loan_type: str = Field("salary_advance", description="Loan classification ('salary_advance', 'emergency_loan', 'equipment_loan')")
-    principal_amount: float = Field(..., gt=0, description="Principal advance/loan amount requested")
-    tenure_months: int = Field(..., gt=0, description="Repayment period in months")
-    interest_rate: Optional[float] = Field(0.0, ge=0, description="Annual interest rate percentage (0.0 for interest-free advances)")
-    reason: Optional[str] = Field(None, description="Disbursement justification or rationale")
+    employee_id: int
+    loan_type: Literal["salary_advance", "emergency_loan", "personal_loan", "equipment_loan"] = "salary_advance"
+    principal_amount: Decimal = Field(gt=0, description="Loan principal amount")
+    tenure_months: int = Field(ge=1, le=60, default=1, description="Tenure in months")
+    interest_rate: Decimal = Field(default=Decimal("0.00"), ge=0, description="Annual interest rate percentage")
+    reason: Optional[str] = None
 
 
 class LoanApproveRequest(BaseModel):
-    approver_id: Optional[int] = Field(None, description="Employee ID of the authorizing manager")
+    disbursement_date: Optional[date] = None
+    approved_by: Optional[int] = None
 
 
 class LoanRejectRequest(BaseModel):
-    remarks: Optional[str] = Field(None, description="Reason for rejecting the loan application")
+    reason: Optional[str] = None
 
 
-class RecordDeductionRequest(BaseModel):
-    loan_id: int = Field(..., description="Target loan ID")
-    amount: float = Field(..., gt=0, description="Deduction repayment amount")
-    payslip_id: Optional[int] = Field(None, description="Associated payslip ID if deducted in payroll batch")
-    payment_date: Optional[date] = Field(None, description="Payment execution date")
-    notes: Optional[str] = Field(None, description="Audit notes or transaction references")
-
-
-class CalculateEMIRequest(BaseModel):
-    principal_amount: float = Field(..., gt=0)
-    tenure_months: int = Field(..., gt=0)
-    interest_rate: Optional[float] = Field(0.0, ge=0)
-
-
-class CalculateEMIResponse(BaseModel):
-    principal_amount: float
-    tenure_months: int
-    interest_rate: float
-    monthly_emi: float
-    total_payable: float
-    total_interest: float
-    schedule: List[Dict[str, Any]] = []
-
-
-class ActiveDeductionResponse(BaseModel):
-    loan_id: Optional[int] = None
-    monthly_emi: float = 0.0
-    remaining_balance: float = 0.0
-    loan_type: Optional[str] = None
+class DeductionRecordRequest(BaseModel):
+    loan_id: int
+    amount_paid: Decimal = Field(gt=0)
+    payslip_id: Optional[int] = None
+    payment_date: Optional[date] = None
+    notes: Optional[str] = None
 
 
 class LoanRepaymentResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     loan_id: int
     payslip_id: Optional[int] = None
-    amount_paid: float
+    installment_number: int
+    amount_paid: Decimal
     payment_date: date
-    balance_after: float
+    balance_after: Decimal
     notes: Optional[str] = None
-    created_at: Optional[datetime] = None
-
-    model_config = ConfigDict(from_attributes=True)
+    created_at: datetime
 
 
 class EmployeeLoanResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     employee_id: int
-    employee_name: Optional[str] = None
     loan_type: str
-    principal_amount: float
-    interest_rate: float
+    principal_amount: Decimal
+    interest_rate: Decimal
     tenure_months: int
-    monthly_emi: float
-    remaining_balance: float
+    total_repayable: Decimal
+    monthly_emi: Decimal
+    remaining_balance: Decimal
     status: str
     reason: Optional[str] = None
     disbursement_date: Optional[date] = None
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
-    repayments: List[LoanRepaymentResponse] = []
+    created_at: datetime
+    updated_at: datetime
+    employee: Optional[EmployeeSnippet] = None
+    repayments: Optional[List[LoanRepaymentResponse]] = None
 
-    model_config = ConfigDict(from_attributes=True)
+
+class ActiveDeductionResponse(BaseModel):
+    employee_id: int
+    active_loan_count: int
+    total_monthly_emi: Decimal
+    total_remaining_balance: Decimal
+    active_loans: List[EmployeeLoanResponse]
 
 
-class LoansListResponse(BaseModel):
-    loans: List[EmployeeLoanResponse] = []
-    total_active_loans: int = 0
-    total_disbursed: float = 0.0
-    total_recovered: float = 0.0
-    pending_approvals: int = 0
+class LoanMetricsResponse(BaseModel):
+    total_loans_count: int
+    active_loans_count: int
+    pending_approval_count: int
+    total_disbursed: Decimal
+    total_recovered: Decimal
+    total_outstanding_balance: Decimal

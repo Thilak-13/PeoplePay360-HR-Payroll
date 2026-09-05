@@ -36,12 +36,12 @@ export const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
       setLatestRecord(record);
       setMsg({
         type: "success",
-        text: Successfully clocked  at ! Worked: h,
+        text: `Successfully clocked ${punchType.toUpperCase()} at ${new Date().toLocaleTimeString()}! Worked: ${record.worked_hours || 0}h`,
       });
       setNotes("");
       if (onPunchComplete) onPunchComplete(record);
     } catch (err: any) {
-      setMsg({ type: "error", text: err.message || "Failed to record punch" });
+      setMsg({ type: "error", text: err.response?.data?.detail || err.message || "Failed to record punch" });
     } finally {
       setLoading(false);
     }
@@ -50,111 +50,110 @@ export const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
   const handleSeed = async () => {
     try {
       const res = await seedSampleAttendance();
-      setMsg({ type: "success", text: Seeded  today attendance records! });
+      setMsg({ type: "success", text: `Seeded ${res.records_created} today attendance records!` });
     } catch (e: any) {
       setMsg({ type: "error", text: e.message });
     }
   };
 
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-6 text-slate-100 max-w-xl mx-auto">
-      <div className="text-center space-y-1 bg-gradient-to-b from-slate-800 to-slate-900 border border-slate-800 p-6 rounded-2xl">
-        <div className="flex items-center justify-center gap-2 text-blue-400 font-semibold text-xs tracking-wider uppercase">
-          <Clock className="w-4 h-4 animate-pulse" />
-          <span>Live Workforce Time Clock</span>
+    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-6 text-slate-100 max-w-xl mx-auto my-6">
+      {/* Header */}
+      <div className="flex justify-between items-center border-b border-slate-800 pb-4">
+        <div className="flex items-center space-x-3">
+          <div className="p-2.5 bg-blue-600/20 text-blue-400 rounded-xl border border-blue-500/30">
+            <Clock className="w-6 h-6" />
+          </div>
+          <div>
+            <h2 className="text-lg font-bold text-white">Biometric Clock-In & Punches</h2>
+            <p className="text-xs text-slate-400">Live Time & Attendance Punch Terminal</p>
+          </div>
         </div>
-        <div className="text-4xl font-extrabold tracking-tight text-white font-mono">
+        <button
+          onClick={handleSeed}
+          className="text-xs flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg border border-slate-700 transition"
+        >
+          <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+          Seed Demo
+        </button>
+      </div>
+
+      {/* Live Digital Clock */}
+      <div className="bg-slate-950 border border-slate-800/80 rounded-2xl p-6 text-center space-y-1">
+        <div className="text-4xl font-black font-mono tracking-wider text-emerald-400">
           {currentTime.toLocaleTimeString()}
         </div>
-        <div className="text-xs text-slate-400">
+        <div className="text-xs text-slate-400 font-medium">
           {currentTime.toLocaleDateString(undefined, { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
         </div>
       </div>
 
+      {/* Status Feedback */}
       {msg && (
         <div
-          className={p-3.5 rounded-xl text-sm flex items-center gap-2.5 }
+          className={`p-3.5 rounded-xl text-xs flex items-center gap-2.5 ${
+            msg.type === "success"
+              ? "bg-emerald-950/80 border border-emerald-500/50 text-emerald-200"
+              : "bg-red-950/80 border border-red-500/50 text-red-200"
+          }`}
         >
-          {msg.type === "success" ? <CheckCircle2 className="w-5 h-5 flex-shrink-0 text-emerald-400" /> : <AlertCircle className="w-5 h-5 flex-shrink-0 text-red-400" />}
+          {msg.type === "success" ? (
+            <CheckCircle2 className="w-4 h-4 flex-shrink-0 text-emerald-400" />
+          ) : (
+            <AlertCircle className="w-4 h-4 flex-shrink-0 text-red-400" />
+          )}
           <span>{msg.text}</span>
         </div>
       )}
 
-      <div className="space-y-2">
-        <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400">
-          Select Employee
-        </label>
-        <select
-          value={selectedEmpId}
-          onChange={(e) => setSelectedEmpId(Number(e.target.value))}
-          className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          <option value={1}>#1 - John Doe (Principal Engineer)</option>
-          <option value={2}>#2 - Sarah Connor (Sales Director)</option>
-          <option value={3}>#3 - Alex Murphy (HR Specialist)</option>
-          <option value={4}>#4 - Bruce Wayne (CEO)</option>
-          <option value={5}>#5 - Clark Kent (Reporter)</option>
-        </select>
-      </div>
-
-      <div>
-        <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">
-          Punch Note (Optional)
-        </label>
-        <input
-          type="text"
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          placeholder="e.g. Remote Punch, Client Visit"
-          className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
-        <button
-          onClick={() => handlePunch("in")}
-          disabled={loading}
-          className="py-3 px-4 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-semibold rounded-xl shadow-lg shadow-emerald-600/30 transition-all flex items-center justify-center gap-2"
-        >
-          <Play className="w-4 h-4 fill-white" />
-          <span>Clock In</span>
-        </button>
-        <button
-          onClick={() => handlePunch("out")}
-          disabled={loading}
-          className="py-3 px-4 bg-rose-600 hover:bg-rose-500 disabled:opacity-50 text-white font-semibold rounded-xl shadow-lg shadow-rose-600/30 transition-all flex items-center justify-center gap-2"
-        >
-          <Square className="w-4 h-4 fill-white" />
-          <span>Clock Out</span>
-        </button>
-      </div>
-
-      {latestRecord && (
-        <div className="p-4 bg-slate-800/60 rounded-xl border border-slate-700 text-xs space-y-1 text-slate-300">
-          <div className="flex justify-between">
-            <span className="text-slate-400">Punch Status:</span>
-            <span className="font-semibold text-emerald-400 uppercase">{latestRecord.status}</span>
+      {/* Controls */}
+      <div className="space-y-4">
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
+              Employee ID
+            </label>
+            <input
+              type="number"
+              min={1}
+              value={selectedEmpId}
+              onChange={(e) => setSelectedEmpId(parseInt(e.target.value) || 1)}
+              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
           </div>
-          <div className="flex justify-between">
-            <span className="text-slate-400">Worked Hours:</span>
-            <span className="font-semibold text-white">{latestRecord.worked_hours} hrs</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-slate-400">Overtime:</span>
-            <span className="font-semibold text-amber-400">{latestRecord.overtime_hours} hrs</span>
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
+              Punch Notes (Optional)
+            </label>
+            <input
+              type="text"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="e.g. Remote / Field Visit"
+              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
           </div>
         </div>
-      )}
 
-      <div className="pt-2 text-center">
-        <button
-          type="button"
-          onClick={handleSeed}
-          className="text-xs text-blue-400 hover:text-blue-300 underline flex items-center justify-center gap-1 mx-auto"
-        >
-          <Sparkles className="w-3.5 h-3.5" />
-          <span>Seed Today Sample Attendance Records</span>
-        </button>
+        {/* Action Buttons */}
+        <div className="grid grid-cols-2 gap-4 pt-2">
+          <button
+            onClick={() => handlePunch("in")}
+            disabled={loading}
+            className="flex items-center justify-center gap-2 py-3 bg-emerald-600 hover:bg-emerald-500 disabled:bg-emerald-800 text-white font-bold rounded-xl shadow-lg shadow-emerald-900/30 transition cursor-pointer"
+          >
+            <Play className="w-4 h-4" />
+            Clock In (Punch IN)
+          </button>
+          <button
+            onClick={() => handlePunch("out")}
+            disabled={loading}
+            className="flex items-center justify-center gap-2 py-3 bg-amber-600 hover:bg-amber-500 disabled:bg-amber-800 text-white font-bold rounded-xl shadow-lg shadow-amber-900/30 transition cursor-pointer"
+          >
+            <Square className="w-4 h-4" />
+            Clock Out (Punch OUT)
+          </button>
+        </div>
       </div>
     </div>
   );

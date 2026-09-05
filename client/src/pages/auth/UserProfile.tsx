@@ -1,37 +1,48 @@
 import React, { useState, useEffect } from "react";
-import { User, Shield, Key, History, CheckCircle, AlertCircle, RefreshCw } from "lucide-react";
-import { User as UserType, AuditLog } from "./types";
-import { changePassword, fetchAuditLogs, getStoredUser } from "./api";
+import { User as UserIcon, Shield, Key, History, CheckCircle, AlertCircle, RefreshCw } from "lucide-react";
+import { fetchCurrentUser, changePassword, fetchAuditLogs, clearAuthToken } from "./api";
+import { User, AuditLog } from "./types";
 
 interface UserProfileProps {
-  user: UserType | null;
+  user?: User | null;
   onLogout: () => void;
 }
 
-export const UserProfile: React.FC<UserProfileProps> = ({ user, onLogout }) => {
-  const currentUser = user || getStoredUser();
+export const UserProfile: React.FC<UserProfileProps> = ({ user: initialUser, onLogout }) => {
+  const [currentUser, setCurrentUser] = useState<User | null>(initialUser || null);
   const [oldPassword, setOldPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [msg, setMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [loading, setLoading] = useState(false);
+
+  // Audit Logs for Admin/Manager
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [logsLoading, setLogsLoading] = useState(false);
 
-  const isPrivileged = currentUser?.role === "super_admin" || currentUser?.role === "hr_manager" || currentUser?.role === "payroll_officer";
-
   useEffect(() => {
-    if (isPrivileged) {
-      loadAuditLogs();
+    loadUser();
+  }, []);
+
+  const loadUser = async () => {
+    try {
+      const u = await fetchCurrentUser();
+      setCurrentUser(u);
+      if (u.role === "super_admin" || u.role === "hr_manager") {
+        loadAuditLogs();
+      }
+    } catch {
+      // ignore
     }
-  }, [currentUser]);
+  };
 
   const loadAuditLogs = async () => {
     setLogsLoading(true);
     try {
       const data = await fetchAuditLogs(20);
       setLogs(data);
-    } catch (e) {
-      // ignore
+    } catch (err) {
+      console.error(err);
     } finally {
       setLogsLoading(false);
     }
@@ -40,46 +51,47 @@ export const UserProfile: React.FC<UserProfileProps> = ({ user, onLogout }) => {
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
     setMsg(null);
+    if (newPassword !== confirmPassword) {
+      setMsg({ type: "error", text: "New passwords do not match" });
+      return;
+    }
+    if (newPassword.length < 6) {
+      setMsg({ type: "error", text: "Password must be at least 6 characters" });
+      return;
+    }
     setLoading(true);
     try {
       const res = await changePassword({ old_password: oldPassword, new_password: newPassword });
-      setMsg({ type: "success", text: res.message });
+      setMsg({ type: "success", text: res.message || "Password updated successfully" });
       setOldPassword("");
       setNewPassword("");
+      setConfirmPassword("");
     } catch (err: any) {
-      setMsg({ type: "error", text: err.message || "Failed to update password" });
+      setMsg({ type: "error", text: err.response?.data?.detail || err.message || "Failed to update password" });
     } finally {
       setLoading(false);
     }
   };
 
-  const getRoleBadge = (role: string) => {
-    switch (role) {
-      case "super_admin":
-        return <span className="px-2.5 py-1 bg-purple-500/20 text-purple-300 border border-purple-500/30 rounded-full text-xs font-semibold">Super Admin</span>;
-      case "hr_manager":
-        return <span className="px-2.5 py-1 bg-blue-500/20 text-blue-300 border border-blue-500/30 rounded-full text-xs font-semibold">HR Manager</span>;
-      case "payroll_officer":
-        return <span className="px-2.5 py-1 bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded-full text-xs font-semibold">Payroll Officer</span>;
-      default:
-        return <span className="px-2.5 py-1 bg-slate-500/20 text-slate-300 border border-slate-500/30 rounded-full text-xs font-semibold">Employee</span>;
-    }
-  };
+  const isPrivileged = currentUser?.role === "super_admin" || currentUser?.role === "hr_manager";
 
   return (
-    <div className="max-w-5xl mx-auto p-6 space-y-6">
-      <div className="flex justify-between items-center bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
-        <div className="flex items-center gap-4">
+    <div className="max-w-4xl mx-auto space-y-6 text-slate-100 p-4">
+      {/* Profile Header */}
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl flex items-center justify-between">
+        <div className="flex items-center space-x-4">
           <div className="w-14 h-14 bg-gradient-to-tr from-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center text-white font-bold text-xl shadow-lg">
-            {currentUser?.email?.substring(0, 2).toUpperCase() || "US"}
+            {currentUser?.email ? currentUser.email[0].toUpperCase() : "U"}
           </div>
           <div>
-            <div className="flex items-center gap-3">
-              <h1 className="text-xl font-bold text-white">{currentUser?.email || "Guest User"}</h1>
-              {currentUser && getRoleBadge(currentUser.role)}
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl font-bold text-white">{currentUser?.email || "User Account"}</h1>
+              <span className="px-2.5 py-0.5 bg-blue-500/20 text-blue-300 border border-blue-500/30 rounded-full text-xs font-semibold uppercase">
+                {currentUser?.role || "Employee"}
+              </span>
             </div>
             <p className="text-sm text-slate-400 mt-0.5">
-              Account Status: <span className="text-emerald-400 font-medium">Active & Verified</span> ? ID: #{currentUser?.id || 0}
+              Account Status: <span className="text-emerald-400 font-medium">Active & Verified</span> • ID: #{currentUser?.id || 0}
             </p>
           </div>
         </div>
@@ -100,7 +112,13 @@ export const UserProfile: React.FC<UserProfileProps> = ({ user, onLogout }) => {
           </div>
 
           {msg && (
-            <div className={p-3 rounded-xl text-sm flex items-center gap-2.5 }>
+            <div
+              className={`p-3 rounded-xl text-sm flex items-center gap-2.5 ${
+                msg.type === "success"
+                  ? "bg-emerald-950/80 border border-emerald-500/50 text-emerald-200"
+                  : "bg-red-950/80 border border-red-500/50 text-red-200"
+              }`}
+            >
               {msg.type === "success" ? <CheckCircle className="w-4 h-4 text-emerald-400" /> : <AlertCircle className="w-4 h-4 text-red-400" />}
               <span>{msg.text}</span>
             </div>
@@ -122,48 +140,55 @@ export const UserProfile: React.FC<UserProfileProps> = ({ user, onLogout }) => {
               <input
                 type="password"
                 required
-                minLength={6}
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
+                className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold uppercase text-slate-400 mb-1">Confirm New Password</label>
+              <input
+                type="password"
+                required
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
                 className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold rounded-xl shadow-lg transition-all"
+              className="w-full py-2.5 bg-blue-600 hover:bg-blue-500 disabled:bg-blue-800 text-white font-semibold rounded-xl transition-colors shadow-lg"
             >
               {loading ? "Updating..." : "Update Password"}
             </button>
           </form>
         </div>
 
-        {/* Roles & Permissions Overview */}
+        {/* Roles & Permissions Reference */}
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
           <div className="flex items-center gap-2 text-white font-semibold">
             <Shield className="w-5 h-5 text-indigo-400" />
-            <h2>RBAC Permission Scope</h2>
+            <h2>Assigned Permissions Matrix</h2>
           </div>
-          <div className="space-y-2.5 text-xs text-slate-300">
-            <div className="p-3 bg-slate-800/60 rounded-xl border border-slate-700 flex justify-between items-center">
-              <span>Master Data Directory & Profiles</span>
-              <span className="text-emerald-400 font-semibold">Read / Write</span>
+          <div className="space-y-3 text-xs text-slate-300">
+            <div className="p-3 bg-slate-800/60 rounded-xl border border-slate-700/80">
+              <span className="font-semibold text-white block mb-0.5">Domain Access:</span>
+              <p className="text-slate-400">
+                {currentUser?.role === "super_admin"
+                  ? "Full read/write access across all modules: Master Data, Attendance, Payroll, Loans, Expenses, Taxes, Notifications, and System RBAC."
+                  : currentUser?.role === "hr_manager"
+                  ? "Full access to Employee Master Data, Contracts, Attendance Rosters, Leaves, Tax Declarations, and Expense Approvals."
+                  : currentUser?.role === "payroll_officer"
+                  ? "Access to Salary Structures, Payruns, Payslips, Loan EMI Schedules, and Tax Computations."
+                  : "Self-service access to personal Attendance Punches, Leave Requests, Loan Applications, Expense Claims, and Payslip PDFs."}
+              </p>
             </div>
-            <div className="p-3 bg-slate-800/60 rounded-xl border border-slate-700 flex justify-between items-center">
-              <span>Payroll Execution & Locking</span>
-              <span className={isPrivileged ? "text-emerald-400 font-semibold" : "text-slate-500 font-semibold"}>
-                {isPrivileged ? "Authorized" : "Read-Only"}
-              </span>
-            </div>
-            <div className="p-3 bg-slate-800/60 rounded-xl border border-slate-700 flex justify-between items-center">
-              <span>Executive Analytics & Banking CSV</span>
-              <span className={isPrivileged ? "text-emerald-400 font-semibold" : "text-slate-500 font-semibold"}>
-                {isPrivileged ? "Authorized" : "Restricted"}
-              </span>
-            </div>
-            <div className="p-3 bg-slate-800/60 rounded-xl border border-slate-700 flex justify-between items-center">
-              <span>System Audit Trail Logging</span>
-              <span className="text-emerald-400 font-semibold">Automated</span>
+            <div className="p-3 bg-slate-800/60 rounded-xl border border-slate-700/80">
+              <span className="font-semibold text-white block mb-0.5">Session Security:</span>
+              <p className="text-slate-400">
+                JWT Auth token bearer authentication with 24-hour expiration and cryptographic bcrypt password hashing.
+              </p>
             </div>
           </div>
         </div>
@@ -182,7 +207,7 @@ export const UserProfile: React.FC<UserProfileProps> = ({ user, onLogout }) => {
               disabled={logsLoading}
               className="p-1.5 hover:bg-slate-800 text-slate-400 hover:text-white rounded-lg transition-colors"
             >
-              <RefreshCw className={w-4 h-4 } />
+              <RefreshCw className={`w-4 h-4 ${logsLoading ? "animate-spin" : ""}`} />
             </button>
           </div>
 

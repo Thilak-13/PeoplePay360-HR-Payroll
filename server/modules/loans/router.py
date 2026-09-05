@@ -1,303 +1,178 @@
-from decimal import Decimal
+from datetime import date
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status
+from decimal import Decimal
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
+from sqlalchemy import desc
 
-from server.modules.loans.database import get_db
+from server.modules.master_data.database import get_db, Base, engine
 from server.modules.loans.models import EmployeeLoan, LoanRepayment
 from server.modules.loans.schemas import (
     LoanApplyRequest,
     LoanApproveRequest,
     LoanRejectRequest,
-    RecordDeductionRequest,
-    CalculateEMIRequest,
-    CalculateEMIResponse,
-    ActiveDeductionResponse,
-    LoanRepaymentResponse,
+    DeductionRecordRequest,
     EmployeeLoanResponse,
-    LoansListResponse,
+    LoanRepaymentResponse,
+    ActiveDeductionResponse,
+    LoanMetricsResponse,
 )
-from server.modules.loans.services import (
-    compute_monthly_emi,
-    generate_installment_schedule,
-    approve_loan as approve_loan_service,
-    reject_loan as reject_loan_service,
-    get_active_deduction as get_active_deduction_service,
-    record_monthly_deduction as record_monthly_deduction_service,
-)
+from server.modules.loans.services import LoanService
+
+# Ensure loan tables exist
+Base.metadata.create_all(bind=engine)
 
 router = APIRouter()
 
 
-def _enrich_loan(db: Session, loan: EmployeeLoan) -> EmployeeLoanResponse:
-    """Helper to enrich EmployeeLoan with employee name if employee record exists."""
-    employee_name = None
-    try:
-        from server.modules.master_data.models import Employee
-        emp = db.query(Employee).filter(Employee.id == loan.employee_id).first()
-        if emp:
-            employee_name = f"{emp.first_name} {emp.last_name}".strip()
-    except Exception:
-        pass
-
-    return EmployeeLoanResponse(
-        id=loan.id,
-        employee_id=loan.employee_id,
-        employee_name=employee_name or f"Employee #{loan.employee_id}",
-        loan_type=loan.loan_type,
-        principal_amount=float(loan.principal_amount),
-        interest_rate=float(loan.interest_rate),
-        tenure_months=loan.tenure_months,
-        monthly_emi=float(loan.monthly_emi),
-        remaining_balance=float(loan.remaining_balance),
-        status=loan.status,
-        reason=loan.reason,
-        disbursement_date=loan.disbursement_date,
-        created_at=loan.created_at,
-        updated_at=loan.updated_at,
-        repayments=[
-            LoanRepaymentResponse(
-                id=r.id,
-                loan_id=r.loan_id,
-                payslip_id=r.payslip_id,
-                amount_paid=float(r.amount_paid),
-                payment_date=r.payment_date,
-                balance_after=float(r.balance_after),
-                notes=r.notes,
-                created_at=r.created_at,
-            )
-            for r in loan.repayments
-        ],
-    )
-
-
-@router.get("/ping")
+@router.get("/ping", tags=["Loans"])
 def ping():
-    """Module health status check."""
+    """Health ping for Loans domain."""
     return {"module": "loans_ready"}
 
 
-@router.post("/calculate-emi", response_model=CalculateEMIResponse)
-def calculate_emi(req: CalculateEMIRequest):
-    """
-    Computes monthly installment, total payable, and amortization projection
-    without persisting to the database.
-    """
-    emi = compute_monthly_emi(
-        principal=req.principal_amount,
-        interest_rate=req.interest_rate or 0.0,
-        tenure_months=req.tenure_months,
-    )
-    total_payable = float(emi * Decimal(req.tenure_months)) if (req.interest_rate or 0) > 0 else req.principal_amount
-    total_interest = max(0.0, total_payable - req.principal_amount)
-    schedule = generate_installment_schedule(
-        principal=req.principal_amount,
-        interest_rate=req.interest_rate or 0.0,
-        tenure_months=req.tenure_months,
-        monthly_emi=emi,
-    )
-
-    return CalculateEMIResponse(
-        principal_amount=req.principal_amount,
-        tenure_months=req.tenure_months,
-        interest_rate=req.interest_rate or 0.0,
-        monthly_emi=float(emi),
-        total_payable=total_payable,
-        total_interest=total_interest,
-        schedule=schedule,
-    )
-
-
-@router.get("", response_model=LoansListResponse)
-@router.get("/list", response_model=LoansListResponse)
+@router.get("", response_model=List[EmployeeLoanResponse], tags=["Loans"])
 def list_loans(
-    status_filter: Optional[str] = None,
-    employee_id: Optional[int] = None,
-    db: Session = Depends(get_db),
+    employee_id: Optional[int] = Query(default=None),
+    status_filter: Optional[str] = Query(default=None, alias="status"),
+    db: Session = Depends(get_db)
 ):
-    """
-    Lists all loans with aggregate summary metrics for the management dashboard.
-    """
-    query = db.query(EmployeeLoan)
-    if status_filter and status_filter != "all":
-        query = query.filter(EmployeeLoan.status == status_filter)
+    """List all employee loans with optional filters."""
+    q = db.query(EmployeeLoan)
     if employee_id:
-        query = query.filter(EmployeeLoan.employee_id == employee_id)
-
-    loans = query.order_by(EmployeeLoan.id.desc()).all()
-
-    # Aggregate metrics
-    all_loans = db.query(EmployeeLoan).all()
-    total_active_loans = sum(1 for l in all_loans if l.status == "active")
-    total_disbursed = sum(float(l.principal_amount) for l in all_loans if l.status in ("active", "repaid"))
-    total_recovered = sum(
-        float(l.principal_amount) - float(l.remaining_balance)
-        for l in all_loans
-        if l.status in ("active", "repaid") and float(l.principal_amount) >= float(l.remaining_balance)
-    )
-    pending_approvals = sum(1 for l in all_loans if l.status == "pending_approval")
-
-    return LoansListResponse(
-        loans=[_enrich_loan(db, l) for l in loans],
-        total_active_loans=total_active_loans,
-        total_disbursed=round(total_disbursed, 2),
-        total_recovered=round(total_recovered, 2),
-        pending_approvals=pending_approvals,
-    )
+        q = q.filter(EmployeeLoan.employee_id == employee_id)
+    if status_filter and status_filter != "all":
+        q = q.filter(EmployeeLoan.status == status_filter)
+    loans = q.order_by(desc(EmployeeLoan.created_at)).all()
+    return [EmployeeLoanResponse.model_validate(l) for l in loans]
 
 
-@router.post("/apply", response_model=EmployeeLoanResponse, status_code=status.HTTP_201_CREATED)
-def apply_loan(req: LoanApplyRequest, db: Session = Depends(get_db)):
-    """
-    Creates a new employee loan or salary advance application in 'pending_approval' status.
-    """
-    emi = compute_monthly_emi(
-        principal=req.principal_amount,
-        interest_rate=req.interest_rate or 0.0,
-        tenure_months=req.tenure_months,
-    )
-
-    if (req.interest_rate or 0.0) > 0:
-        total_repayable = emi * Decimal(req.tenure_months)
-    else:
-        total_repayable = Decimal(str(req.principal_amount))
-
-    loan = EmployeeLoan(
-        employee_id=req.employee_id,
-        loan_type=req.loan_type,
-        principal_amount=Decimal(str(req.principal_amount)),
-        interest_rate=Decimal(str(req.interest_rate or 0.0)),
-        tenure_months=req.tenure_months,
-        monthly_emi=emi,
-        remaining_balance=total_repayable,
-        status="pending_approval",
-        reason=req.reason,
-    )
-
-    db.add(loan)
-    db.commit()
-    db.refresh(loan)
-    return _enrich_loan(db, loan)
+@router.post("/apply", response_model=EmployeeLoanResponse, status_code=status.HTTP_201_CREATED, tags=["Loans"])
+def apply_for_loan(req: LoanApplyRequest, db: Session = Depends(get_db)):
+    """Submit a loan or salary advance request."""
+    try:
+        loan = LoanService.apply_for_loan(
+            db=db,
+            employee_id=req.employee_id,
+            loan_type=req.loan_type,
+            principal=req.principal_amount,
+            tenure_months=req.tenure_months,
+            interest_rate=req.interest_rate,
+            reason=req.reason
+        )
+        return EmployeeLoanResponse.model_validate(loan)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
-@router.post("/{id}/approve", response_model=EmployeeLoanResponse)
-def approve_loan(
-    id: int,
-    req: Optional[LoanApproveRequest] = None,
-    db: Session = Depends(get_db),
-):
-    """
-    Authorizes and activates an employee loan, enabling payroll deductions.
-    """
-    approver_id = req.approver_id if req else None
-    loan = approve_loan_service(db, loan_id=id, approver_id=approver_id)
-    return _enrich_loan(db, loan)
+@router.post("/{loan_id}/approve", response_model=EmployeeLoanResponse, tags=["Loans"])
+def approve_loan(loan_id: int, req: Optional[LoanApproveRequest] = None, db: Session = Depends(get_db)):
+    """Approve and activate an employee loan."""
+    try:
+        disbursement = req.disbursement_date if req else None
+        approver = req.approved_by if req else None
+        loan = LoanService.approve_loan(db, loan_id, approver, disbursement)
+        return EmployeeLoanResponse.model_validate(loan)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
-@router.post("/{id}/reject", response_model=EmployeeLoanResponse)
-def reject_loan(
-    id: int,
-    req: Optional[LoanRejectRequest] = None,
-    db: Session = Depends(get_db),
-):
-    """
-    Rejects a loan application with remarks.
-    """
-    remarks = req.remarks if req else None
-    loan = reject_loan_service(db, loan_id=id, remarks=remarks)
-    return _enrich_loan(db, loan)
+@router.post("/{loan_id}/reject", response_model=EmployeeLoanResponse, tags=["Loans"])
+def reject_loan(loan_id: int, req: Optional[LoanRejectRequest] = None, db: Session = Depends(get_db)):
+    """Reject an employee loan application."""
+    try:
+        reason = req.reason if req else None
+        loan = LoanService.reject_loan(db, loan_id, reason)
+        return EmployeeLoanResponse.model_validate(loan)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
-@router.get("/employee/{employee_id}", response_model=List[EmployeeLoanResponse])
+@router.get("/{loan_id}", response_model=EmployeeLoanResponse, tags=["Loans"])
+def get_loan_detail(loan_id: int, db: Session = Depends(get_db)):
+    """Get full loan details and repayment history."""
+    loan = db.query(EmployeeLoan).filter(EmployeeLoan.id == loan_id).first()
+    if not loan:
+        raise HTTPException(status_code=404, detail=f"Loan #{loan_id} not found")
+    return EmployeeLoanResponse.model_validate(loan)
+
+
+@router.get("/employee/{employee_id}", response_model=List[EmployeeLoanResponse], tags=["Loans"])
 def get_employee_loans(employee_id: int, db: Session = Depends(get_db)):
-    """
-    Returns all loans and repayment history for a specific employee.
-    """
-    loans = (
-        db.query(EmployeeLoan)
-        .filter(EmployeeLoan.employee_id == employee_id)
-        .order_by(EmployeeLoan.id.desc())
-        .all()
-    )
-    return [_enrich_loan(db, l) for l in loans]
+    """Get all loans and advances for a specific employee."""
+    loans = db.query(EmployeeLoan).filter(EmployeeLoan.employee_id == employee_id).order_by(desc(EmployeeLoan.created_at)).all()
+    return [EmployeeLoanResponse.model_validate(l) for l in loans]
 
 
-@router.get("/active-deduction/{employee_id}", response_model=ActiveDeductionResponse)
+@router.get("/active-deduction/{employee_id}", response_model=ActiveDeductionResponse, tags=["Loans"])
 def get_active_deduction(employee_id: int, db: Session = Depends(get_db)):
-    """
-    Returns the active monthly installment to be deducted for the employee in payroll processing.
-    """
-    data = get_active_deduction_service(db, employee_id=employee_id)
-    return ActiveDeductionResponse(**data)
-
-
-@router.post("/record-deduction", response_model=LoanRepaymentResponse)
-def record_deduction(req: RecordDeductionRequest, db: Session = Depends(get_db)):
-    """
-    Records an EMI deduction payment against a loan, reducing remaining_balance.
-    Auto-transitions loan to 'repaid' once remaining_balance reaches 0.
-    """
-    repayment = record_monthly_deduction_service(
-        db=db,
-        loan_id=req.loan_id,
-        amount=req.amount,
-        payslip_id=req.payslip_id,
-        payment_date=req.payment_date,
-        notes=req.notes,
-    )
-    return LoanRepaymentResponse(
-        id=repayment.id,
-        loan_id=repayment.loan_id,
-        payslip_id=repayment.payslip_id,
-        amount_paid=float(repayment.amount_paid),
-        payment_date=repayment.payment_date,
-        balance_after=float(repayment.balance_after),
-        notes=repayment.notes,
-        created_at=repayment.created_at,
+    """Query active monthly EMI deduction for payrun integration."""
+    data = LoanService.get_active_deduction(db, employee_id)
+    return ActiveDeductionResponse(
+        employee_id=data["employee_id"],
+        active_loan_count=data["active_loan_count"],
+        total_monthly_emi=data["total_monthly_emi"],
+        total_remaining_balance=data["total_remaining_balance"],
+        active_loans=[EmployeeLoanResponse.model_validate(l) for l in data["active_loans"]]
     )
 
 
-@router.get("/{id}", response_model=EmployeeLoanResponse)
-def get_loan(id: int, db: Session = Depends(get_db)):
-    """
-    Retrieves details and payment history for a single loan by ID.
-    """
-    loan = db.query(EmployeeLoan).filter(EmployeeLoan.id == id).first()
-    if not loan:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Employee loan with ID {id} not found"
+@router.post("/record-deduction", response_model=LoanRepaymentResponse, tags=["Loans"])
+def record_deduction(req: DeductionRecordRequest, db: Session = Depends(get_db)):
+    """Record an EMI payment deduction against a loan."""
+    try:
+        repayment = LoanService.record_deduction(
+            db=db,
+            loan_id=req.loan_id,
+            amount_paid=req.amount_paid,
+            payslip_id=req.payslip_id,
+            payment_date=req.payment_date,
+            notes=req.notes
         )
-    return _enrich_loan(db, loan)
+        return LoanRepaymentResponse.model_validate(repayment)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
-@router.get("/{id}/schedule")
-def get_loan_schedule(id: int, db: Session = Depends(get_db)):
-    """
-    Generates dynamic monthly installment projection schedule for a specific loan.
-    """
-    loan = db.query(EmployeeLoan).filter(EmployeeLoan.id == id).first()
-    if not loan:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Employee loan with ID {id} not found"
-        )
+@router.get("/metrics/summary", response_model=LoanMetricsResponse, tags=["Loans"])
+def get_loan_metrics(db: Session = Depends(get_db)):
+    """Summary KPI metrics for company loan portfolio."""
+    metrics = LoanService.get_metrics(db)
+    return LoanMetricsResponse(**metrics)
 
-    schedule = generate_installment_schedule(
-        principal=loan.principal_amount,
-        interest_rate=loan.interest_rate,
-        tenure_months=loan.tenure_months,
-        monthly_emi=loan.monthly_emi,
-        start_date=loan.disbursement_date,
-        remaining_balance=loan.remaining_balance,
-    )
-    return {
-        "loan_id": loan.id,
-        "employee_id": loan.employee_id,
-        "principal_amount": float(loan.principal_amount),
-        "interest_rate": float(loan.interest_rate),
-        "monthly_emi": float(loan.monthly_emi),
-        "remaining_balance": float(loan.remaining_balance),
-        "status": loan.status,
-        "schedule": schedule,
-    }
+
+@router.post("/seed-sample-loans", tags=["Loans"])
+def seed_sample_loans(db: Session = Depends(get_db)):
+    """Seed sample advances and active loans for testing."""
+    sample_data = [
+        (1, "salary_advance", Decimal("15000.00"), 1, Decimal("0.00"), "Festival emergency advance", "active"),
+        (2, "personal_loan", Decimal("60000.00"), 6, Decimal("5.00"), "Home relocation loan", "active"),
+        (3, "equipment_loan", Decimal("45000.00"), 3, Decimal("0.00"), "Workstation upgrade loan", "pending_approval"),
+    ]
+    created = 0
+    for emp_id, l_type, principal, tenure, rate, reason, stat in sample_data:
+        existing = db.query(EmployeeLoan).filter(
+            EmployeeLoan.employee_id == emp_id,
+            EmployeeLoan.loan_type == l_type
+        ).first()
+        if not existing:
+            tot, emi = LoanService.calculate_emi(principal, rate, tenure)
+            loan = EmployeeLoan(
+                employee_id=emp_id,
+                loan_type=l_type,
+                principal_amount=principal,
+                interest_rate=rate,
+                tenure_months=tenure,
+                total_repayable=tot,
+                monthly_emi=emi,
+                remaining_balance=tot,
+                status=stat,
+                reason=reason,
+                disbursement_date=date.today() if stat == "active" else None
+            )
+            db.add(loan)
+            created += 1
+    db.commit()
+    return {"status": "seeded", "loans_created": created}

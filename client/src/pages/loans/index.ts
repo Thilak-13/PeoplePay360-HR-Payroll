@@ -1,5 +1,5 @@
-export * from './types';
-export * from './api';
-export { LoanManager } from './LoanManager';
-export { LoanRequestModal } from './LoanRequestModal';
-export { EMIScheduleTable } from './EMIScheduleTable';
+export * from "./types";
+export * from "./api";
+export * from "./LoanManager";
+export * from "./LoanRequestModal";
+export * from "./EMIScheduleTable";

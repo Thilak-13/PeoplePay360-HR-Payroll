@@ -1,1 +1,3 @@
-"""Employee Loans, Salary Advances & Monthly EMI Deductions Module."""
+from server.modules.loans.router import router
+
+__all__ = ["router"]
