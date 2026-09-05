@@ -2,6 +2,8 @@ import React, { useState, useEffect } from "react";
 import { Clock, Play, Square, CheckCircle2, AlertCircle, Sparkles } from "lucide-react";
 import { recordPunch, seedSampleAttendance } from "./api";
 import { AttendanceRecord } from "./types";
+import { useAuth } from "../auth/AuthContext";
+import { useRole } from "../../components/shared/RoleContext";
 
 interface AttendanceTrackerProps {
   employeeId?: number;
@@ -12,12 +14,21 @@ export const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
   employeeId = 1,
   onPunchComplete,
 }) => {
-  const [selectedEmpId, setSelectedEmpId] = useState<number>(employeeId);
+  const { user } = useAuth();
+  const { isSelfServiceOnly } = useRole();
+  const defaultEmpId = (isSelfServiceOnly && user?.employee_id) ? user.employee_id : (employeeId || user?.employee_id || 1);
+  const [selectedEmpId, setSelectedEmpId] = useState<number>(defaultEmpId);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [latestRecord, setLatestRecord] = useState<AttendanceRecord | null>(null);
   const [notes, setNotes] = useState("");
+
+  useEffect(() => {
+    if (isSelfServiceOnly && user?.employee_id) {
+      setSelectedEmpId(user.employee_id);
+    }
+  }, [user, isSelfServiceOnly]);
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -69,13 +80,15 @@ export const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
             <p className="text-xs text-slate-400">Live Time & Attendance Punch Terminal</p>
           </div>
         </div>
-        <button
-          onClick={handleSeed}
-          className="text-xs flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg border border-slate-700 transition"
-        >
-          <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-          Seed Demo
-        </button>
+        {!isSelfServiceOnly && (
+          <button
+            onClick={handleSeed}
+            className="text-xs flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg border border-slate-700 transition"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+            Seed Demo
+          </button>
+        )}
       </div>
 
       {/* Live Digital Clock */}
@@ -111,15 +124,21 @@ export const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
-              Employee ID
+              {isSelfServiceOnly ? "Clocking In As" : "Employee ID"}
             </label>
-            <input
-              type="number"
-              min={1}
-              value={selectedEmpId}
-              onChange={(e) => setSelectedEmpId(parseInt(e.target.value) || 1)}
-              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
+            {isSelfServiceOnly ? (
+              <div className="w-full bg-slate-800/60 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-indigo-300 font-mono font-bold">
+                Employee #{selectedEmpId} ({user?.email})
+              </div>
+            ) : (
+              <input
+                type="number"
+                min={1}
+                value={selectedEmpId}
+                onChange={(e) => setSelectedEmpId(parseInt(e.target.value) || 1)}
+                className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            )}
           </div>
           <div>
             <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">

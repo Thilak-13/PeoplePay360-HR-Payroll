@@ -2,8 +2,12 @@ import React, { useState, useEffect } from "react";
 import { Users, Calendar, Clock, RefreshCw, AlertCircle } from "lucide-react";
 import { fetchDailySummary } from "./api";
 import { DailySummary } from "./types";
+import { useAuth } from "../auth/AuthContext";
+import { useRole } from "../../components/shared/RoleContext";
 
 export const DailyPunches: React.FC = () => {
+  const { user } = useAuth();
+  const { isSelfServiceOnly } = useRole();
   const [summary, setSummary] = useState<DailySummary | null>(null);
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split("T")[0]);
   const [loading, setLoading] = useState(false);
@@ -39,6 +43,13 @@ export const DailyPunches: React.FC = () => {
     }
   };
 
+  const userEmpId = user?.employee_id || 1;
+  const filteredRecords = summary?.records
+    ? isSelfServiceOnly
+      ? summary.records.filter((r) => r.employee_id === userEmpId)
+      : summary.records
+    : [];
+
   return (
     <div className="space-y-6 max-w-7xl mx-auto p-4">
       {/* Header & Date Picker */}
@@ -46,9 +57,13 @@ export const DailyPunches: React.FC = () => {
         <div>
           <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
             <Users className="w-7 h-7 text-indigo-600" />
-            Daily Attendance Summary Matrix
+            {isSelfServiceOnly ? "My Attendance Records" : "Daily Attendance Summary Matrix"}
           </h1>
-          <p className="text-slate-500 text-sm mt-1">Live workforce biometric presence, worked hours, and status tracking.</p>
+          <p className="text-slate-500 text-sm mt-1">
+            {isSelfServiceOnly
+              ? "Your biometric punch times, daily hours worked, and verification status."
+              : "Live workforce biometric presence, worked hours, and status tracking."}
+          </p>
         </div>
 
         <div className="flex items-center gap-3">
@@ -68,8 +83,8 @@ export const DailyPunches: React.FC = () => {
         </div>
       </div>
 
-      {/* Metrics Row */}
-      {summary && (
+      {/* Metrics Row (Managers/Admins only) */}
+      {summary && !isSelfServiceOnly && (
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
             <span className="text-xs font-semibold uppercase text-slate-500">Total Employees</span>
@@ -110,7 +125,7 @@ export const DailyPunches: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200">
-              {!summary || summary.records.length === 0 ? (
+              {filteredRecords.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="px-6 py-12 text-center text-slate-400">
                     <Clock className="w-10 h-10 mx-auto mb-2 text-slate-300" />
@@ -118,7 +133,7 @@ export const DailyPunches: React.FC = () => {
                   </td>
                 </tr>
               ) : (
-                summary.records.map((rec) => (
+                filteredRecords.map((rec) => (
                   <tr key={rec.id} className="hover:bg-slate-50/80 transition-colors">
                     <td className="px-6 py-4">
                       <div className="font-semibold text-slate-900">

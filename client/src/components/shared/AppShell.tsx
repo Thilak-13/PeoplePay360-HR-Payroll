@@ -4,7 +4,7 @@ import { useRole } from './RoleContext';
 import { Sidebar } from './Sidebar';
 import { TopBar } from './TopBar';
 import { LoginScreen, UserProfile } from '../../pages/auth';
-import { PayrollDashboard, PrintablePayslip } from '../../pages/dashboard';
+import { PayrollDashboard } from '../../pages/dashboard';
 import {
   EmployeeList,
   EmployeeDetail,
@@ -22,20 +22,6 @@ import {
   DailyPunches,
   ShiftManager,
 } from '../../pages/attendance';
-import {
-  LoanManager,
-  EMIScheduleTable,
-} from '../../pages/loans';
-import {
-  ExpenseList,
-} from '../../pages/expenses';
-import {
-  TaxDeclarationPortal,
-  ProofVerification,
-} from '../../pages/tax';
-import {
-  NotificationCenter,
-} from '../../pages/notifications';
 import { UserManagement } from '../../pages/admin/UserManagement';
 import { X } from 'lucide-react';
 
@@ -49,11 +35,9 @@ export const AppShell: React.FC = () => {
   const [selectedPayrunId, setSelectedPayrunId] = useState<number | null>(null);
 
   // Sub-tabs for domain navigation
-  const [masterSubTab, setMasterSubTab] = useState<'employees' | 'contracts' | 'leaves'>('employees');
+  const [masterSubTab, setMasterSubTab] = useState<'employees' | 'contracts' | 'leaves' | 'schedules'>('employees');
   const [payrollSubTab, setPayrollSubTab] = useState<'payruns' | 'structures'>('payruns');
   const [attendanceSubTab, setAttendanceSubTab] = useState<'tracker' | 'daily' | 'shifts'>('tracker');
-  const [loansSubTab, setLoansSubTab] = useState<'manager' | 'schedule'>('manager');
-  const [taxSubTab, setTaxSubTab] = useState<'portal' | 'verification'>('portal');
 
   // Sidebar collapse state & mobile drawer state
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(false);
@@ -88,10 +72,6 @@ export const AppShell: React.FC = () => {
       setSelectedPayslipId(null);
     } else if (tab === 'attendance') {
       if (subTab) setAttendanceSubTab(subTab as any);
-    } else if (tab === 'loans') {
-      if (subTab) setLoansSubTab(subTab as any);
-    } else if (tab === 'tax') {
-      if (subTab) setTaxSubTab(subTab as any);
     }
     setIsMobileSidebarOpen(false);
   };
@@ -115,7 +95,7 @@ export const AppShell: React.FC = () => {
 
   const handleViewPrintablePayslip = (payslipId: number = 1) => {
     setSelectedPayslipId(payslipId);
-    setActiveTab('printable-payslip');
+    setActiveTab('payroll');
   };
 
   const currentSubTab =
@@ -125,10 +105,6 @@ export const AppShell: React.FC = () => {
       ? payrollSubTab
       : activeTab === 'attendance'
       ? attendanceSubTab
-      : activeTab === 'loans'
-      ? loansSubTab
-      : activeTab === 'tax'
-      ? taxSubTab
       : undefined;
 
   return (
@@ -210,7 +186,8 @@ export const AppShell: React.FC = () => {
                   <EmployeeList onSelectEmployee={setSelectedEmployeeId} />
                 )
               )}
-              {masterSubTab === 'contracts' && <ContractManager />}
+              {masterSubTab === 'contracts' && canManageEmployees && <ContractManager />}
+              {masterSubTab === 'schedules' && canManageEmployees && <ShiftManager />}
               {masterSubTab === 'leaves' && <LeaveManager />}
             </div>
           )}
@@ -220,19 +197,19 @@ export const AppShell: React.FC = () => {
             <div>
               {attendanceSubTab === 'tracker' && <AttendanceTracker />}
               {attendanceSubTab === 'daily' && <DailyPunches />}
-              {attendanceSubTab === 'shifts' && <ShiftManager />}
+              {attendanceSubTab === 'shifts' && canManageEmployees && <ShiftManager />}
             </div>
           )}
 
           {/* 4. Payroll Engine Domain */}
-          {activeTab === 'payroll' && (
+          {activeTab === 'payroll' && canRunPayroll && (
             <div>
               {selectedPayslipId ? (
                 <PayslipDetail
                   payslipId={selectedPayslipId}
                   onBack={() => setSelectedPayslipId(null)}
                 />
-              ) : payrollSubTab === 'structures' && canRunPayroll ? (
+              ) : payrollSubTab === 'structures' ? (
                 <SalaryStructureManager />
               ) : selectedPayrunId ? (
                 <PayrunDetail
@@ -245,50 +222,7 @@ export const AppShell: React.FC = () => {
             </div>
           )}
 
-          {/* 5. Loans & Advances EMI */}
-          {activeTab === 'loans' && (
-            <div>
-              {loansSubTab === 'manager' && <LoanManager />}
-              {loansSubTab === 'schedule' && (
-                <div className="p-6 max-w-7xl mx-auto">
-                  <h2 className="text-xl font-bold text-slate-900 mb-4">Active Loan Schedule</h2>
-                  <EMIScheduleTable loanId={1} />
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* 6. Expenses & Reimbursements */}
-          {activeTab === 'expenses' && (
-            <div>
-              <ExpenseList />
-            </div>
-          )}
-
-          {/* 7. Statutory Tax & Proof Declarations */}
-          {activeTab === 'tax' && (
-            <div>
-              {taxSubTab === 'portal' && <TaxDeclarationPortal />}
-              {taxSubTab === 'verification' && <ProofVerification />}
-            </div>
-          )}
-
-          {/* 8. Notification & PDF Dispatch Center */}
-          {activeTab === 'notifications' && (
-            <div>
-              <NotificationCenter />
-            </div>
-          )}
-
-          {/* 9. Printable Payslip View */}
-          {activeTab === 'printable-payslip' && (
-            <PrintablePayslip
-              payslipId={selectedPayslipId || 1}
-              onBack={() => setActiveTab('analytics')}
-            />
-          )}
-
-          {/* 10. Admin User Management & RBAC */}
+          {/* 5. Admin User Management & RBAC */}
           {activeTab === 'user-management' && (
             <UserManagement />
           )}

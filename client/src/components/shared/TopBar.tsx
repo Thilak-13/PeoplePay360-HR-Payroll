@@ -1,5 +1,5 @@
 import React from 'react';
-import { Menu, Printer, User as UserIcon } from 'lucide-react';
+import { Menu, User as UserIcon } from 'lucide-react';
 import { Breadcrumbs } from './Breadcrumbs';
 import { useAuth } from '../../pages/auth/AuthContext';
 import { useRole } from './RoleContext';
@@ -64,18 +64,8 @@ export const TopBar: React.FC<TopBarProps> = ({
         />
       </div>
 
-      {/* Right: Quick actions & profile summary */}
+      {/* Right: profile summary */}
       <div className="flex items-center space-x-3 flex-shrink-0">
-        {/* Quick Printable Payslip Button */}
-        <button
-          onClick={() => onNavigate('printable-payslip')}
-          className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-600 transition cursor-pointer"
-          title="View print-ready payslip layout"
-        >
-          <Printer className="w-3.5 h-3.5 text-slate-500" />
-          <span>Sample Slip</span>
-        </button>
-
         {/* Profile Pill Trigger */}
         <button
           onClick={onOpenProfile}

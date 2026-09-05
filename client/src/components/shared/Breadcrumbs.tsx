@@ -121,41 +121,9 @@ export const Breadcrumbs: React.FC<BreadcrumbsProps> = ({
       }
       break;
 
-    case 'loans':
-      items.push({
-        label: 'Financials',
-        onClick: () => onNavigate('loans', 'manager'),
-      });
-      items.push({
-        label: activeSubTab === 'schedule' ? 'EMI Schedule' : 'Loans & Advances',
-        isCurrent: true,
-      });
-      break;
-
-    case 'expenses':
-      items.push({ label: 'Financials' });
-      items.push({ label: 'Expense Claims', isCurrent: true });
-      break;
-
-    case 'tax':
-      items.push({
-        label: 'Tax & Compliance',
-        onClick: () => onNavigate('tax', 'portal'),
-      });
-      items.push({
-        label: activeSubTab === 'verification' ? 'Proof Verification' : 'Tax Declarations',
-        isCurrent: true,
-      });
-      break;
-
-    case 'notifications':
-      items.push({ label: 'Operations' });
-      items.push({ label: 'Dispatch Center', isCurrent: true });
-      break;
-
-    case 'printable-payslip':
-      items.push({ label: 'Documents' });
-      items.push({ label: 'Sample Payslip', isCurrent: true });
+    case 'user-management':
+      items.push({ label: 'Administration' });
+      items.push({ label: 'User Management & Roles', isCurrent: true });
       break;
 
     default:
