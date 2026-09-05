@@ -77,6 +77,7 @@ class DispatchToast(BaseModel):
 
 class SendPayslipsResponse(BaseModel):
     success: bool = True
+    status: str = "success"
     payrun_id: int
     dispatched_count: int
     message: str

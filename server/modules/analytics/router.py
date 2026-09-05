@@ -571,7 +571,7 @@ def send_payslips_batch(id: int, db: Session = Depends(get_db)):
         ).fetchone()
         dispatched_count = int(c_row[0]) if c_row else 0
 
-    message = f"Batch payslip delivery initiated. Successfully dispatched {dispatched_count} payslips via email."
+    message = f"{dispatched_count} Payslips queued and dispatched to employee emails"
     toast = DispatchToast(
         type="success",
         title="Payslips Dispatched Successfully",
@@ -580,6 +580,7 @@ def send_payslips_batch(id: int, db: Session = Depends(get_db)):
 
     return SendPayslipsResponse(
         success=True,
+        status="success",
         payrun_id=id,
         dispatched_count=dispatched_count,
         message=message,
