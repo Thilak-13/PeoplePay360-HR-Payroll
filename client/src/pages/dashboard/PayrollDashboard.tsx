@@ -13,7 +13,12 @@ import {
   RefreshCw,
   Building2,
   ExternalLink,
-  ShieldAlert,
+  ChevronRight,
+  ArrowUpRight,
+  Clock,
+  ShieldCheck,
+  CreditCard,
+  Layers,
 } from 'lucide-react';
 import {
   BarChart,
@@ -29,9 +34,6 @@ import {
 } from 'recharts';
 import {
   DashboardAnalyticsResponse,
-  KPIsSummary,
-  DepartmentSpendItem,
-  ComplianceAlertItem,
   DispatchToast,
 } from './types';
 
@@ -100,7 +102,7 @@ export const PayrollDashboard: React.FC<PayrollDashboardProps> = ({
       setActiveToast({
         type: 'success',
         title: 'Bank File Exported',
-        description: `Standard bank payout CSV for Payrun #${selectedPayrunId} successfully downloaded.`,
+        description: `Standard bank payout CSV for Payrun #${selectedPayrunId} downloaded.`,
       });
     } catch (err: any) {
       setActiveToast({
@@ -144,7 +146,7 @@ export const PayrollDashboard: React.FC<PayrollDashboardProps> = ({
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
       currency: 'INR',
-      maximumFractionDigits: 2,
+      maximumFractionDigits: 0,
     }).format(amount);
   };
 
@@ -172,77 +174,68 @@ export const PayrollDashboard: React.FC<PayrollDashboardProps> = ({
         };
       })
     : [
-        { name: 'May 2026', net_wage: 6500, gross_wage: 8000, payslips: 1 },
-        { name: 'Jun 2026', net_wage: 7000, gross_wage: 8200, payslips: 1 },
-        { name: 'Jul 2026', net_wage: 7200, gross_wage: 8300, payslips: 1 },
-        { name: 'Aug 2026', net_wage: data?.kpis?.total_net_paid || 7500, gross_wage: data?.kpis?.total_gross_paid || 8500, payslips: data?.kpis?.payslip_count || 1 },
+        { name: 'May 2026', net_wage: 65000, gross_wage: 82000, payslips: 4 },
+        { name: 'Jun 2026', net_wage: 70000, gross_wage: 88000, payslips: 4 },
+        { name: 'Jul 2026', net_wage: 72000, gross_wage: 91000, payslips: 4 },
+        { name: 'Aug 2026', net_wage: data?.kpis?.total_net_paid || 75000, gross_wage: data?.kpis?.total_gross_paid || 95000, payslips: data?.kpis?.payslip_count || 4 },
       ];
 
-  const unbankedAlerts = (data?.attention_alerts && data.attention_alerts.length > 0)
-    ? data.attention_alerts
-    : (data?.compliance_alerts?.filter(
-        (a) => a.type === 'missing_banking' || (a.issue && a.issue.toLowerCase().includes('bank')) || a.message.toLowerCase().includes('bank')
-      ) || []);
-
-  const sidebarAlerts = unbankedAlerts.length > 0
-    ? unbankedAlerts
-    : (data?.compliance_alerts?.filter((a) => a.severity === 'warning') || []);
+  const warningAlertsCount = data?.compliance_alerts.filter((a) => a.severity === 'warning').length || 0;
+  const criticalAlertsCount = data?.compliance_alerts.filter((a) => a.severity === 'critical').length || 0;
 
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-900 p-6 space-y-6">
+    <div className="min-h-screen bg-slate-50/50 p-4 sm:p-6 lg:p-8 space-y-6 text-slate-900 font-sans">
       {/* Toast Notification */}
       {activeToast && (
         <div
-          className={`fixed top-4 right-4 z-50 max-w-md p-4 rounded-xl shadow-xl flex items-start space-x-3 transition-all transform animate-bounce-short ${
+          className={`fixed top-4 right-4 z-50 max-w-md p-4 rounded-xl shadow-lg flex items-start space-x-3 transition-all ${
             activeToast.type === 'success'
-              ? 'bg-emerald-50 border border-emerald-300 text-emerald-900'
-              : 'bg-red-50 border border-red-300 text-red-900'
+              ? 'bg-emerald-50 border border-emerald-200 text-emerald-900'
+              : 'bg-rose-50 border border-rose-200 text-rose-900'
           }`}
         >
           {activeToast.type === 'success' ? (
             <CheckCircle2 className="w-5 h-5 text-emerald-600 mt-0.5 flex-shrink-0" />
           ) : (
-            <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
+            <AlertCircle className="w-5 h-5 text-rose-600 mt-0.5 flex-shrink-0" />
           )}
           <div className="flex-1">
             <h4 className="font-semibold text-sm">{activeToast.title}</h4>
-            <p className="text-xs mt-0.5 text-gray-700">{activeToast.description}</p>
+            <p className="text-xs mt-0.5 text-slate-600">{activeToast.description}</p>
           </div>
           <button
             onClick={() => setActiveToast(null)}
-            className="text-gray-400 hover:text-gray-600 text-xs font-bold px-1"
+            className="text-slate-400 hover:text-slate-600 text-xs font-bold px-1"
           >
             ✕
           </button>
         </div>
       )}
 
-      {/* Header Banner */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-5 rounded-xl border border-slate-200/80 shadow-xs">
+      {/* 1. TOP HEADER & OPERATIONAL CONTEXT */}
+      <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center space-x-3">
-            <div className="p-2 bg-indigo-50 rounded-lg text-indigo-600">
-              <TrendingUp className="w-5 h-5" />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold tracking-tight text-slate-900">
-                Payroll & Workforce Overview
-              </h1>
-              <p className="text-xs text-slate-500">
-                Real-time disbursements, department spending, and compliance monitoring.
-              </p>
-            </div>
+          <div className="flex items-center space-x-2 text-xs font-semibold uppercase tracking-wider text-indigo-600 mb-1">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block animate-pulse"></span>
+            <span>Operations &amp; Payroll Command</span>
           </div>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+            Workforce &amp; Payroll Overview
+          </h1>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Real-time disbursement lifecycle, department allocations, and compliance tracking.
+          </p>
         </div>
 
-        {/* Global Batch Utility Actions */}
+        {/* Global Action Bar */}
         <div className="flex flex-wrap items-center gap-2">
-          <div className="flex items-center space-x-2 bg-slate-50 border border-slate-200 px-2.5 py-1 rounded-lg text-xs font-medium text-slate-600">
-            <span>Payrun:</span>
+          {/* Active Period Selector */}
+          <div className="flex items-center space-x-2 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl text-xs font-medium text-slate-600">
+            <span>Cycle:</span>
             <select
               value={selectedPayrunId}
               onChange={(e) => setSelectedPayrunId(Number(e.target.value))}
-              className="bg-white border border-slate-200 rounded px-2 py-0.5 font-semibold text-slate-800 focus:outline-none text-xs"
+              className="bg-white border border-slate-200 rounded-lg px-2 py-0.5 font-semibold text-slate-800 focus:outline-none text-xs cursor-pointer"
             >
               <option value={1}>#1 (August 2026 Monthly)</option>
               <option value={2}>#2 (September 2026 Monthly)</option>
@@ -252,45 +245,34 @@ export const PayrollDashboard: React.FC<PayrollDashboardProps> = ({
           <button
             onClick={handleExportBankFile}
             disabled={isExporting}
-            className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-lg text-xs font-medium shadow-xs transition disabled:opacity-50 cursor-pointer"
-            title="Export standard bank payment CSV"
+            className="inline-flex items-center space-x-1.5 px-3.5 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-semibold shadow-2xs transition disabled:opacity-50 cursor-pointer"
+            title="Download bank payout CSV"
           >
             {isExporting ? (
               <RefreshCw className="w-3.5 h-3.5 animate-spin text-slate-500" />
             ) : (
               <Download className="w-3.5 h-3.5 text-slate-500" />
             )}
-            <span>{isExporting ? 'Exporting...' : 'Export Bank CSV'}</span>
+            <span>Export CSV</span>
           </button>
 
           <button
             onClick={handleSendPayslips}
             disabled={isSendingEmails}
-            className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold shadow-xs transition disabled:opacity-50 cursor-pointer"
-            title="Batch dispatch payslip emails to employees"
+            className="inline-flex items-center space-x-1.5 px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold shadow-xs transition disabled:opacity-50 cursor-pointer"
+            title="Dispatch payslip emails to employees"
           >
             {isSendingEmails ? (
               <RefreshCw className="w-3.5 h-3.5 animate-spin text-white" />
             ) : (
               <Send className="w-3.5 h-3.5" />
             )}
-            <span>{isSendingEmails ? 'Sending...' : 'Send Payslips'}</span>
+            <span>Send Slips</span>
           </button>
-
-          {onViewPrintablePayslip && (
-            <button
-              onClick={() => onViewPrintablePayslip(1)}
-              className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold shadow-xs transition cursor-pointer"
-              title="Open print-ready payslip layout"
-            >
-              <FileText className="w-3.5 h-3.5" />
-              <span>Sample Slip</span>
-            </button>
-          )}
 
           <button
             onClick={fetchDashboardData}
-            className="p-1.5 border border-slate-200 hover:bg-slate-50 rounded-lg text-slate-500 transition cursor-pointer"
+            className="p-2 border border-slate-200 hover:bg-slate-50 rounded-xl text-slate-500 transition cursor-pointer"
             title="Refresh analytics data"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
@@ -300,67 +282,79 @@ export const PayrollDashboard: React.FC<PayrollDashboardProps> = ({
 
       {/* Error state */}
       {error && (
-        <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-xs flex items-center space-x-2">
+        <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-xs flex items-center space-x-2">
           <AlertCircle className="w-4 h-4 flex-shrink-0" />
           <span>{error}</span>
         </div>
       )}
 
-      {/* KPI Cards Section */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* KPI 1: Total Net Paid */}
-        <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-xs space-y-2">
+      {/* 2. EXECUTIVE FINANCIAL & WORKFORCE KPIS */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        {/* KPI 1: Net Disbursed */}
+        <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-slate-500">
-              Total Net Disbursed
-            </span>
+            <span className="text-xs font-medium text-slate-500">Net Disbursed</span>
             <div className="p-1.5 bg-emerald-50 rounded-lg text-emerald-600">
               <DollarSign className="w-4 h-4" />
             </div>
           </div>
           <div>
             <div className="text-xl font-bold text-slate-900">
-              {data ? formatCurrency(data.kpis.total_net_paid) : '₹0.00'}
+              {data ? formatCurrency(data.kpis.total_net_paid) : '₹0'}
             </div>
             <p className="text-[11px] text-emerald-600 font-medium mt-0.5">
-              Current period payroll payout
+              Net take-home payout
             </p>
           </div>
         </div>
 
-        {/* KPI 2: Payslip Count */}
-        <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-xs space-y-2">
+        {/* KPI 2: Gross Wage */}
+        <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-slate-500">
-              Generated Payslips
-            </span>
-            <div className="p-1.5 bg-blue-50 rounded-lg text-blue-600">
-              <FileText className="w-4 h-4" />
+            <span className="text-xs font-medium text-slate-500">Total Gross Spend</span>
+            <div className="p-1.5 bg-indigo-50 rounded-lg text-indigo-600">
+              <CreditCard className="w-4 h-4" />
             </div>
           </div>
           <div>
             <div className="text-xl font-bold text-slate-900">
-              {data ? data.kpis.payslip_count : 0}
+              {data ? formatCurrency(data.kpis.total_gross_paid) : '₹0'}
             </div>
-            <p className="text-[11px] text-blue-600 font-medium mt-0.5">
-              Processed & verified slips
+            <p className="text-[11px] text-indigo-600 font-medium mt-0.5">
+              Gross payroll expense
             </p>
           </div>
         </div>
 
-        {/* KPI 3: Average Salary */}
-        <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-xs space-y-2">
+        {/* KPI 3: Active Employees */}
+        <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-slate-500">
-              Average Base Wage
-            </span>
+            <span className="text-xs font-medium text-slate-500">Active Headcount</span>
+            <div className="p-1.5 bg-blue-50 rounded-lg text-blue-600">
+              <Users className="w-4 h-4" />
+            </div>
+          </div>
+          <div>
+            <div className="text-xl font-bold text-slate-900">
+              {data ? data.kpis.active_employees_count : 0} Staff
+            </div>
+            <p className="text-[11px] text-blue-600 font-medium mt-0.5">
+              Onboarded &amp; active
+            </p>
+          </div>
+        </div>
+
+        {/* KPI 4: Average Wage */}
+        <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium text-slate-500">Average Salary</span>
             <div className="p-1.5 bg-purple-50 rounded-lg text-purple-600">
               <TrendingUp className="w-4 h-4" />
             </div>
           </div>
           <div>
             <div className="text-xl font-bold text-slate-900">
-              {data ? formatCurrency(data.kpis.avg_salary) : '₹0.00'}
+              {data ? formatCurrency(data.kpis.avg_salary) : '₹0'}
             </div>
             <p className="text-[11px] text-purple-600 font-medium mt-0.5">
               Active contracts baseline
@@ -368,12 +362,10 @@ export const PayrollDashboard: React.FC<PayrollDashboardProps> = ({
           </div>
         </div>
 
-        {/* KPI 4: Approved Leave Days */}
-        <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-xs space-y-2">
+        {/* KPI 5: Approved Leaves */}
+        <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-slate-500">
-              Approved Leaves
-            </span>
+            <span className="text-xs font-medium text-slate-500">Approved Time Off</span>
             <div className="p-1.5 bg-amber-50 rounded-lg text-amber-600">
               <Calendar className="w-4 h-4" />
             </div>
@@ -383,306 +375,318 @@ export const PayrollDashboard: React.FC<PayrollDashboardProps> = ({
               {data ? `${data.kpis.approved_leave_days} Days` : '0 Days'}
             </div>
             <p className="text-[11px] text-amber-600 font-medium mt-0.5">
-              Total period time off
+              Processed leave quota
             </p>
           </div>
         </div>
       </div>
 
-      {/* Main Grid: Department Spend Chart & Secondary Stats */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        {/* Left Column: Charts (2 cols) */}
-        <div className="lg:col-span-2 space-y-5">
-          {/* Department Spend Chart */}
-          <div className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-xs space-y-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-sm font-bold text-slate-900 flex items-center space-x-2">
-                  <Building2 className="w-4 h-4 text-indigo-600" />
-                  <span>Department Gross Spend</span>
-                </h2>
-                <p className="text-[11px] text-slate-500 mt-0.5">
-                  Gross payroll distribution across organization departments.
-                </p>
-              </div>
-              <div className="flex items-center space-x-1.5 text-xs text-slate-600">
-                <span className="inline-block w-2.5 h-2.5 bg-indigo-600 rounded-sm"></span>
-                <span>Gross Spend (₹)</span>
-              </div>
-            </div>
-
-            <div className="h-64 w-full pt-2">
-              {data && data.department_spend.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={data.department_spend}
-                    margin={{ top: 10, right: 20, left: 10, bottom: 20 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                    <XAxis
-                      dataKey="department_name"
-                      tick={{ fontSize: 11, fill: '#64748b' }}
-                      interval={0}
-                    />
-                    <YAxis
-                      tick={{ fontSize: 11, fill: '#64748b' }}
-                      tickFormatter={(val) => `₹${val / 1000}k`}
-                    />
-                    <Tooltip
-                      formatter={(value: any) => [formatCurrency(Number(value)), 'Gross Spend']}
-                      labelStyle={{ fontWeight: '600', color: '#0f172a' }}
-                      contentStyle={{ borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '12px' }}
-                    />
-                    <Bar
-                      dataKey="spend"
-                      fill="#4f46e5"
-                      radius={[4, 4, 0, 0]}
-                      name="Gross Spend"
-                    />
-                  </BarChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="h-full flex items-center justify-center text-slate-400 text-xs">
-                  No department spend data available yet.
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Monthly Salary Disbursement Trends (LineChart) */}
-          <div className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-xs space-y-3">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <div>
-                <h2 className="text-sm font-bold text-slate-900 flex items-center space-x-2">
-                  <TrendingUp className="w-4 h-4 text-indigo-600" />
-                  <span>Salary Trends</span>
-                </h2>
-                <p className="text-[11px] text-slate-500 mt-0.5">
-                  Monthly progression of net payouts and gross wages.
-                </p>
-              </div>
-            </div>
-
-            <div className="h-64 w-full pt-2">
-              {monthlyTrendsData.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart
-                    data={monthlyTrendsData}
-                    margin={{ top: 10, right: 20, left: 10, bottom: 10 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                    <XAxis
-                      dataKey="name"
-                      tick={{ fontSize: 11, fill: '#64748b' }}
-                    />
-                    <YAxis
-                      tick={{ fontSize: 11, fill: '#64748b' }}
-                      tickFormatter={(val) => `₹${val / 1000}k`}
-                    />
-                    <Tooltip
-                      formatter={(value: any, name: any) => [
-                        formatCurrency(Number(value)),
-                        name === 'net_wage' ? 'Net Payout' : 'Gross Wage'
-                      ]}
-                      labelStyle={{ fontWeight: '600', color: '#0f172a' }}
-                      contentStyle={{ borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '12px' }}
-                    />
-                    <Legend
-                      verticalAlign="top"
-                      height={32}
-                      formatter={(value) => (
-                        <span className="text-xs font-medium text-slate-600">
-                          {value === 'net_wage' ? 'Net Payout' : 'Gross Wage'}
-                        </span>
-                      )}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="net_wage"
-                      name="net_wage"
-                      stroke="#4f46e5"
-                      strokeWidth={2.5}
-                      dot={{ r: 4, fill: '#4f46e5' }}
-                      activeDot={{ r: 6 }}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="gross_wage"
-                      name="gross_wage"
-                      stroke="#10b981"
-                      strokeWidth={2}
-                      strokeDasharray="4 4"
-                      dot={{ r: 3, fill: '#10b981' }}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="h-full flex items-center justify-center text-slate-400 text-xs">
-                  No monthly trend data available.
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Right Sidebar: Operational Compliance Alerts & Workforce Overview (1 col) */}
-        <div className="lg:col-span-1 space-y-5">
-          {/* Operational Compliance Alerts Widget */}
-          <div className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-xs space-y-3">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
-              <div className="flex items-center space-x-2">
-                <AlertTriangle className="w-4 h-4 text-amber-500" />
-                <h2 className="text-sm font-bold text-slate-900">
-                  Compliance Alerts
-                </h2>
-              </div>
-              <span className="px-2 py-0.5 text-[11px] font-medium rounded-full bg-amber-50 text-amber-800 border border-amber-200">
-                {sidebarAlerts.length} Warning{sidebarAlerts.length === 1 ? '' : 's'}
-              </span>
-            </div>
-            <p className="text-[11px] text-slate-500">
-              Pre-validation checks requiring review before payment.
-            </p>
-
-            <div className="space-y-2.5 max-h-[340px] overflow-y-auto pr-1">
-              {sidebarAlerts.length > 0 ? (
-                sidebarAlerts.map((alert, idx) => (
-                  <div
-                    key={alert.id || idx}
-                    className="p-3 bg-amber-50/50 border border-amber-200/70 rounded-lg space-y-1.5 hover:bg-amber-50 transition"
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="font-semibold text-xs text-slate-900">
-                        {alert.employee_name || 'Unassigned Employee'}
-                      </div>
-                      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-100 text-amber-800 border border-amber-200 flex-shrink-0">
-                        Warning
-                      </span>
-                    </div>
-
-                    <p className="text-xs text-amber-900">
-                      {alert.issue || alert.message || 'Missing Bank Account or IFSC'}
-                    </p>
-
-                    <div className="flex items-center justify-between pt-1 border-t border-amber-200/50 text-[11px]">
-                      <span className="text-slate-500">
-                        {alert.department_name || 'General'}
-                      </span>
-                      {alert.employee_id && onNavigateToEmployee ? (
-                        <button
-                          onClick={() => onNavigateToEmployee(alert.employee_id!)}
-                          className="inline-flex items-center space-x-1 font-medium text-indigo-600 hover:text-indigo-800 cursor-pointer"
-                        >
-                          <span>Review</span>
-                          <ExternalLink className="w-3 h-3" />
-                        </button>
-                      ) : (
-                        <span className="font-medium text-amber-700">Action Required</span>
-                      )}
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="p-4 bg-slate-50 rounded-xl text-center text-xs text-slate-500">
-                  All active employees have verified banking details.
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Workforce Summary Card */}
-          <div className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-xs space-y-3">
+      {/* 3. OPERATIONAL PAYROLL PIPELINE FLOW (PROPER WORKFLOW STEPPER) */}
+      <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+          <div>
             <h2 className="text-sm font-bold text-slate-900 flex items-center space-x-2">
-              <Users className="w-4 h-4 text-indigo-600" />
-              <span>Workforce Summary</span>
+              <Layers className="w-4 h-4 text-indigo-600" />
+              <span>Monthly Payroll Processing Pipeline</span>
             </h2>
+            <p className="text-xs text-slate-500 mt-0.5">
+              End-to-end execution flow for active Payrun Cycle #{selectedPayrunId}
+            </p>
+          </div>
+          <div className="flex items-center space-x-2">
+            <span className="text-xs font-medium text-slate-500">Pipeline Status:</span>
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+              Active &amp; In Progress
+            </span>
+          </div>
+        </div>
 
-            <div className="space-y-2.5">
-              <div className="flex items-center justify-between p-2.5 bg-slate-50 rounded-lg text-xs">
-                <span className="font-medium text-slate-600">Active Headcount</span>
-                <span className="font-bold text-slate-900">
-                  {data ? data.kpis.active_employees_count : 0} Employees
-                </span>
-              </div>
-
-              <div className="flex items-center justify-between p-2.5 bg-slate-50 rounded-lg text-xs">
-                <span className="font-medium text-slate-600">Total Gross Paid</span>
-                <span className="font-bold text-slate-900">
-                  {data ? formatCurrency(data.kpis.total_gross_paid) : '₹0.00'}
-                </span>
-              </div>
-
-              <div className="flex items-center justify-between p-2.5 bg-slate-50 rounded-lg text-xs">
-                <span className="font-medium text-slate-600">Total Payrun Batches</span>
-                <span className="font-bold text-slate-900">
-                  {data ? data.kpis.total_payruns_count : 0} Batches
-                </span>
-              </div>
+        {/* 5-Stage Visual Workflow Stepper */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 pt-1">
+          {/* Step 1 */}
+          <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-bold text-slate-400 uppercase">Stage 01</span>
+              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
             </div>
+            <div className="font-semibold text-xs text-slate-900">Contracts &amp; Wage Sync</div>
+            <p className="text-[11px] text-slate-500">
+              Active running contracts and base compensation verified.
+            </p>
+          </div>
+
+          {/* Step 2 */}
+          <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-bold text-slate-400 uppercase">Stage 02</span>
+              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+            </div>
+            <div className="font-semibold text-xs text-slate-900">Attendance &amp; LOP</div>
+            <p className="text-[11px] text-slate-500">
+              Biometric punches and approved leaves mapped to worked days.
+            </p>
+          </div>
+
+          {/* Step 3 */}
+          <div className="p-3 bg-indigo-50/70 border border-indigo-200 rounded-xl space-y-1.5">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-bold text-indigo-600 uppercase">Stage 03</span>
+              <div className="w-2 h-2 rounded-full bg-indigo-600 animate-ping"></div>
+            </div>
+            <div className="font-semibold text-xs text-indigo-950">Salary Rules Batch</div>
+            <p className="text-[11px] text-indigo-900/80">
+              Sequenced calculation for allowances, deductions, and tax withholdings.
+            </p>
+          </div>
+
+          {/* Step 4 */}
+          <div
+            className={`p-3 rounded-xl space-y-1.5 border ${
+              criticalAlertsCount > 0
+                ? 'bg-rose-50/70 border-rose-200'
+                : warningAlertsCount > 0
+                ? 'bg-amber-50/70 border-amber-200'
+                : 'bg-slate-50 border-slate-200'
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-bold text-slate-500 uppercase">Stage 04</span>
+              {criticalAlertsCount > 0 ? (
+                <AlertCircle className="w-4 h-4 text-rose-600" />
+              ) : warningAlertsCount > 0 ? (
+                <AlertTriangle className="w-4 h-4 text-amber-600" />
+              ) : (
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+              )}
+            </div>
+            <div className="font-semibold text-xs text-slate-900">Compliance Audit</div>
+            <p className="text-[11px] text-slate-600">
+              {criticalAlertsCount > 0
+                ? `${criticalAlertsCount} critical blocking item`
+                : warningAlertsCount > 0
+                ? `${warningAlertsCount} unbanked disbursement warning`
+                : 'Pre-validation audit checks clean'}
+            </p>
+          </div>
+
+          {/* Step 5 */}
+          <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-bold text-slate-400 uppercase">Stage 05</span>
+              <Clock className="w-4 h-4 text-slate-400" />
+            </div>
+            <div className="font-semibold text-xs text-slate-900">Bank Disbursement</div>
+            <p className="text-[11px] text-slate-500">
+              Automated CSV export and payslip distribution ready.
+            </p>
           </div>
         </div>
       </div>
 
-      {/* Operational Compliance Alerts Table */}
-      <div className="bg-white rounded-xl border border-slate-200/80 shadow-xs overflow-hidden">
+      {/* 4. VISUAL ANALYTICS & SPEND BREAKDOWN */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Chart 1: Department Gross Spend (Bar Chart) */}
+        <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-3">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+            <div>
+              <h2 className="text-sm font-bold text-slate-900 flex items-center space-x-2">
+                <Building2 className="w-4 h-4 text-indigo-600" />
+                <span>Department Gross Spend</span>
+              </h2>
+              <p className="text-[11px] text-slate-500 mt-0.5">
+                Current cycle payroll cost allocation per department
+              </p>
+            </div>
+            <div className="flex items-center space-x-1.5 text-xs text-slate-600">
+              <span className="w-2.5 h-2.5 bg-indigo-600 rounded-xs inline-block"></span>
+              <span>Gross (₹)</span>
+            </div>
+          </div>
+
+          <div className="h-64 w-full pt-2">
+            {data && data.department_spend.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={data.department_spend}
+                  margin={{ top: 10, right: 20, left: 10, bottom: 20 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                  <XAxis
+                    dataKey="department_name"
+                    tick={{ fontSize: 11, fill: '#64748b' }}
+                    interval={0}
+                  />
+                  <YAxis
+                    tick={{ fontSize: 11, fill: '#64748b' }}
+                    tickFormatter={(val) => `₹${val / 1000}k`}
+                  />
+                  <Tooltip
+                    formatter={(value: any) => [formatCurrency(Number(value)), 'Gross Spend']}
+                    labelStyle={{ fontWeight: '600', color: '#0f172a' }}
+                    contentStyle={{ borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '12px' }}
+                  />
+                  <Bar
+                    dataKey="spend"
+                    fill="#4f46e5"
+                    radius={[4, 4, 0, 0]}
+                    name="Gross Spend"
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-full flex items-center justify-center text-slate-400 text-xs">
+                No department spend data recorded yet.
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Chart 2: Monthly Salary Disbursement Progression (Line Chart) */}
+        <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-3">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+            <div>
+              <h2 className="text-sm font-bold text-slate-900 flex items-center space-x-2">
+                <TrendingUp className="w-4 h-4 text-indigo-600" />
+                <span>Monthly Disbursement Progression</span>
+              </h2>
+              <p className="text-[11px] text-slate-500 mt-0.5">
+                Historical comparison of Net Payouts vs. Gross Wages
+              </p>
+            </div>
+            <div className="flex items-center space-x-3 text-xs">
+              <div className="flex items-center space-x-1">
+                <span className="w-2.5 h-0.5 bg-indigo-600 inline-block"></span>
+                <span className="text-slate-600">Net</span>
+              </div>
+              <div className="flex items-center space-x-1">
+                <span className="w-2.5 h-0.5 bg-emerald-500 inline-block"></span>
+                <span className="text-slate-600">Gross</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="h-64 w-full pt-2">
+            {monthlyTrendsData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart
+                  data={monthlyTrendsData}
+                  margin={{ top: 10, right: 20, left: 10, bottom: 10 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                  <XAxis
+                    dataKey="name"
+                    tick={{ fontSize: 11, fill: '#64748b' }}
+                  />
+                  <YAxis
+                    tick={{ fontSize: 11, fill: '#64748b' }}
+                    tickFormatter={(val) => `₹${val / 1000}k`}
+                  />
+                  <Tooltip
+                    formatter={(value: any, name: any) => [
+                      formatCurrency(Number(value)),
+                      name === 'net_wage' ? 'Net Payout' : 'Gross Wage'
+                    ]}
+                    labelStyle={{ fontWeight: '600', color: '#0f172a' }}
+                    contentStyle={{ borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '12px' }}
+                  />
+                  <Legend
+                    verticalAlign="top"
+                    height={32}
+                    formatter={(value) => (
+                      <span className="text-xs font-medium text-slate-600">
+                        {value === 'net_wage' ? 'Net Payout' : 'Gross Wage'}
+                      </span>
+                    )}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="net_wage"
+                    name="net_wage"
+                    stroke="#4f46e5"
+                    strokeWidth={2.5}
+                    dot={{ r: 4, fill: '#4f46e5' }}
+                    activeDot={{ r: 6 }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="gross_wage"
+                    name="gross_wage"
+                    stroke="#10b981"
+                    strokeWidth={2}
+                    strokeDasharray="4 4"
+                    dot={{ r: 3, fill: '#10b981' }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-full flex items-center justify-center text-slate-400 text-xs">
+                No monthly trend records available.
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* 5. ACTIONABLE COMPLIANCE AUDIT & RESOLUTION QUEUE */}
+      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
         <div className="p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <div className="flex items-center space-x-2">
-              <AlertTriangle className="w-4 h-4 text-amber-500" />
+              <ShieldCheck className="w-4 h-4 text-indigo-600" />
               <h3 className="text-sm font-bold text-slate-900">
-                Pre-Validation & Compliance Flags
+                Actionable Compliance &amp; Disbursement Audit Queue
               </h3>
             </div>
             <p className="text-[11px] text-slate-500 mt-0.5">
-              Live checks identified in master data and payrun batches.
+              Live checks identified in master records. Resolve items before proceeding to final batch lock.
             </p>
           </div>
 
           {/* Severity Filter Tabs */}
-          <div className="inline-flex p-1 bg-slate-100 rounded-lg text-xs font-medium">
+          <div className="inline-flex p-1 bg-slate-100 rounded-xl text-xs font-medium">
             <button
               onClick={() => setAlertFilter('all')}
-              className={`px-2.5 py-1 rounded-md transition cursor-pointer ${
+              className={`px-3 py-1 rounded-lg transition cursor-pointer ${
                 alertFilter === 'all'
                   ? 'bg-white text-slate-900 shadow-2xs font-semibold'
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              All ({data?.compliance_alerts.length || 0})
+              All Flags ({data?.compliance_alerts.length || 0})
             </button>
             <button
               onClick={() => setAlertFilter('critical')}
-              className={`px-2.5 py-1 rounded-md transition cursor-pointer ${
+              className={`px-3 py-1 rounded-lg transition cursor-pointer ${
                 alertFilter === 'critical'
                   ? 'bg-rose-600 text-white shadow-2xs font-semibold'
                   : 'text-slate-600 hover:text-rose-600'
               }`}
             >
-              Critical ({data?.compliance_alerts.filter((a) => a.severity === 'critical').length || 0})
+              Critical ({criticalAlertsCount})
             </button>
             <button
               onClick={() => setAlertFilter('warning')}
-              className={`px-2.5 py-1 rounded-md transition cursor-pointer ${
+              className={`px-3 py-1 rounded-lg transition cursor-pointer ${
                 alertFilter === 'warning'
                   ? 'bg-amber-500 text-white shadow-2xs font-semibold'
                   : 'text-slate-600 hover:text-amber-800'
               }`}
             >
-              Warnings ({data?.compliance_alerts.filter((a) => a.severity === 'warning').length || 0})
+              Warnings ({warningAlertsCount})
             </button>
           </div>
         </div>
 
-        {/* Alerts Table */}
+        {/* Audit Items Table */}
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs text-slate-600">
             <thead className="bg-slate-50 text-[10px] uppercase font-semibold text-slate-500 border-b border-slate-100">
               <tr>
                 <th className="py-2.5 px-4">Severity</th>
-                <th className="py-2.5 px-4">Alert Details</th>
+                <th className="py-2.5 px-4">Audit Finding / Discrepancy</th>
                 <th className="py-2.5 px-4">Affected Employee</th>
                 <th className="py-2.5 px-4">Department</th>
-                <th className="py-2.5 px-4 text-right">Action</th>
+                <th className="py-2.5 px-4 text-right">Quick Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -691,11 +695,11 @@ export const PayrollDashboard: React.FC<PayrollDashboardProps> = ({
                   <tr key={alert.id} className="hover:bg-slate-50/80 transition">
                     <td className="py-3 px-4">
                       {alert.severity === 'critical' ? (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-rose-50 text-rose-700 border border-rose-200">
-                          Critical
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-rose-50 text-rose-700 border border-rose-200">
+                          Critical Block
                         </span>
                       ) : (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-amber-50 text-amber-800 border border-amber-200">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-800 border border-amber-200">
                           Warning
                         </span>
                       )}
@@ -714,13 +718,13 @@ export const PayrollDashboard: React.FC<PayrollDashboardProps> = ({
                       {alert.employee_id && onNavigateToEmployee ? (
                         <button
                           onClick={() => onNavigateToEmployee(alert.employee_id!)}
-                          className="inline-flex items-center space-x-1 text-xs font-semibold text-indigo-600 hover:text-indigo-800 cursor-pointer"
+                          className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 transition cursor-pointer"
                         >
-                          <span>Review</span>
-                          <ExternalLink className="w-3 h-3" />
+                          <span>Review &amp; Fix</span>
+                          <ExternalLink className="w-3 h-3 ml-0.5" />
                         </button>
                       ) : (
-                        <span className="text-[11px] text-slate-400">Pre-Validation</span>
+                        <span className="text-[11px] text-slate-400 font-medium">Pre-Validation</span>
                       )}
                     </td>
                   </tr>
@@ -728,7 +732,7 @@ export const PayrollDashboard: React.FC<PayrollDashboardProps> = ({
               ) : (
                 <tr>
                   <td colSpan={5} className="py-8 text-center text-slate-400 text-xs">
-                    No compliance alerts matching current filter.
+                    All compliance pre-checks passed! No alerts matching current filter.
                   </td>
                 </tr>
               )}
