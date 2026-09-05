@@ -36,6 +36,7 @@ import {
   DashboardAnalyticsResponse,
   DispatchToast,
 } from './types';
+import { StatusBadge } from '../../components/shared/StatusBadge';
 
 interface PayrollDashboardProps {
   onNavigateToEmployee?: (employeeId: number) => void;
@@ -213,29 +214,29 @@ export const PayrollDashboard: React.FC<PayrollDashboardProps> = ({
       )}
 
       {/* 1. TOP HEADER & OPERATIONAL CONTEXT */}
-      <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center space-x-2 text-xs font-semibold uppercase tracking-wider text-indigo-600 mb-1">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block animate-pulse"></span>
-            <span>Operations &amp; Payroll Command</span>
+          <div className="flex items-center space-x-2 text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block"></span>
+            <span>Operations &amp; Payroll Workspace</span>
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+          <h1 className="text-xl font-bold tracking-tight text-slate-900">
             Workforce &amp; Payroll Overview
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">
-            Real-time disbursement lifecycle, department allocations, and compliance tracking.
+            Real-time disbursement metrics, department cost allocations, and compliance audit.
           </p>
         </div>
 
         {/* Global Action Bar */}
         <div className="flex flex-wrap items-center gap-2">
           {/* Active Period Selector */}
-          <div className="flex items-center space-x-2 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl text-xs font-medium text-slate-600">
+          <div className="flex items-center space-x-2 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-lg text-xs font-medium text-slate-600">
             <span>Cycle:</span>
             <select
               value={selectedPayrunId}
               onChange={(e) => setSelectedPayrunId(Number(e.target.value))}
-              className="bg-white border border-slate-200 rounded-lg px-2 py-0.5 font-semibold text-slate-800 focus:outline-none text-xs cursor-pointer"
+              className="bg-white border border-slate-200 rounded-md px-2 py-0.5 font-medium text-slate-800 focus:outline-none text-xs cursor-pointer"
             >
               <option value={1}>#1 (August 2026 Monthly)</option>
               <option value={2}>#2 (September 2026 Monthly)</option>
@@ -245,7 +246,7 @@ export const PayrollDashboard: React.FC<PayrollDashboardProps> = ({
           <button
             onClick={handleExportBankFile}
             disabled={isExporting}
-            className="inline-flex items-center space-x-1.5 px-3.5 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-semibold shadow-2xs transition disabled:opacity-50 cursor-pointer"
+            className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-lg text-xs font-medium shadow-2xs transition disabled:opacity-50 cursor-pointer"
             title="Download bank payout CSV"
           >
             {isExporting ? (
@@ -259,20 +260,20 @@ export const PayrollDashboard: React.FC<PayrollDashboardProps> = ({
           <button
             onClick={handleSendPayslips}
             disabled={isSendingEmails}
-            className="inline-flex items-center space-x-1.5 px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold shadow-xs transition disabled:opacity-50 cursor-pointer"
+            className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-medium shadow-2xs transition disabled:opacity-50 cursor-pointer"
             title="Dispatch payslip emails to employees"
           >
             {isSendingEmails ? (
               <RefreshCw className="w-3.5 h-3.5 animate-spin text-white" />
             ) : (
-              <Send className="w-3.5 h-3.5" />
+              <Send className="w-3.5 h-3.5 text-white" />
             )}
             <span>Send Slips</span>
           </button>
 
           <button
             onClick={fetchDashboardData}
-            className="p-2 border border-slate-200 hover:bg-slate-50 rounded-xl text-slate-500 transition cursor-pointer"
+            className="p-1.5 border border-slate-200 hover:bg-slate-50 rounded-lg text-slate-500 transition cursor-pointer"
             title="Refresh analytics data"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
@@ -282,111 +283,111 @@ export const PayrollDashboard: React.FC<PayrollDashboardProps> = ({
 
       {/* Error state */}
       {error && (
-        <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-xs flex items-center space-x-2">
+        <div className="p-3 bg-rose-50 border border-rose-200 rounded-lg text-rose-700 text-xs flex items-center space-x-2">
           <AlertCircle className="w-4 h-4 flex-shrink-0" />
           <span>{error}</span>
         </div>
       )}
 
       {/* 2. EXECUTIVE FINANCIAL & WORKFORCE KPIS */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
         {/* KPI 1: Net Disbursed */}
-        <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs space-y-2">
+        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-slate-500">Net Disbursed</span>
-            <div className="p-1.5 bg-emerald-50 rounded-lg text-emerald-600">
-              <DollarSign className="w-4 h-4" />
+            <div className="w-7 h-7 rounded-md bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-700">
+              <DollarSign className="w-3.5 h-3.5" />
             </div>
           </div>
           <div>
-            <div className="text-xl font-bold text-slate-900">
+            <div className="text-xl font-bold font-mono text-slate-900 tracking-tight">
               {data ? formatCurrency(data.kpis.total_net_paid) : '₹0'}
             </div>
-            <p className="text-[11px] text-emerald-600 font-medium mt-0.5">
+            <p className="text-[11px] text-slate-400 font-medium mt-0.5">
               Net take-home payout
             </p>
           </div>
         </div>
 
-        {/* KPI 2: Gross Wage */}
-        <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs space-y-2">
+        {/* KPI 2: Gross Spend */}
+        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-slate-500">Total Gross Spend</span>
-            <div className="p-1.5 bg-indigo-50 rounded-lg text-indigo-600">
-              <CreditCard className="w-4 h-4" />
+            <div className="w-7 h-7 rounded-md bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-700">
+              <CreditCard className="w-3.5 h-3.5" />
             </div>
           </div>
           <div>
-            <div className="text-xl font-bold text-slate-900">
+            <div className="text-xl font-bold font-mono text-slate-900 tracking-tight">
               {data ? formatCurrency(data.kpis.total_gross_paid) : '₹0'}
             </div>
-            <p className="text-[11px] text-indigo-600 font-medium mt-0.5">
+            <p className="text-[11px] text-slate-400 font-medium mt-0.5">
               Gross payroll expense
             </p>
           </div>
         </div>
 
         {/* KPI 3: Active Employees */}
-        <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs space-y-2">
+        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-slate-500">Active Headcount</span>
-            <div className="p-1.5 bg-blue-50 rounded-lg text-blue-600">
-              <Users className="w-4 h-4" />
+            <div className="w-7 h-7 rounded-md bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-700">
+              <Users className="w-3.5 h-3.5" />
             </div>
           </div>
           <div>
-            <div className="text-xl font-bold text-slate-900">
-              {data ? data.kpis.active_employees_count : 0} Staff
+            <div className="text-xl font-bold font-mono text-slate-900 tracking-tight">
+              {data ? data.kpis.active_employees_count : 0} <span className="text-sm font-normal text-slate-500 font-sans">Staff</span>
             </div>
-            <p className="text-[11px] text-blue-600 font-medium mt-0.5">
+            <p className="text-[11px] text-slate-400 font-medium mt-0.5">
               Onboarded &amp; active
             </p>
           </div>
         </div>
 
-        {/* KPI 4: Average Wage */}
-        <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs space-y-2">
+        {/* KPI 4: Average Salary */}
+        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-slate-500">Average Salary</span>
-            <div className="p-1.5 bg-purple-50 rounded-lg text-purple-600">
-              <TrendingUp className="w-4 h-4" />
+            <div className="w-7 h-7 rounded-md bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-700">
+              <TrendingUp className="w-3.5 h-3.5" />
             </div>
           </div>
           <div>
-            <div className="text-xl font-bold text-slate-900">
+            <div className="text-xl font-bold font-mono text-slate-900 tracking-tight">
               {data ? formatCurrency(data.kpis.avg_salary) : '₹0'}
             </div>
-            <p className="text-[11px] text-purple-600 font-medium mt-0.5">
+            <p className="text-[11px] text-slate-400 font-medium mt-0.5">
               Active contracts baseline
             </p>
           </div>
         </div>
 
         {/* KPI 5: Approved Leaves */}
-        <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs space-y-2">
+        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-slate-500">Approved Time Off</span>
-            <div className="p-1.5 bg-amber-50 rounded-lg text-amber-600">
-              <Calendar className="w-4 h-4" />
+            <div className="w-7 h-7 rounded-md bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-700">
+              <Calendar className="w-3.5 h-3.5" />
             </div>
           </div>
           <div>
-            <div className="text-xl font-bold text-slate-900">
-              {data ? `${data.kpis.approved_leave_days} Days` : '0 Days'}
+            <div className="text-xl font-bold font-mono text-slate-900 tracking-tight">
+              {data ? `${data.kpis.approved_leave_days}` : '0'} <span className="text-sm font-normal text-slate-500 font-sans">Days</span>
             </div>
-            <p className="text-[11px] text-amber-600 font-medium mt-0.5">
+            <p className="text-[11px] text-slate-400 font-medium mt-0.5">
               Processed leave quota
             </p>
           </div>
         </div>
       </div>
 
-      {/* 3. OPERATIONAL PAYROLL PIPELINE FLOW (PROPER WORKFLOW STEPPER) */}
-      <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-4">
+      {/* 3. OPERATIONAL PAYROLL PIPELINE FLOW */}
+      <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-2xs space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
           <div>
-            <h2 className="text-sm font-bold text-slate-900 flex items-center space-x-2">
-              <Layers className="w-4 h-4 text-indigo-600" />
+            <h2 className="text-sm font-semibold text-slate-900 flex items-center space-x-2">
+              <Layers className="w-4 h-4 text-slate-700" />
               <span>Monthly Payroll Processing Pipeline</span>
             </h2>
             <p className="text-xs text-slate-500 mt-0.5">
@@ -395,9 +396,7 @@ export const PayrollDashboard: React.FC<PayrollDashboardProps> = ({
           </div>
           <div className="flex items-center space-x-2">
             <span className="text-xs font-medium text-slate-500">Pipeline Status:</span>
-            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-              Active &amp; In Progress
-            </span>
+            <StatusBadge status="active" label="In Progress" />
           </div>
         </div>
 
@@ -484,13 +483,13 @@ export const PayrollDashboard: React.FC<PayrollDashboardProps> = ({
       </div>
 
       {/* 4. VISUAL ANALYTICS & SPEND BREAKDOWN */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Chart 1: Department Gross Spend (Bar Chart) */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-3">
+        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-2xs space-y-3">
           <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
             <div>
-              <h2 className="text-sm font-bold text-slate-900 flex items-center space-x-2">
-                <Building2 className="w-4 h-4 text-indigo-600" />
+              <h2 className="text-sm font-semibold text-slate-900 flex items-center space-x-2">
+                <Building2 className="w-4 h-4 text-slate-700" />
                 <span>Department Gross Spend</span>
               </h2>
               <p className="text-[11px] text-slate-500 mt-0.5">
@@ -498,7 +497,7 @@ export const PayrollDashboard: React.FC<PayrollDashboardProps> = ({
               </p>
             </div>
             <div className="flex items-center space-x-1.5 text-xs text-slate-600">
-              <span className="w-2.5 h-2.5 bg-indigo-600 rounded-xs inline-block"></span>
+              <span className="w-2.5 h-2.5 bg-slate-700 rounded-xs inline-block"></span>
               <span>Gross (₹)</span>
             </div>
           </div>
@@ -527,7 +526,7 @@ export const PayrollDashboard: React.FC<PayrollDashboardProps> = ({
                   />
                   <Bar
                     dataKey="spend"
-                    fill="#4f46e5"
+                    fill="#334155"
                     radius={[4, 4, 0, 0]}
                     name="Gross Spend"
                   />
@@ -542,11 +541,11 @@ export const PayrollDashboard: React.FC<PayrollDashboardProps> = ({
         </div>
 
         {/* Chart 2: Monthly Salary Disbursement Progression (Line Chart) */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-3">
+        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-2xs space-y-3">
           <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
             <div>
-              <h2 className="text-sm font-bold text-slate-900 flex items-center space-x-2">
-                <TrendingUp className="w-4 h-4 text-indigo-600" />
+              <h2 className="text-sm font-semibold text-slate-900 flex items-center space-x-2">
+                <TrendingUp className="w-4 h-4 text-slate-700" />
                 <span>Monthly Disbursement Progression</span>
               </h2>
               <p className="text-[11px] text-slate-500 mt-0.5">
@@ -555,12 +554,12 @@ export const PayrollDashboard: React.FC<PayrollDashboardProps> = ({
             </div>
             <div className="flex items-center space-x-3 text-xs">
               <div className="flex items-center space-x-1">
-                <span className="w-2.5 h-0.5 bg-indigo-600 inline-block"></span>
-                <span className="text-slate-600">Net</span>
+                <span className="w-2.5 h-0.5 bg-slate-900 inline-block"></span>
+                <span className="text-slate-600 font-medium">Net</span>
               </div>
               <div className="flex items-center space-x-1">
-                <span className="w-2.5 h-0.5 bg-emerald-500 inline-block"></span>
-                <span className="text-slate-600">Gross</span>
+                <span className="w-2.5 h-0.5 bg-slate-400 inline-block"></span>
+                <span className="text-slate-600 font-medium">Gross</span>
               </div>
             </div>
           </div>
@@ -602,19 +601,19 @@ export const PayrollDashboard: React.FC<PayrollDashboardProps> = ({
                     type="monotone"
                     dataKey="net_wage"
                     name="net_wage"
-                    stroke="#4f46e5"
-                    strokeWidth={2.5}
-                    dot={{ r: 4, fill: '#4f46e5' }}
-                    activeDot={{ r: 6 }}
+                    stroke="#0f172a"
+                    strokeWidth={2}
+                    dot={{ r: 3, fill: '#0f172a' }}
+                    activeDot={{ r: 5 }}
                   />
                   <Line
                     type="monotone"
                     dataKey="gross_wage"
                     name="gross_wage"
-                    stroke="#10b981"
-                    strokeWidth={2}
+                    stroke="#94a3b8"
+                    strokeWidth={1.75}
                     strokeDasharray="4 4"
-                    dot={{ r: 3, fill: '#10b981' }}
+                    dot={{ r: 2.5, fill: '#94a3b8' }}
                   />
                 </LineChart>
               </ResponsiveContainer>
@@ -628,25 +627,25 @@ export const PayrollDashboard: React.FC<PayrollDashboardProps> = ({
       </div>
 
       {/* 5. ACTIONABLE COMPLIANCE AUDIT & RESOLUTION QUEUE */}
-      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
-        <div className="p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden">
+        <div className="p-4 sm:p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <div className="flex items-center space-x-2">
-              <ShieldCheck className="w-4 h-4 text-indigo-600" />
-              <h3 className="text-sm font-bold text-slate-900">
-                Actionable Compliance &amp; Disbursement Audit Queue
+              <ShieldCheck className="w-4 h-4 text-slate-700" />
+              <h3 className="text-sm font-semibold text-slate-900">
+                Compliance &amp; Disbursement Audit Queue
               </h3>
             </div>
             <p className="text-[11px] text-slate-500 mt-0.5">
-              Live checks identified in master records. Resolve items before proceeding to final batch lock.
+              Automated pre-validation checks across master records and payment setups.
             </p>
           </div>
 
           {/* Severity Filter Tabs */}
-          <div className="inline-flex p-1 bg-slate-100 rounded-xl text-xs font-medium">
+          <div className="inline-flex p-0.5 bg-slate-100 rounded-lg text-xs font-medium border border-slate-200/80">
             <button
               onClick={() => setAlertFilter('all')}
-              className={`px-3 py-1 rounded-lg transition cursor-pointer ${
+              className={`px-3 py-1 rounded-md transition cursor-pointer ${
                 alertFilter === 'all'
                   ? 'bg-white text-slate-900 shadow-2xs font-semibold'
                   : 'text-slate-600 hover:text-slate-900'
@@ -656,20 +655,20 @@ export const PayrollDashboard: React.FC<PayrollDashboardProps> = ({
             </button>
             <button
               onClick={() => setAlertFilter('critical')}
-              className={`px-3 py-1 rounded-lg transition cursor-pointer ${
+              className={`px-3 py-1 rounded-md transition cursor-pointer ${
                 alertFilter === 'critical'
-                  ? 'bg-rose-600 text-white shadow-2xs font-semibold'
-                  : 'text-slate-600 hover:text-rose-600'
+                  ? 'bg-white text-rose-700 shadow-2xs font-semibold'
+                  : 'text-slate-600 hover:text-rose-700'
               }`}
             >
               Critical ({criticalAlertsCount})
             </button>
             <button
               onClick={() => setAlertFilter('warning')}
-              className={`px-3 py-1 rounded-lg transition cursor-pointer ${
+              className={`px-3 py-1 rounded-md transition cursor-pointer ${
                 alertFilter === 'warning'
-                  ? 'bg-amber-500 text-white shadow-2xs font-semibold'
-                  : 'text-slate-600 hover:text-amber-800'
+                  ? 'bg-white text-amber-700 shadow-2xs font-semibold'
+                  : 'text-slate-600 hover:text-amber-700'
               }`}
             >
               Warnings ({warningAlertsCount})
@@ -680,7 +679,7 @@ export const PayrollDashboard: React.FC<PayrollDashboardProps> = ({
         {/* Audit Items Table */}
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs text-slate-600">
-            <thead className="bg-slate-50 text-[10px] uppercase font-semibold text-slate-500 border-b border-slate-100">
+            <thead className="bg-slate-50/70 text-[10px] uppercase font-semibold text-slate-500 border-b border-slate-200">
               <tr>
                 <th className="py-2.5 px-4">Severity</th>
                 <th className="py-2.5 px-4">Audit Finding / Discrepancy</th>
@@ -692,16 +691,12 @@ export const PayrollDashboard: React.FC<PayrollDashboardProps> = ({
             <tbody className="divide-y divide-slate-100">
               {filteredAlerts.length > 0 ? (
                 filteredAlerts.map((alert) => (
-                  <tr key={alert.id} className="hover:bg-slate-50/80 transition">
+                  <tr key={alert.id} className="hover:bg-slate-50/60 transition">
                     <td className="py-3 px-4">
                       {alert.severity === 'critical' ? (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-rose-50 text-rose-700 border border-rose-200">
-                          Critical Block
-                        </span>
+                        <StatusBadge status="refused" label="Critical Block" />
                       ) : (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-800 border border-amber-200">
-                          Warning
-                        </span>
+                        <StatusBadge status="pending" label="Warning" />
                       )}
                     </td>
                     <td className="py-3 px-4">
@@ -718,13 +713,13 @@ export const PayrollDashboard: React.FC<PayrollDashboardProps> = ({
                       {alert.employee_id && onNavigateToEmployee ? (
                         <button
                           onClick={() => onNavigateToEmployee(alert.employee_id!)}
-                          className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 transition cursor-pointer"
+                          className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-md text-xs font-medium border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 transition cursor-pointer shadow-2xs"
                         >
                           <span>Review &amp; Fix</span>
-                          <ExternalLink className="w-3 h-3 ml-0.5" />
+                          <ExternalLink className="w-3 h-3 ml-0.5 text-slate-400" />
                         </button>
                       ) : (
-                        <span className="text-[11px] text-slate-400 font-medium">Pre-Validation</span>
+                        <span className="text-[11px] text-slate-400 font-medium">Verified</span>
                       )}
                     </td>
                   </tr>
