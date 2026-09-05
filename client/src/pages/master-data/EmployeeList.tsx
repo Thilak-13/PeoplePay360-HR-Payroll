@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Employee, Department } from './types';
+import { StatusBadge } from '../../components/shared/StatusBadge';
 
 interface EmployeeListProps {
   onSelectEmployee?: (employeeId: number) => void;
@@ -12,7 +13,7 @@ export const EmployeeList: React.FC<EmployeeListProps> = ({
 }) => {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
-  const [viewMode, setViewMode] = useState<'kanban' | 'list'>('kanban');
+  const [viewMode, setViewMode] = useState<'kanban' | 'list'>('list');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDepartment, setSelectedDepartment] = useState<string>('all');
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
@@ -52,6 +53,7 @@ export const EmployeeList: React.FC<EmployeeListProps> = ({
 
   const fetchDepartments = async () => {
     try {
+      setLoading(true);
       const res = await fetch('/api/v1/master-data/departments');
       if (res.ok) {
         const data = await res.json();
@@ -113,67 +115,27 @@ export const EmployeeList: React.FC<EmployeeListProps> = ({
   });
 
   const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'active':
-        return (
-          <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200">
-            Active
-          </span>
-        );
-      case 'on_leave':
-        return (
-          <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 border border-amber-200">
-            On Leave
-          </span>
-        );
-      case 'inactive':
-        return (
-          <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 border border-gray-200">
-            Inactive
-          </span>
-        );
-      default:
-        return (
-          <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-            {status}
-          </span>
-        );
-    }
+    return <StatusBadge status={status} />;
   };
 
   return (
-    <div className="p-6 bg-slate-50 min-h-screen">
+    <div className="p-6 bg-[#f8fafc] min-h-screen">
       {/* Top Header & Quick Stats */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between pb-6 border-b border-slate-200 gap-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between pb-5 border-b border-slate-200 gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">Master Data — Employees</h1>
-          <p className="text-sm text-slate-500 mt-1">
-            Manage organization directory, employee contracts, working schedules & leave allocations.
+          <h1 className="text-xl font-bold tracking-tight text-slate-900">Master Data — Employees</h1>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Organization directory, employee contracts, working schedules &amp; leave allocations.
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5">
           {/* View Toggle */}
-          <div className="inline-flex bg-white rounded-lg p-1 border border-slate-200 shadow-sm">
-            <button
-              onClick={() => setViewMode('kanban')}
-              className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
-                viewMode === 'kanban'
-                  ? 'bg-indigo-600 text-white shadow-sm'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <span className="flex items-center gap-1.5">
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-                </svg>
-                Kanban
-              </span>
-            </button>
+          <div className="inline-flex bg-slate-100 rounded-lg p-0.5 border border-slate-200 shadow-2xs">
             <button
               onClick={() => setViewMode('list')}
-              className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
+              className={`px-3 py-1.5 rounded-md text-xs font-medium transition cursor-pointer ${
                 viewMode === 'list'
-                  ? 'bg-indigo-600 text-white shadow-sm'
+                  ? 'bg-white text-slate-900 shadow-2xs font-semibold'
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
@@ -184,13 +146,28 @@ export const EmployeeList: React.FC<EmployeeListProps> = ({
                 List
               </span>
             </button>
+            <button
+              onClick={() => setViewMode('kanban')}
+              className={`px-3 py-1.5 rounded-md text-xs font-medium transition cursor-pointer ${
+                viewMode === 'kanban'
+                  ? 'bg-white text-slate-900 shadow-2xs font-semibold'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <span className="flex items-center gap-1.5">
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                </svg>
+                Cards
+              </span>
+            </button>
           </div>
 
           <button
             onClick={() => (onAddNewEmployee ? onAddNewEmployee() : setShowCreateModal(true))}
-            className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium text-sm shadow-sm transition-colors"
+            className="inline-flex items-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white px-3.5 py-1.5 rounded-lg font-medium text-xs shadow-2xs transition cursor-pointer"
           >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
             </svg>
             New Employee
@@ -306,7 +283,7 @@ export const EmployeeList: React.FC<EmployeeListProps> = ({
                 </div>
               </div>
 
-              <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-indigo-600 font-semibold">
+              <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-700 font-medium">
                 <span>View Profile &rarr;</span>
                 <span className="text-slate-400 font-normal">#{emp.id}</span>
               </div>
@@ -315,10 +292,10 @@ export const EmployeeList: React.FC<EmployeeListProps> = ({
         </div>
       ) : (
         /* List View */
-        <div className="mt-6 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="mt-6 bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-600 uppercase tracking-wider">
+              <tr className="bg-slate-50/70 border-b border-slate-200 text-xs font-semibold text-slate-600 uppercase tracking-wider">
                 <th className="py-3 px-4">Employee</th>
                 <th className="py-3 px-4">Job Title</th>
                 <th className="py-3 px-4">Department</th>
@@ -332,20 +309,20 @@ export const EmployeeList: React.FC<EmployeeListProps> = ({
                 <tr
                   key={emp.id}
                   onClick={() => onSelectEmployee && onSelectEmployee(emp.id)}
-                  className="hover:bg-indigo-50/40 cursor-pointer transition-colors"
+                  className="hover:bg-slate-50/70 cursor-pointer transition-colors"
                 >
-                  <td className="py-3 px-4 font-semibold text-slate-900 flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-indigo-600 text-white flex items-center justify-center text-xs font-bold">
+                  <td className="py-3 px-4 font-semibold text-slate-900 flex items-center gap-2.5">
+                    <div className="w-7 h-7 rounded-md bg-slate-800 text-white flex items-center justify-center text-xs font-medium">
                       {emp.first_name[0]}
                       {emp.last_name[0]}
                     </div>
-                    {emp.first_name} {emp.last_name}
+                    <span>{emp.first_name} {emp.last_name}</span>
                   </td>
-                  <td className="py-3 px-4 text-slate-600">{emp.job_title || '—'}</td>
-                  <td className="py-3 px-4 text-slate-600">{emp.department?.name || '—'}</td>
-                  <td className="py-3 px-4 text-slate-600">{emp.email}</td>
+                  <td className="py-3 px-4 text-slate-600 text-xs">{emp.job_title || '—'}</td>
+                  <td className="py-3 px-4 text-slate-600 text-xs">{emp.department?.name || '—'}</td>
+                  <td className="py-3 px-4 text-slate-600 text-xs font-mono">{emp.email}</td>
                   <td className="py-3 px-4">{getStatusBadge(emp.status)}</td>
-                  <td className="py-3 px-4 text-right text-indigo-600 font-semibold hover:underline">
+                  <td className="py-3 px-4 text-right text-slate-700 font-medium text-xs hover:text-slate-900">
                     Detail &rarr;
                   </td>
                 </tr>
@@ -357,13 +334,13 @@ export const EmployeeList: React.FC<EmployeeListProps> = ({
 
       {/* Create Employee Modal */}
       {showCreateModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl shadow-xl max-w-lg w-full p-6 border border-slate-200 animate-in fade-in zoom-in-95">
-            <div className="flex items-center justify-between pb-4 border-b border-slate-100">
-              <h2 className="text-lg font-bold text-slate-900">Add New Employee</h2>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-lg w-full p-6 border border-slate-200">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <h2 className="text-base font-bold text-slate-900">Add New Employee</h2>
               <button
                 onClick={() => setShowCreateModal(false)}
-                className="text-slate-400 hover:text-slate-600 text-lg"
+                className="text-slate-400 hover:text-slate-600 text-base cursor-pointer"
               >
                 &times;
               </button>
@@ -371,65 +348,65 @@ export const EmployeeList: React.FC<EmployeeListProps> = ({
             <form onSubmit={handleCreateEmployee} className="mt-4 space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">First Name *</label>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">First Name *</label>
                   <input
                     type="text"
                     required
                     value={formData.first_name}
                     onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs focus:ring-1 focus:ring-slate-400 focus:outline-none"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Last Name *</label>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Last Name *</label>
                   <input
                     type="text"
                     required
                     value={formData.last_name}
                     onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs focus:ring-1 focus:ring-slate-400 focus:outline-none"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Email Address *</label>
+                <label className="block text-xs font-medium text-slate-700 mb-1">Email Address *</label>
                 <input
                   type="email"
                   required
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs focus:ring-1 focus:ring-slate-400 focus:outline-none font-mono"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Phone</label>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Phone</label>
                   <input
                     type="tel"
                     value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs focus:ring-1 focus:ring-slate-400 focus:outline-none"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Job Title</label>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Job Title</label>
                   <input
                     type="text"
                     value={formData.job_title}
                     onChange={(e) => setFormData({ ...formData, job_title: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs focus:ring-1 focus:ring-slate-400 focus:outline-none"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Department</label>
+                <label className="block text-xs font-medium text-slate-700 mb-1">Department</label>
                 <select
                   value={formData.department_id}
                   onChange={(e) => setFormData({ ...formData, department_id: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs focus:ring-1 focus:ring-slate-400 focus:outline-none bg-white"
                 >
                   <option value="">Select Department...</option>
                   {departments.map((dept) => (
@@ -440,17 +417,17 @@ export const EmployeeList: React.FC<EmployeeListProps> = ({
                 </select>
               </div>
 
-              <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
+              <div className="flex justify-end gap-2.5 pt-3 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => setShowCreateModal(false)}
-                  className="px-4 py-2 border border-slate-200 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50"
+                  className="px-3.5 py-1.5 border border-slate-200 rounded-lg text-xs font-medium text-slate-600 hover:bg-slate-50 cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium shadow-sm"
+                  className="px-4 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-medium shadow-2xs cursor-pointer"
                 >
                   Save Employee
                 </button>

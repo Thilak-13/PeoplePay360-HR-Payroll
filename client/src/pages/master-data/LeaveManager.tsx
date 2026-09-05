@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { LeaveAllocation, LeaveRequest } from './types';
 import { useAuth } from '../auth/AuthContext';
 import { useRole } from '../../components/shared/RoleContext';
+import { StatusBadge } from '../../components/shared/StatusBadge';
 
 interface LeaveManagerProps {
   employeeId?: number;
@@ -219,38 +220,25 @@ export const LeaveManager: React.FC<LeaveManagerProps> = ({
     }
   };
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'approved':
-        return <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800">Approved</span>;
-      case 'confirm':
-        return <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800">Pending Review</span>;
-      case 'draft':
-        return <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-800">Draft</span>;
-      case 'refused':
-        return <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-100 text-rose-800">Refused</span>;
-      default:
-        return <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-800">{status}</span>;
-    }
-  };
-
   return (
     <div className="space-y-6">
       {/* Balances Summary Cards */}
       {balances.length > 0 && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {balances.map((b) => (
-            <div key={b.holiday_type} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+            <div key={b.holiday_type} className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs">
+              <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
                 {b.holiday_type.replace(/_/g, ' ')}
               </span>
               <div className="mt-2 flex items-baseline justify-between">
-                <span className="text-2xl font-black text-slate-900">{b.remaining_days}</span>
-                <span className="text-xs text-slate-400 font-medium">Days Remaining</span>
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-2xl font-bold font-mono text-slate-900">{b.remaining_days}</span>
+                  <span className="text-xs text-slate-400 font-normal">days left</span>
+                </div>
               </div>
-              <div className="mt-3 pt-3 border-t border-slate-100 flex justify-between text-[11px] text-slate-500">
-                <span>Allocated: <strong>{b.allocated_days}d</strong></span>
-                <span>Used: <strong>{b.used_days}d</strong></span>
+              <div className="mt-3 pt-3 border-t border-slate-100 flex justify-between text-xs text-slate-500">
+                <span>Allocated: <strong className="font-mono font-medium text-slate-700">{b.allocated_days}d</strong></span>
+                <span>Used: <strong className="font-mono font-medium text-slate-700">{b.used_days}d</strong></span>
               </div>
             </div>
           ))}
@@ -258,26 +246,26 @@ export const LeaveManager: React.FC<LeaveManagerProps> = ({
       )}
 
       {/* Main Leave View Container */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-100 gap-4">
-          <div className="flex items-center gap-4">
+      <div className="bg-white rounded-xl border border-slate-200/80 shadow-2xs overflow-hidden">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between px-5 pt-4 pb-3 border-b border-slate-200/80 gap-4">
+          <div className="flex items-center gap-6">
             <button
               onClick={() => setActiveSubTab('requests')}
-              className={`text-sm font-bold pb-1 transition-all ${
+              className={`text-xs font-semibold pb-2 border-b-2 transition-colors ${
                 activeSubTab === 'requests'
-                  ? 'text-indigo-600 border-b-2 border-indigo-600'
-                  : 'text-slate-500 hover:text-slate-800'
+                  ? 'border-slate-900 text-slate-900'
+                  : 'border-transparent text-slate-500 hover:text-slate-800'
               }`}
             >
-              Leave Requests ({requests.length})
+              Time Off Requests ({requests.length})
             </button>
             {canManageHR && (
               <button
                 onClick={() => setActiveSubTab('allocations')}
-                className={`text-sm font-bold pb-1 transition-all ${
+                className={`text-xs font-semibold pb-2 border-b-2 transition-colors ${
                   activeSubTab === 'allocations'
-                    ? 'text-indigo-600 border-b-2 border-indigo-600'
-                    : 'text-slate-500 hover:text-slate-800'
+                    ? 'border-slate-900 text-slate-900'
+                    : 'border-transparent text-slate-500 hover:text-slate-800'
                 }`}
               >
                 Allocations ({allocations.length})
@@ -285,16 +273,16 @@ export const LeaveManager: React.FC<LeaveManagerProps> = ({
             )}
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             {activeSubTab === 'requests' ? (
               <button
                 onClick={() => {
                   setErrorMsg(null);
                   setShowRequestModal(true);
                 }}
-                className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-3.5 py-2 rounded-lg text-xs font-semibold shadow-sm"
+                className="inline-flex items-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white font-medium rounded-lg text-xs px-3.5 py-1.5 shadow-2xs transition-colors"
               >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                 </svg>
                 Request Time Off
@@ -305,9 +293,9 @@ export const LeaveManager: React.FC<LeaveManagerProps> = ({
                   setErrorMsg(null);
                   setShowAllocModal(true);
                 }}
-                className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-lg text-xs font-semibold shadow-sm"
+                className="inline-flex items-center gap-1.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 font-medium rounded-lg text-xs px-3.5 py-1.5 shadow-2xs transition-colors"
               >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                 </svg>
                 Allocate Days
@@ -317,42 +305,44 @@ export const LeaveManager: React.FC<LeaveManagerProps> = ({
         </div>
 
         {loading ? (
-          <div className="py-12 text-center text-slate-400 font-medium">Loading records...</div>
+          <div className="py-12 text-center text-slate-400 text-xs">Loading records...</div>
         ) : activeSubTab === 'requests' ? (
           requests.length === 0 ? (
-            <div className="py-12 text-center text-slate-500 text-sm">No leave requests found.</div>
+            <div className="py-12 text-center text-slate-500 text-xs">No time off requests found.</div>
           ) : (
-            <div className="mt-4 overflow-x-auto">
+            <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-600 uppercase">
-                    <th className="py-3 px-4">Holiday Type</th>
-                    <th className="py-3 px-4">Period (From &rarr; To)</th>
+                  <tr className="bg-slate-50/80 border-b border-slate-200/80 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                    <th className="py-3 px-4">Leave Type</th>
+                    <th className="py-3 px-4">Period</th>
                     <th className="py-3 px-4">Days</th>
                     <th className="py-3 px-4">Status</th>
                     <th className="py-3 px-4 text-right">
-                      {canApproveTimeOff ? 'Approval Actions' : 'Status Info'}
+                      {canApproveTimeOff ? 'Actions' : 'Status Info'}
                     </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 text-sm">
+                <tbody className="divide-y divide-slate-100 text-xs">
                   {requests.map((r) => (
-                    <tr key={r.id} className="hover:bg-slate-50/60">
-                      <td className="py-3 px-4 font-semibold text-slate-900 capitalize">
+                    <tr key={r.id} className="hover:bg-slate-50/60 transition-colors">
+                      <td className="py-3 px-4 font-medium text-slate-900 capitalize">
                         {r.holiday_type.replace(/_/g, ' ')}
                       </td>
-                      <td className="py-3 px-4 text-slate-600">
+                      <td className="py-3 px-4 font-mono text-slate-600">
                         {r.date_from} &rarr; {r.date_to}
                       </td>
-                      <td className="py-3 px-4 font-bold text-slate-800">{r.number_of_days}d</td>
-                      <td className="py-3 px-4">{getStatusBadge(r.status)}</td>
+                      <td className="py-3 px-4 font-mono font-medium text-slate-900">{r.number_of_days}d</td>
+                      <td className="py-3 px-4">
+                        <StatusBadge status={r.status} />
+                      </td>
                       <td className="py-3 px-4 text-right space-x-2">
                         {canApproveTimeOff ? (
                           <>
                             {r.status !== 'approved' && (
                               <button
                                 onClick={() => handleApprove(r.id)}
-                                className="px-2.5 py-1 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded text-xs font-semibold"
+                                className="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 text-white rounded-md text-xs font-medium transition-colors shadow-2xs"
                               >
                                 Approve
                               </button>
@@ -360,19 +350,19 @@ export const LeaveManager: React.FC<LeaveManagerProps> = ({
                             {r.status !== 'refused' && (
                               <button
                                 onClick={() => handleRefuse(r.id)}
-                                className="px-2.5 py-1 bg-rose-50 text-rose-700 hover:bg-rose-100 rounded text-xs font-semibold"
+                                className="px-2.5 py-1 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-md text-xs font-medium transition-colors shadow-2xs"
                               >
                                 Refuse
                               </button>
                             )}
                           </>
                         ) : (
-                          <span className="text-slate-400 text-xs italic">
+                          <span className="text-slate-400 text-xs">
                             {r.status === 'approved'
-                              ? 'Approved by HR'
+                              ? 'Approved'
                               : r.status === 'refused'
-                              ? 'Refused by HR'
-                              : 'Pending HR Approval'}
+                              ? 'Refused'
+                              : 'Pending Approval'}
                           </span>
                         )}
                       </td>
@@ -383,30 +373,28 @@ export const LeaveManager: React.FC<LeaveManagerProps> = ({
             </div>
           )
         ) : allocations.length === 0 ? (
-          <div className="py-12 text-center text-slate-500 text-sm">No leave allocations found.</div>
+          <div className="py-12 text-center text-slate-500 text-xs">No leave allocations found.</div>
         ) : (
-          <div className="mt-4 overflow-x-auto">
+          <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-600 uppercase">
-                  <th className="py-3 px-4">Holiday Type</th>
+                <tr className="bg-slate-50/80 border-b border-slate-200/80 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                  <th className="py-3 px-4">Leave Type</th>
                   <th className="py-3 px-4">Year</th>
                   <th className="py-3 px-4">Allocated Days</th>
                   <th className="py-3 px-4">Status</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 text-sm">
+              <tbody className="divide-y divide-slate-100 text-xs">
                 {allocations.map((a) => (
-                  <tr key={a.id} className="hover:bg-slate-50/60">
-                    <td className="py-3 px-4 font-semibold text-slate-900 capitalize">
+                  <tr key={a.id} className="hover:bg-slate-50/60 transition-colors">
+                    <td className="py-3 px-4 font-medium text-slate-900 capitalize">
                       {a.holiday_type.replace(/_/g, ' ')}
                     </td>
-                    <td className="py-3 px-4 text-slate-600">{a.year}</td>
-                    <td className="py-3 px-4 font-bold text-slate-800">{a.number_of_days} days</td>
+                    <td className="py-3 px-4 font-mono text-slate-600">{a.year}</td>
+                    <td className="py-3 px-4 font-mono font-medium text-slate-900">{a.number_of_days} days</td>
                     <td className="py-3 px-4">
-                      <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800">
-                        {a.status}
-                      </span>
+                      <StatusBadge status={a.status} />
                     </td>
                   </tr>
                 ))}
@@ -418,28 +406,28 @@ export const LeaveManager: React.FC<LeaveManagerProps> = ({
 
       {/* Submit Leave Request Modal */}
       {showRequestModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl shadow-xl max-w-lg w-full p-6 border border-slate-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 border border-slate-200">
             <div className="flex items-center justify-between pb-4 border-b border-slate-100">
-              <h3 className="text-lg font-bold text-slate-900">Request Time Off</h3>
-              <button onClick={() => setShowRequestModal(false)} className="text-slate-400 hover:text-slate-600 text-lg">
+              <h3 className="text-sm font-semibold text-slate-900">Request Time Off</h3>
+              <button onClick={() => setShowRequestModal(false)} className="text-slate-400 hover:text-slate-600 text-lg leading-none">
                 &times;
               </button>
             </div>
 
             {errorMsg && (
-              <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700 font-medium">
+              <div className="mt-4 p-2.5 bg-rose-50 border border-rose-200 rounded-lg text-xs text-rose-700 font-medium">
                 {errorMsg}
               </div>
             )}
 
             <form onSubmit={handleCreateRequest} className="mt-4 space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Holiday / Leave Type</label>
+                <label className="block text-xs font-medium text-slate-700 mb-1">Leave Type</label>
                 <select
                   value={requestForm.holiday_type}
                   onChange={(e) => setRequestForm({ ...requestForm, holiday_type: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs focus:ring-1 focus:ring-slate-900 focus:border-slate-900 outline-none"
                 >
                   <option value="paid_time_off">Paid Time Off (PTO)</option>
                   <option value="sick_leave">Sick Leave</option>
@@ -448,40 +436,40 @@ export const LeaveManager: React.FC<LeaveManagerProps> = ({
                 </select>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Date From *</label>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Date From *</label>
                   <input
                     type="date"
                     required
                     value={requestForm.date_from}
                     onChange={(e) => setRequestForm({ ...requestForm, date_from: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs focus:ring-1 focus:ring-slate-900 focus:border-slate-900 outline-none"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Date To *</label>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Date To *</label>
                   <input
                     type="date"
                     required
                     value={requestForm.date_to}
                     onChange={(e) => setRequestForm({ ...requestForm, date_to: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs focus:ring-1 focus:ring-slate-900 focus:border-slate-900 outline-none"
                   />
                 </div>
               </div>
 
-              <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
+              <div className="flex justify-end gap-2 pt-4 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => setShowRequestModal(false)}
-                  className="px-4 py-2 border border-slate-200 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50"
+                  className="px-3.5 py-1.5 border border-slate-200 rounded-lg text-xs font-medium text-slate-600 hover:bg-slate-50 transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium shadow-sm"
+                  className="px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-medium shadow-2xs transition-colors"
                 >
                   Submit Request
                 </button>
@@ -493,28 +481,28 @@ export const LeaveManager: React.FC<LeaveManagerProps> = ({
 
       {/* Allocate Days Modal */}
       {showAllocModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl shadow-xl max-w-lg w-full p-6 border border-slate-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 border border-slate-200">
             <div className="flex items-center justify-between pb-4 border-b border-slate-100">
-              <h3 className="text-lg font-bold text-slate-900">Allocate Leave Days</h3>
-              <button onClick={() => setShowAllocModal(false)} className="text-slate-400 hover:text-slate-600 text-lg">
+              <h3 className="text-sm font-semibold text-slate-900">Allocate Leave Days</h3>
+              <button onClick={() => setShowAllocModal(false)} className="text-slate-400 hover:text-slate-600 text-lg leading-none">
                 &times;
               </button>
             </div>
 
             {errorMsg && (
-              <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700 font-medium">
+              <div className="mt-4 p-2.5 bg-rose-50 border border-rose-200 rounded-lg text-xs text-rose-700 font-medium">
                 {errorMsg}
               </div>
             )}
 
             <form onSubmit={handleCreateAllocation} className="mt-4 space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Holiday Type</label>
+                <label className="block text-xs font-medium text-slate-700 mb-1">Leave Type</label>
                 <select
                   value={allocForm.holiday_type}
                   onChange={(e) => setAllocForm({ ...allocForm, holiday_type: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500"
+                  className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs focus:ring-1 focus:ring-slate-900 focus:border-slate-900 outline-none"
                 >
                   <option value="paid_time_off">Paid Time Off (PTO)</option>
                   <option value="sick_leave">Sick Leave</option>
@@ -523,41 +511,41 @@ export const LeaveManager: React.FC<LeaveManagerProps> = ({
                 </select>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Number of Days *</label>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Number of Days *</label>
                   <input
                     type="number"
                     step="0.5"
                     required
                     value={allocForm.number_of_days}
                     onChange={(e) => setAllocForm({ ...allocForm, number_of_days: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500"
+                    className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs focus:ring-1 focus:ring-slate-900 focus:border-slate-900 outline-none"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Allocation Year *</label>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Allocation Year *</label>
                   <input
                     type="number"
                     required
                     value={allocForm.year}
                     onChange={(e) => setAllocForm({ ...allocForm, year: parseInt(e.target.value) })}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500"
+                    className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs focus:ring-1 focus:ring-slate-900 focus:border-slate-900 outline-none"
                   />
                 </div>
               </div>
 
-              <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
+              <div className="flex justify-end gap-2 pt-4 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => setShowAllocModal(false)}
-                  className="px-4 py-2 border border-slate-200 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50"
+                  className="px-3.5 py-1.5 border border-slate-200 rounded-lg text-xs font-medium text-slate-600 hover:bg-slate-50 transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-medium shadow-sm"
+                  className="px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-medium shadow-2xs transition-colors"
                 >
                   Confirm Allocation
                 </button>
