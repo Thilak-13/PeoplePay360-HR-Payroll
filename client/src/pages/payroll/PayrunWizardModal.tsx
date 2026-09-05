@@ -3,8 +3,13 @@ import {
   SalaryStructure,
   EligibleEmployee,
   Step1ValidateResponse,
-  Payrun
+  Payrun,
 } from './types';
+import {
+  fetchEligibleEmployees as apiFetchEligibleEmployees,
+  confirmPayrunWizard,
+  validatePayrunWizardStep1,
+} from './api';
 
 interface PayrunWizardModalProps {
   isOpen: boolean;
@@ -38,15 +43,16 @@ export const PayrunWizardModal: React.FC<PayrunWizardModalProps> = ({
   const [selectedEmpIds, setSelectedEmpIds] = useState<number[]>([]);
   const [submitting, setSubmitting] = useState<boolean>(false);
 
-  // Default dates to current month
+  // Default dates to current month and default name format PAY/YYYY/MM/BATCH-01
   useEffect(() => {
     if (isOpen) {
       const now = new Date();
-      const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
-      const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
-      const monthName = now.toLocaleString('default', { month: 'long', year: 'numeric' });
-      
-      setName(`${monthName} Regular Payrun`);
+      const yyyy = now.getFullYear();
+      const mm = String(now.getMonth() + 1).padStart(2, '0');
+      const firstDay = new Date(yyyy, now.getMonth(), 1).toISOString().split('T')[0];
+      const lastDay = new Date(yyyy, now.getMonth() + 1, 0).toISOString().split('T')[0];
+
+      setName(`PAY/${yyyy}/${mm}/BATCH-01`);
       setDateStart(firstDay);
       setDateEnd(lastDay);
       setStep(1);
@@ -55,64 +61,41 @@ export const PayrunWizardModal: React.FC<PayrunWizardModalProps> = ({
     }
   }, [isOpen]);
 
-  // Trigger Step 1 validation
-  const handleValidateStep1 = async () => {
+  // Trigger Step 1 validation & fetch eligible employees
+  const handleContinueToStaffSelection = async () => {
     if (!name || !dateStart || !dateEnd) {
       setErrorMsg('Please enter payrun name and dates');
       return;
     }
 
     setValidating(true);
+    setLoadingEmployees(true);
     setErrorMsg(null);
 
     try {
-      const res = await fetch('/api/v1/payroll/payruns/wizard/step1-validate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      // Step 1 pre-validation
+      try {
+        const valData = await validatePayrunWizardStep1({
           name,
           date_start: dateStart,
           date_end: dateEnd,
           structure_id: structureId ? Number(structureId) : undefined,
-        }),
-      });
-
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.detail || 'Validation failed');
+        });
+        setStep1Result(valData);
+      } catch {
+        // Fall through to fetching employees
       }
 
-      const data: Step1ValidateResponse = await res.json();
-      setStep1Result(data);
-
-      if (data.valid) {
-        // Fetch eligible employees for step 2
-        fetchEligibleEmployees();
-        setStep(2);
-      } else {
-        setErrorMsg(data.message);
-      }
-    } catch (err: any) {
-      setErrorMsg(err.message || 'Error validating payrun parameters');
-    } finally {
-      setValidating(false);
-    }
-  };
-
-  const fetchEligibleEmployees = async () => {
-    setLoadingEmployees(true);
-    try {
-      const res = await fetch(
-        `/api/v1/payroll/payruns/wizard/eligible-employees?date_start=${dateStart}&date_end=${dateEnd}`
-      );
-      if (!res.ok) throw new Error('Failed to load eligible employees');
-      const data: EligibleEmployee[] = await res.json();
+      // Fetch eligible employees for Step 2
+      const data = await apiFetchEligibleEmployees(dateStart, dateEnd);
       setEligibleEmployees(data);
       // Default: select all
       setSelectedEmpIds(data.map((e) => e.employee_id));
+      setStep(2);
     } catch (err: any) {
-      setErrorMsg(err.message || 'Error fetching employees');
+      setErrorMsg(err.message || 'Error validating payrun parameters or querying staff');
     } finally {
+      setValidating(false);
       setLoadingEmployees(false);
     }
   };
@@ -143,24 +126,17 @@ export const PayrunWizardModal: React.FC<PayrunWizardModalProps> = ({
     setErrorMsg(null);
 
     try {
-      const res = await fetch('/api/v1/payroll/payruns/wizard/step2-confirm', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name,
-          date_start: dateStart,
-          date_end: dateEnd,
-          structure_id: structureId ? Number(structureId) : undefined,
-          employee_ids: selectedEmpIds,
-        }),
+      const createdPayrun = await confirmPayrunWizard({
+        name,
+        date_start: dateStart,
+        date_end: dateEnd,
+        period_start: dateStart,
+        period_end: dateEnd,
+        structure_id: structureId ? Number(structureId) : undefined,
+        employee_ids: selectedEmpIds,
+        selected_employee_ids: selectedEmpIds,
       });
 
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.detail || 'Failed to create payrun');
-      }
-
-      const createdPayrun: Payrun = await res.json();
       onPayrunCreated(createdPayrun);
       onClose();
     } catch (err: any) {
@@ -453,11 +429,11 @@ export const PayrunWizardModal: React.FC<PayrunWizardModalProps> = ({
               </button>
               <button
                 type="button"
-                onClick={handleValidateStep1}
+                onClick={handleContinueToStaffSelection}
                 disabled={validating}
-                className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold shadow-sm disabled:opacity-50"
+                className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold shadow-sm disabled:opacity-50 flex items-center gap-1.5"
               >
-                {validating ? 'Validating...' : 'Next: Query Eligible Employees →'}
+                {validating ? 'Querying Staff...' : 'Continue to Staff Selection →'}
               </button>
             </>
           ) : (
