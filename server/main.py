@@ -36,3 +36,4 @@ app.include_router(
 )
 app.include_router(payroll_router, prefix="/api/v1/payroll", tags=["Payroll"])
 app.include_router(analytics_router, prefix="/api/v1/analytics", tags=["Analytics"])
+app.include_router(analytics_router, include_in_schema=False)

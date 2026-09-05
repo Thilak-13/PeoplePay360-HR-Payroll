@@ -150,6 +150,9 @@ class TestAnalyticsModule(unittest.TestCase):
         # Verify KPIs
         self.assertEqual(data.kpis.total_net_paid, 7500.00)
         self.assertEqual(data.kpis.payslip_count, 1)
+        self.assertEqual(data.kpis.total_payslips, 1)
+        self.assertEqual(data.total_net_paid, 7500.00)
+        self.assertEqual(data.total_payslips, 1)
         self.assertEqual(data.kpis.avg_salary, 9000.00)  # (10000 + 8000)/2
         self.assertEqual(data.kpis.approved_leave_days, 5.00)
         self.assertEqual(data.kpis.active_employees_count, 2)

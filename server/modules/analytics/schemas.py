@@ -4,9 +4,11 @@ from pydantic import BaseModel, Field
 
 class KPIsSummary(BaseModel):
     total_net_paid: float = Field(..., description="Total net payout across all historical paid payslips")
-    payslip_count: int = Field(..., description="Total number of paid payslips generated")
+    total_payslips: int = Field(0, description="Total number of paid payslips generated")
+    payslip_count: int = Field(0, description="Total number of paid payslips generated")
     avg_salary: float = Field(..., description="Average base salary / wage across active employee contracts")
     approved_leave_days: float = Field(..., description="Total cumulative approved leave days recorded")
+    avg_net_salary: Optional[float] = Field(None, description="Average net salary per paid payslip")
     total_gross_paid: float = Field(0.0, description="Total gross earnings paid out")
     active_employees_count: int = Field(0, description="Total active headcount in the organization")
     total_payruns_count: int = Field(0, description="Total payrun batches created")
@@ -36,8 +38,12 @@ class ComplianceAlertItem(BaseModel):
 
 class DashboardAnalyticsResponse(BaseModel):
     kpis: KPIsSummary
-    department_spend: List[DepartmentSpendItem]
-    compliance_alerts: List[ComplianceAlertItem]
+    department_spend: List[DepartmentSpendItem] = []
+    compliance_alerts: List[ComplianceAlertItem] = []
+    total_net_paid: Optional[float] = None
+    total_payslips: Optional[int] = None
+    avg_salary: Optional[float] = None
+    approved_leave_days: Optional[float] = None
 
 
 class DispatchToast(BaseModel):
