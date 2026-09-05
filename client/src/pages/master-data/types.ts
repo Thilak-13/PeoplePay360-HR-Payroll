@@ -60,6 +60,8 @@ export interface Employee {
   department_id?: number;
   working_schedule_id?: number;
   job_title?: string;
+  bank_account_number?: string;
+  bank_ifsc?: string;
   hire_date?: string;
   status: 'active' | 'inactive' | 'on_leave';
   created_at?: string;
@@ -70,15 +72,25 @@ export interface Employee {
 
 export interface EmployeeSmartStats {
   contracts_count: number;
+  attendance_count: number;
   time_off_count: number;
   allocations_count: number;
 }
 
 export interface EmployeeDetail extends Employee {
   contracts_count: number;
+  attendance_count: number;
   time_off_count: number;
   allocations_count: number;
   contracts: Contract[];
   leave_requests: LeaveRequest[];
   leave_allocations: LeaveAllocation[];
+}
+
+export interface LeaveBalanceItem {
+  holiday_type: string;
+  year: number;
+  allocated_days: number;
+  used_days: number;
+  remaining_days: number;
 }
