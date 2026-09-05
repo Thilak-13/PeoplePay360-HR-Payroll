@@ -8,6 +8,7 @@ from fastapi import HTTPException, status
 from server.modules.master_data.models import (
     Department,
     WorkingSchedule,
+    WorkingScheduleDay,
     Employee,
     Contract,
     LeaveAllocation,
@@ -26,13 +27,85 @@ from server.modules.master_data.schemas import (
 # 1. WORKING SCHEDULE CALCULATION UTILITIES
 # ==============================================================================
 
+def parse_time_hours(time_str: str) -> float:
+    """Parses 'HH:MM' string to decimal hours (e.g., '09:30' -> 9.5)."""
+    try:
+        parts = time_str.strip().split(":")
+        return float(parts[0]) + float(parts[1]) / 60.0
+    except Exception:
+        return 0.0
+
+
+def compute_hours_from_days(days: List) -> Decimal:
+    """Computes total weekly hours from daily schedule lines ((end_hour - start_hour - break_hours))."""
+    total = 0.0
+    for day in days:
+        if isinstance(day, dict):
+            s_time = day.get("start_time", "09:00")
+            e_time = day.get("end_time", "18:00")
+            b_hours = float(day.get("break_hours", 1.0))
+        else:
+            s_time = getattr(day, "start_time", "09:00")
+            e_time = getattr(day, "end_time", "18:00")
+            b_hours = float(getattr(day, "break_hours", 1.0))
+        
+        start = parse_time_hours(str(s_time))
+        end = parse_time_hours(str(e_time))
+        day_hours = max(0.0, end - start - b_hours)
+        total += day_hours
+    return Decimal(str(round(total, 2)))
+
+
 def calculate_working_hours(
     hours_per_week: Decimal = Decimal("40.00"),
     days_per_week: int = 5,
     date_from: Optional[date] = None,
     date_to: Optional[date] = None,
+    schedule: Optional[WorkingSchedule] = None,
 ) -> ScheduleCalculationResponse:
-    """Calculates weekly hours, daily hours, and total hours across date ranges."""
+    """Calculates weekly hours, daily hours, and total hours across date ranges, accounting for daily schedule lines if available."""
+    if schedule and schedule.days and len(schedule.days) > 0:
+        day_hours_map = {}
+        for d in schedule.days:
+            sh = parse_time_hours(str(d.start_time))
+            eh = parse_time_hours(str(d.end_time))
+            bh = float(d.break_hours)
+            day_hours_map[d.day_of_week] = max(0.0, eh - sh - bh)
+
+        total_weekly_hours = sum(day_hours_map.values())
+        num_schedule_days = len(day_hours_map)
+        avg_hours_per_day = round(total_weekly_hours / num_schedule_days, 2) if num_schedule_days > 0 else 0.0
+
+        if date_from and date_to:
+            if date_from > date_to:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="date_from must be less than or equal to date_to",
+                )
+            working_days = 0
+            total_hours = 0.0
+            curr = date_from
+            while curr <= date_to:
+                dow = curr.weekday()
+                if dow in day_hours_map:
+                    working_days += 1
+                    total_hours += day_hours_map[dow]
+                curr += timedelta(days=1)
+            total_hours = round(total_hours, 2)
+            message = f"Calculated {working_days} working days ({total_hours} total hours) from {date_from} to {date_to} using schedule '{schedule.name}'."
+        else:
+            working_days = num_schedule_days
+            total_hours = round(total_weekly_hours, 2)
+            message = f"Schedule '{schedule.name}': {total_weekly_hours:.2f} hours/week ({avg_hours_per_day:.2f} avg hours/day across {num_schedule_days} days)."
+
+        return ScheduleCalculationResponse(
+            hours_per_week=round(total_weekly_hours, 2),
+            hours_per_day=avg_hours_per_day,
+            working_days=working_days,
+            total_calculated_hours=total_hours,
+            message=message,
+        )
+
     if days_per_week <= 0 or days_per_week > 7:
         days_per_week = 5
 

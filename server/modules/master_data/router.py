@@ -9,6 +9,7 @@ from server.modules.master_data.database import get_db, Base, engine
 from server.modules.master_data.models import (
     Department,
     WorkingSchedule,
+    WorkingScheduleDay,
     Employee,
     Contract,
     LeaveAllocation,
@@ -21,6 +22,9 @@ from server.modules.master_data.schemas import (
     WorkingScheduleCreate,
     WorkingScheduleUpdate,
     WorkingScheduleResponse,
+    WorkingScheduleDayCreate,
+    WorkingScheduleDayRead,
+    WorkingScheduleDayResponse,
     ScheduleCalculationRequest,
     ScheduleCalculationResponse,
     ContractCreate,
@@ -41,6 +45,7 @@ from server.modules.master_data.schemas import (
 )
 from server.modules.master_data.services import (
     calculate_working_hours,
+    compute_hours_from_days,
     create_employee_contract,
     update_employee_contract,
     submit_leave_request,
@@ -77,6 +82,7 @@ def ping():
 def calculate_schedule_hours_endpoint(req: ScheduleCalculationRequest, db: Session = Depends(get_db)):
     """Utility to calculate weekly hours, daily hours, and span hours based on schedule."""
     hours_per_week = req.hours_per_week or Decimal("40.00")
+    schedule = None
     if req.working_schedule_id:
         schedule = db.query(WorkingSchedule).filter(WorkingSchedule.id == req.working_schedule_id).first()
         if schedule:
@@ -87,6 +93,7 @@ def calculate_schedule_hours_endpoint(req: ScheduleCalculationRequest, db: Sessi
         days_per_week=req.days_per_week or 5,
         date_from=req.date_from,
         date_to=req.date_to,
+        schedule=schedule,
     )
 
 
@@ -113,8 +120,28 @@ def list_working_schedules(skip: int = 0, limit: int = 100, db: Session = Depend
 
 @router.post("/working-schedules", response_model=WorkingScheduleResponse, status_code=status.HTTP_201_CREATED, tags=["Schedules"])
 def create_working_schedule(sched_in: WorkingScheduleCreate, db: Session = Depends(get_db)):
-    schedule = WorkingSchedule(**sched_in.model_dump())
+    sched_data = sched_in.model_dump(exclude={"days"})
+    days_data = sched_in.days
+
+    if days_data:
+        computed_hours = compute_hours_from_days(days_data)
+        sched_data["hours_per_week"] = computed_hours
+    elif sched_data.get("hours_per_week") is None:
+        sched_data["hours_per_week"] = Decimal("40.00")
+
+    schedule = WorkingSchedule(**sched_data)
     db.add(schedule)
+    db.flush()
+
+    if days_data:
+        for d in days_data:
+            day_dict = d.model_dump() if hasattr(d, "model_dump") else dict(d)
+            db_day = WorkingScheduleDay(
+                schedule_id=schedule.id,
+                **day_dict
+            )
+            db.add(db_day)
+
     db.commit()
     db.refresh(schedule)
     return schedule
@@ -133,8 +160,25 @@ def update_working_schedule(schedule_id: int, sched_in: WorkingScheduleUpdate, d
     schedule = db.query(WorkingSchedule).filter(WorkingSchedule.id == schedule_id).first()
     if not schedule:
         raise HTTPException(status_code=404, detail="Working schedule not found")
-    for field, val in sched_in.model_dump(exclude_unset=True).items():
+    
+    update_dict = sched_in.model_dump(exclude_unset=True, exclude={"days"})
+
+    if sched_in.days is not None:
+        db.query(WorkingScheduleDay).filter(WorkingScheduleDay.schedule_id == schedule_id).delete()
+        computed_hours = compute_hours_from_days(sched_in.days)
+        if "hours_per_week" not in update_dict or update_dict["hours_per_week"] is None:
+            update_dict["hours_per_week"] = computed_hours
+        for d in sched_in.days:
+            day_dict = d.model_dump() if hasattr(d, "model_dump") else dict(d)
+            db_day = WorkingScheduleDay(
+                schedule_id=schedule.id,
+                **day_dict
+            )
+            db.add(db_day)
+
+    for field, val in update_dict.items():
         setattr(schedule, field, val)
+
     db.commit()
     db.refresh(schedule)
     return schedule

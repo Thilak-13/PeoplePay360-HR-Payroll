@@ -46,26 +46,55 @@ class DepartmentResponse(DepartmentBase):
 # 2. WORKING SCHEDULE SCHEMAS
 # ==========================================
 
+class WorkingScheduleDayBase(BaseModel):
+    day_of_week: int = Field(..., ge=0, le=6, description="0=Monday, 6=Sunday")
+    start_time: str = Field(default="09:00", max_length=5)
+    end_time: str = Field(default="18:00", max_length=5)
+    break_hours: Decimal = Field(default=Decimal("1.00"), ge=0, le=24)
+
+
+class WorkingScheduleDayCreate(WorkingScheduleDayBase):
+    pass
+
+
+class WorkingScheduleDayRead(WorkingScheduleDayBase):
+    id: int
+    schedule_id: int
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+WorkingScheduleDayResponse = WorkingScheduleDayRead
+
+
 class WorkingScheduleBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=100)
-    hours_per_week: Decimal = Field(default=Decimal("40.00"), ge=0, le=168)
+    hours_per_week: Optional[Decimal] = Field(default=Decimal("40.00"), ge=0, le=168)
 
 
 class WorkingScheduleCreate(WorkingScheduleBase):
-    pass
+    days: Optional[List[WorkingScheduleDayCreate]] = None
 
 
 class WorkingScheduleUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=100)
     hours_per_week: Optional[Decimal] = Field(None, ge=0, le=168)
+    days: Optional[List[WorkingScheduleDayCreate]] = None
 
 
 class WorkingScheduleResponse(WorkingScheduleBase):
     id: int
+    hours_per_week: Decimal
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
+    days: List[WorkingScheduleDayRead] = []
 
     model_config = ConfigDict(from_attributes=True)
+
+
+WorkingScheduleRead = WorkingScheduleResponse
 
 
 class ScheduleCalculationRequest(BaseModel):

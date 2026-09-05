@@ -41,6 +41,23 @@ class WorkingSchedule(Base):
 
     # Relationships
     employees = relationship("Employee", back_populates="working_schedule")
+    days = relationship("WorkingScheduleDay", back_populates="schedule", cascade="all, delete-orphan", order_by="WorkingScheduleDay.day_of_week")
+
+
+class WorkingScheduleDay(Base):
+    __tablename__ = "working_schedule_days"
+
+    id = Column(Integer, primary_key=True, index=True)
+    schedule_id = Column(Integer, ForeignKey("working_schedules.id", ondelete="CASCADE"), nullable=False, index=True)
+    day_of_week = Column(Integer, nullable=False)  # 0=Monday, 6=Sunday
+    start_time = Column(String(5), nullable=False, default="09:00")
+    end_time = Column(String(5), nullable=False, default="18:00")
+    break_hours = Column(Numeric(4, 2), default=1.00, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), default=datetime.utcnow)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=datetime.utcnow, default=datetime.utcnow)
+
+    # Relationships
+    schedule = relationship("WorkingSchedule", back_populates="days")
 
 
 class Employee(Base):

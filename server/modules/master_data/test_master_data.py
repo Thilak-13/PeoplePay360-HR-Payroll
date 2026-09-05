@@ -194,8 +194,65 @@ def test_master_data_flow():
     assert len(detail_data["leave_allocations"]) == 1
 
 
+def test_working_schedule_with_daily_lines():
+    # Create schedule with 4 daily lines: Mon-Wed (8h each) + Thu (9h) -> Total 33h
+    payload = {
+        "name": "Custom 4-day 33h Schedule",
+        "days": [
+            {"day_of_week": 0, "start_time": "09:00", "end_time": "18:00", "break_hours": 1.0},
+            {"day_of_week": 1, "start_time": "09:00", "end_time": "18:00", "break_hours": 1.0},
+            {"day_of_week": 2, "start_time": "09:00", "end_time": "18:00", "break_hours": 1.0},
+            {"day_of_week": 3, "start_time": "09:00", "end_time": "19:00", "break_hours": 1.0},
+        ],
+    }
+    res = client.post("/api/v1/master-data/working-schedules", json=payload)
+    assert res.status_code == 201
+    data = res.json()
+    assert float(data["hours_per_week"]) == 33.0
+    assert len(data["days"]) == 4
+    sched_id = data["id"]
+
+    # Verify GET /working-schedules/{id}
+    res_get = client.get(f"/api/v1/master-data/working-schedules/{sched_id}")
+    assert res_get.status_code == 200
+    get_data = res_get.json()
+    assert float(get_data["hours_per_week"]) == 33.0
+    assert len(get_data["days"]) == 4
+    assert get_data["days"][0]["day_of_week"] == 0
+    assert get_data["days"][3]["day_of_week"] == 3
+
+    # Verify schedule calculation using custom schedule ID across 2026-09-07 (Mon) to 2026-09-13 (Sun)
+    res_calc = client.post(
+        "/api/v1/master-data/schedules/calculate-hours",
+        json={
+            "working_schedule_id": sched_id,
+            "date_from": "2026-09-07",
+            "date_to": "2026-09-13",
+        },
+    )
+    assert res_calc.status_code == 200
+    calc_data = res_calc.json()
+    assert calc_data["working_days"] == 4
+    assert calc_data["total_calculated_hours"] == 33.0
+    assert calc_data["hours_per_week"] == 33.0
+
+    # Test updating days on schedule
+    update_payload = {
+        "days": [
+            {"day_of_week": 0, "start_time": "09:00", "end_time": "17:00", "break_hours": 1.0}, # 7h
+            {"day_of_week": 1, "start_time": "09:00", "end_time": "17:00", "break_hours": 1.0}, # 7h
+        ]
+    }
+    res_up = client.put(f"/api/v1/master-data/working-schedules/{sched_id}", json=update_payload)
+    assert res_up.status_code == 200
+    up_data = res_up.json()
+    assert float(up_data["hours_per_week"]) == 14.0
+    assert len(up_data["days"]) == 2
+
+
 if __name__ == "__main__":
     test_ping()
     test_working_schedule_calculator()
+    test_working_schedule_with_daily_lines()
     test_master_data_flow()
     print("\n>>> ALL MASTER DATA BACKEND TESTS PASSED SUCCESSFULLY! <<<\n")
