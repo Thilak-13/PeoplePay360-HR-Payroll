@@ -21,6 +21,9 @@ ALTER TABLE payslips ADD COLUMN IF NOT EXISTS bank_account VARCHAR(50);
 ALTER TABLE payslips ADD COLUMN IF NOT EXISTS ifsc_code VARCHAR(20);
 ALTER TABLE payslips ADD COLUMN IF NOT EXISTS email_sent BOOLEAN DEFAULT FALSE;
 
+ALTER TABLE employees ADD COLUMN IF NOT EXISTS bank_account_number VARCHAR(50);
+ALTER TABLE employees ADD COLUMN IF NOT EXISTS bank_ifsc VARCHAR(20);
+
 -- ==========================================================
 -- 1. Departments (5 Departments)
 -- ==========================================================
@@ -54,23 +57,23 @@ SELECT setval('working_schedules_id_seq', (SELECT MAX(id) FROM working_schedules
 -- ==========================================================
 -- 3. Employees (15 Employees: 2 intentionally missing bank info)
 -- ==========================================================
-INSERT INTO employees (id, first_name, last_name, email, phone, department_id, working_schedule_id, job_title, hire_date, status) VALUES
-(1, 'Eleanor', 'Vance', 'eleanor.vance@peoplepay360.local', '+1-555-0101', 1, 2, 'Chief Executive Officer', '2022-01-10', 'active'),
-(2, 'Liam', 'Patel', 'liam.patel@peoplepay360.local', '+1-555-0102', 2, 1, 'Lead Systems Architect', '2022-03-15', 'active'),
-(3, 'Sophia', 'Chen', 'sophia.chen@peoplepay360.local', '+1-555-0103', 2, 1, 'Senior Software Engineer', '2022-06-01', 'active'),
-(4, 'Marcus', 'Brody', 'marcus.brody@peoplepay360.local', '+1-555-0104', 2, 1, 'Backend Platform Engineer', '2023-01-15', 'active'),
-(5, 'Emily', 'Watson', 'emily.watson@peoplepay360.local', '+1-555-0105', 2, 1, 'Frontend UI/UX Engineer', '2023-04-10', 'active'),
-(6, 'Sarah', 'Jenkins', 'sarah.jenkins@peoplepay360.local', '+1-555-0106', 3, 1, 'Director of People & Culture', '2022-02-01', 'active'),
-(7, 'David', 'Miller', 'david.miller@peoplepay360.local', '+1-555-0107', 3, 1, 'Talent Acquisition Lead', '2023-05-15', 'active'),
-(8, 'Hannah', 'Abbott', 'hannah.abbott@peoplepay360.local', '+1-555-0108', 3, 1, 'People Operations Specialist', '2023-09-01', 'active'),
-(9, 'Michael', 'Chang', 'michael.chang@peoplepay360.local', '+1-555-0109', 4, 2, 'Chief Financial Officer', '2022-01-15', 'active'),
-(10, 'Olivia', 'Taylor', 'olivia.taylor@peoplepay360.local', '+1-555-0110', 4, 1, 'Senior Controller & Accountant', '2022-11-01', 'active'),
-(11, 'Daniel', 'Kim', 'daniel.kim@peoplepay360.local', '+1-555-0111', 4, 1, 'Payroll & Compliance Analyst', '2023-08-15', 'active'),
-(12, 'Rachel', 'Green', 'rachel.green@peoplepay360.local', '+1-555-0112', 5, 2, 'VP of Sales & Growth', '2022-04-01', 'active'),
-(13, 'Alexander', 'Ross', 'alexander.ross@peoplepay360.local', '+1-555-0113', 5, 1, 'Enterprise Account Executive', '2023-07-01', 'active'),
--- Two employees intentionally missing phone/bank information for compliance pre-validation alerts
-(14, 'Nathan', 'Drake', 'nathan.drake@peoplepay360.local', NULL, 2, 1, 'DevOps & Reliability Engineer', '2023-10-01', 'active'),
-(15, 'Chloe', 'Frazer', 'chloe.frazer@peoplepay360.local', NULL, 5, 1, 'Growth Marketing Strategist', '2023-11-15', 'active')
+INSERT INTO employees (id, first_name, last_name, email, phone, department_id, working_schedule_id, job_title, bank_account_number, bank_ifsc, hire_date, status) VALUES
+(1, 'Eleanor', 'Vance', 'eleanor.vance@peoplepay360.local', '+1-555-0101', 1, 2, 'Chief Executive Officer', '987654321001', 'HDFC0001234', '2022-01-10', 'active'),
+(2, 'Liam', 'Patel', 'liam.patel@peoplepay360.local', '+1-555-0102', 2, 1, 'Lead Systems Architect', '987654321002', 'HDFC0001234', '2022-03-15', 'active'),
+(3, 'Sophia', 'Chen', 'sophia.chen@peoplepay360.local', '+1-555-0103', 2, 1, 'Senior Software Engineer', '987654321003', 'SBIN0004567', '2022-06-01', 'active'),
+(4, 'Marcus', 'Brody', 'marcus.brody@peoplepay360.local', '+1-555-0104', 2, 1, 'Backend Platform Engineer', '987654321004', 'ICIC0007890', '2023-01-15', 'active'),
+(5, 'Emily', 'Watson', 'emily.watson@peoplepay360.local', '+1-555-0105', 2, 1, 'Frontend UI/UX Engineer', '987654321005', 'HDFC0001234', '2023-04-10', 'active'),
+(6, 'Sarah', 'Jenkins', 'sarah.jenkins@peoplepay360.local', '+1-555-0106', 3, 1, 'Director of People & Culture', '987654321006', 'KKBK0002345', '2022-02-01', 'active'),
+(7, 'David', 'Miller', 'david.miller@peoplepay360.local', '+1-555-0107', 3, 1, 'Talent Acquisition Lead', '987654321007', 'SBIN0004567', '2023-05-15', 'active'),
+(8, 'Hannah', 'Abbott', 'hannah.abbott@peoplepay360.local', '+1-555-0108', 3, 1, 'People Operations Specialist', '987654321008', 'ICIC0007890', '2023-09-01', 'active'),
+(9, 'Michael', 'Chang', 'michael.chang@peoplepay360.local', '+1-555-0109', 4, 2, 'Chief Financial Officer', '987654321009', 'HDFC0001234', '2022-01-15', 'active'),
+(10, 'Olivia', 'Taylor', 'olivia.taylor@peoplepay360.local', '+1-555-0110', 4, 1, 'Senior Controller & Accountant', '987654321010', 'SBIN0004567', '2022-11-01', 'active'),
+(11, 'Daniel', 'Kim', 'daniel.kim@peoplepay360.local', '+1-555-0111', 4, 1, 'Payroll & Compliance Analyst', '987654321011', 'KKBK0002345', '2023-08-15', 'active'),
+(12, 'Rachel', 'Green', 'rachel.green@peoplepay360.local', '+1-555-0112', 5, 2, 'VP of Sales & Growth', '987654321012', 'ICIC0007890', '2022-04-01', 'active'),
+(13, 'Alexander', 'Ross', 'alexander.ross@peoplepay360.local', '+1-555-0113', 5, 1, 'Enterprise Account Executive', '987654321013', 'HDFC0001234', '2023-07-01', 'active'),
+-- Two employees intentionally leaving bank_account_number and bank_ifsc NULL to test compliance alerts in demos
+(14, 'Nathan', 'Drake', 'nathan.drake@peoplepay360.local', '+1-555-0114', 2, 1, 'DevOps & Reliability Engineer', NULL, NULL, '2023-10-01', 'active'),
+(15, 'Chloe', 'Frazer', 'chloe.frazer@peoplepay360.local', '+1-555-0115', 5, 1, 'Growth Marketing Strategist', NULL, NULL, '2023-11-15', 'active')
 ON CONFLICT (id) DO UPDATE SET
     first_name = EXCLUDED.first_name,
     last_name = EXCLUDED.last_name,
@@ -79,6 +82,8 @@ ON CONFLICT (id) DO UPDATE SET
     department_id = EXCLUDED.department_id,
     working_schedule_id = EXCLUDED.working_schedule_id,
     job_title = EXCLUDED.job_title,
+    bank_account_number = EXCLUDED.bank_account_number,
+    bank_ifsc = EXCLUDED.bank_ifsc,
     hire_date = EXCLUDED.hire_date,
     status = EXCLUDED.status;
 
