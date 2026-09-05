@@ -219,55 +219,68 @@ class PayrollService:
 
     @staticmethod
     def wizard_step2_confirm_and_create(db: Session, req: PayrunWizardStep2ConfirmRequest) -> Payrun:
-        """Step 2 confirmation: creates payrun and drafts initial payslips for selected employees."""
-        if req.date_start > req.date_end:
-            raise ValueError("Start date cannot be after end date")
+        """Step 2 confirmation: creates payrun in 'draft' and draft placeholder payslips for selected employees."""
+        if req.period_start > req.period_end:
+            raise ValueError("period_start cannot be after period_end")
 
-        # Resolve structure
+        # Resolve structure (fall back to default when not specified)
         structure_id = req.structure_id
         if not structure_id:
             default_st = get_or_create_default_structure(db)
             structure_id = default_st.id
 
-        # Create Payrun
+        # Create Payrun in 'draft' status
         payrun = Payrun(
             name=req.name,
-            date_start=req.date_start,
-            date_end=req.date_end,
+            period_start=req.period_start,
+            period_end=req.period_end,
             structure_id=structure_id,
             status="draft"
         )
         db.add(payrun)
         db.flush()
 
-        # Get eligible employees
-        eligible = get_eligible_employees(db, req.date_start, req.date_end)
-        selected_ids = set(req.employee_ids) if req.employee_ids else {e["employee_id"] for e in eligible}
+        # Determine selected employee IDs – prefer selected_employee_ids, fall back to all eligible
+        selected_ids: set[int] = set(req.selected_employee_ids) if req.selected_employee_ids else set()
 
-        for emp in eligible:
-            if emp["employee_id"] in selected_ids:
-                has_warn, warn_msg, bank_acc, ifsc = check_compliance_warnings(
-                    db, emp["employee_id"], req.date_start, req.date_end, current_payrun_id=payrun.id
-                )
+        # If no explicit selection was provided, include all eligible employees
+        if not selected_ids:
+            eligible_all = get_eligible_employees(db, req.period_start, req.period_end)
+            selected_ids = {e["employee_id"] for e in eligible_all}
 
-                payslip = Payslip(
-                    payrun_id=payrun.id,
-                    employee_id=emp["employee_id"],
-                    contract_id=emp["contract_id"],
-                    structure_id=structure_id,
-                    date_from=req.date_start,
-                    date_to=req.date_end,
-                    basic_wage=Decimal("0.00"),
-                    gross_wage=Decimal("0.00"),
-                    net_wage=Decimal("0.00"),
-                    total_deductions=Decimal("0.00"),
-                    status="draft",
-                    has_warning=has_warn,
-                    warning_message=warn_msg,
-                    bank_account=bank_acc,
-                    ifsc_code=ifsc
-                )
-                db.add(payslip)
+        # Fetch eligible employee records to validate contracts exist
+        eligible = get_eligible_employees(db, req.period_start, req.period_end)
+        eligible_map = {e["employee_id"]: e for e in eligible}
+
+        for emp_id in selected_ids:
+            emp = eligible_map.get(emp_id)
+            if not emp:
+                # Skip employees that have no valid active contract for this period
+                continue
+
+            has_warn, warn_msg, bank_acc, ifsc = check_compliance_warnings(
+                db, emp_id, req.period_start, req.period_end, current_payrun_id=payrun.id
+            )
+
+            # Placeholder payslip – wages are zeroed until /compute is called
+            payslip = Payslip(
+                payrun_id=payrun.id,
+                employee_id=emp_id,
+                contract_id=emp["contract_id"],
+                structure_id=structure_id,
+                date_from=req.period_start,
+                date_to=req.period_end,
+                basic_wage=Decimal("0.00"),
+                gross_wage=Decimal("0.00"),
+                net_wage=Decimal("0.00"),
+                total_deductions=Decimal("0.00"),
+                status="draft",
+                has_warning=has_warn,
+                warning_message=warn_msg,
+                bank_account=bank_acc,
+                ifsc_code=ifsc
+            )
+            db.add(payslip)
 
         db.flush()
         payrun.payslip_count = len(payrun.payslips)
@@ -275,6 +288,7 @@ class PayrollService:
         db.commit()
         db.refresh(payrun)
         return payrun
+
 
     # ==========================================
     # Payrun Management & State Machine
