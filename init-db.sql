@@ -138,3 +138,20 @@ CREATE TABLE IF NOT EXISTS payslip_lines (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+
+-- ==========================================
+-- 3. STATUTORY COMPLIANCE RULES TABLE
+-- ==========================================
+
+CREATE TABLE IF NOT EXISTS statutory_rules (
+    id SERIAL PRIMARY KEY,
+    rule_type VARCHAR(50) NOT NULL,
+    state VARCHAR(50),
+    threshold NUMERIC(12, 2),
+    rate NUMERIC(6, 4),
+    effective_from DATE NOT NULL,
+    effective_to DATE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+

@@ -211,23 +211,23 @@ def get_or_create_default_structure(db: Session) -> SalaryStructure:
         db.add(struct)
         db.flush()
 
-        # Define default sequenced rules pipeline:
+        # Define default sequenced rules pipeline (Wage Code & Labour Codes compliant):
         # BASIC -> ALLOWANCE -> GROSS -> DEDUCTION -> NET
         rules_data = [
-            # 1. Basic Pay
-            {"name": "Basic Salary", "code": "BASIC", "category": "BASIC", "sequence": 10, "amount_type": "percentage", "amount": Decimal("50.00"), "percentage_base": "wage"},
+            # 1. Basic Pay (Wage Code floor: 50% of CTC)
+            {"name": "Basic Pay (Wage Code Floor: 50%)", "code": "BASIC", "category": "BASIC", "sequence": 10, "amount_type": "percentage", "amount": Decimal("50.00"), "percentage_base": "wage"},
             # 2. Allowances
-            {"name": "House Rent Allowance (HRA)", "code": "HRA", "category": "ALLOWANCE", "sequence": 20, "amount_type": "percentage", "amount": Decimal("50.00"), "percentage_base": "BASIC"},
-            {"name": "Special Allowance", "code": "SPEC_ALLW", "category": "ALLOWANCE", "sequence": 30, "amount_type": "percentage", "amount": Decimal("25.00"), "percentage_base": "BASIC"},
-            {"name": "Conveyance Allowance", "code": "CONV_ALLW", "category": "ALLOWANCE", "sequence": 40, "amount_type": "fixed", "amount": Decimal("1600.00"), "percentage_base": "BASIC"},
+            {"name": "House Rent Allowance (HRA)", "code": "HRA", "category": "ALLOWANCE", "sequence": 20, "amount_type": "percentage", "amount": Decimal("40.00"), "percentage_base": "BASIC"},
+            {"name": "Conveyance Allowance", "code": "CONV", "category": "ALLOWANCE", "sequence": 40, "amount_type": "fixed", "amount": Decimal("1600.00"), "percentage_base": "BASIC"},
             # 3. Gross
-            {"name": "Gross Earnings", "code": "GROSS", "category": "GROSS", "sequence": 50, "amount_type": "percentage", "amount": Decimal("100.00"), "percentage_base": "GROSS"},
-            # 4. Deductions
-            {"name": "Provident Fund (PF)", "code": "PF", "category": "DEDUCTION", "sequence": 60, "amount_type": "percentage", "amount": Decimal("12.00"), "percentage_base": "BASIC"},
-            {"name": "Professional Tax (PT)", "code": "PT", "category": "DEDUCTION", "sequence": 70, "amount_type": "fixed", "amount": Decimal("200.00"), "percentage_base": "GROSS"},
-            {"name": "TDS / Income Tax", "code": "TDS", "category": "DEDUCTION", "sequence": 80, "amount_type": "percentage", "amount": Decimal("5.00"), "percentage_base": "GROSS"},
+            {"name": "Gross Earnings", "code": "GROSS", "category": "GROSS", "sequence": 100, "amount_type": "percentage", "amount": Decimal("100.00"), "percentage_base": "GROSS"},
+            # 4. Statutory Deductions
+            {"name": "Employee PF (12% of Basic)", "code": "PF", "category": "DEDUCTION", "sequence": 110, "amount_type": "percentage", "amount": Decimal("12.00"), "percentage_base": "BASIC"},
+            {"name": "Employee ESI (0.75% of Gross)", "code": "ESI", "category": "DEDUCTION", "sequence": 115, "amount_type": "percentage", "amount": Decimal("0.75"), "percentage_base": "GROSS"},
+            {"name": "Professional Tax (Karnataka)", "code": "PTAX", "category": "DEDUCTION", "sequence": 120, "amount_type": "fixed", "amount": Decimal("0.00"), "percentage_base": "GROSS"},
+            {"name": "Tax Deducted at Source (TDS)", "code": "TDS", "category": "DEDUCTION", "sequence": 130, "amount_type": "fixed", "amount": Decimal("0.00"), "percentage_base": "GROSS"},
             # 5. Net
-            {"name": "Net Salary Payout", "code": "NET", "category": "NET", "sequence": 100, "amount_type": "percentage", "amount": Decimal("100.00"), "percentage_base": "NET"}
+            {"name": "Net Salary Payout", "code": "NET", "category": "NET", "sequence": 200, "amount_type": "percentage", "amount": Decimal("100.00"), "percentage_base": "NET"}
         ]
 
         for rd in rules_data:
@@ -249,13 +249,18 @@ def get_or_create_default_structure(db: Session) -> SalaryStructure:
 
 def calculate_payslip_lines_pipeline(
     wage: Decimal,
-    rules: List[SalaryRule]
+    rules: List[SalaryRule],
+    pay_date: Optional[date] = None,
+    state: str = "KA"
 ) -> Tuple[Decimal, Decimal, Decimal, Decimal, List[Dict[str, Any]]]:
     """
     Execute rules ordered by sequence ASC across categories:
     (BASIC -> ALLOWANCE -> GROSS -> DEDUCTION -> NET)
+    Complies with Code on Wages (50% floor), EPF ceiling (₹15k), ESI ceiling (₹21k), and KA PT 2025 (₹25k threshold).
     Returns: (basic_wage, gross_wage, total_deductions, net_wage, snapshot_lines)
     """
+    import math
+
     # Sort rules strictly by sequence ASC
     sorted_rules = sorted(rules, key=lambda r: r.sequence)
 
@@ -280,8 +285,10 @@ def calculate_payslip_lines_pipeline(
 
         if category == "BASIC":
             if amount_type == "percentage":
-                rate = rule_amt
-                line_total = round_curr(wage * (rule_amt / Decimal("100.00")))
+                # Enforce Code on Wages 2019 legal floor of 50%
+                eff_rate = max(rule_amt, Decimal("50.00"))
+                rate = eff_rate
+                line_total = round_curr(wage * (eff_rate / Decimal("100.00")))
             else:
                 line_total = round_curr(rule_amt if rule_amt > 0 else wage)
             category_totals["BASIC"] += line_total
@@ -307,13 +314,53 @@ def calculate_payslip_lines_pipeline(
             rule_values["GROSS"] = line_total
 
         elif category == "DEDUCTION":
-            if amount_type == "percentage":
+            # Statutory Deduction Specific Handlers
+            code_upper = rule.code.upper()
+            
+            if code_upper in ("PF", "EPF"):
+                # EPF statutory wage ceiling: ₹15,000/month
+                pf_wage = min(category_totals["BASIC"], Decimal("15000.00"))
+                rate = rule_amt if rule_amt > 0 else Decimal("12.00")
+                line_total = round_curr(pf_wage * (rate / Decimal("100.00")))
+
+            elif code_upper in ("ESI", "ESIC"):
+                # ESI applies when gross wages <= ₹21,000/month
+                current_gross = category_totals["GROSS"]
+                if current_gross <= Decimal("21000.00"):
+                    rate = rule_amt if rule_amt > 0 else Decimal("0.75")
+                    # Round up to nearest whole rupee per ESI regulations
+                    esi_float = math.ceil(float(current_gross) * float(rate) / 100.0)
+                    line_total = Decimal(str(esi_float)).quantize(Decimal("0.01"))
+                else:
+                    rate = Decimal("0.00")
+                    line_total = Decimal("0.00")
+
+            elif code_upper in ("PT", "PTAX"):
+                # Karnataka PT Amendment Act 2025: Nil below ₹25,000/month
+                current_gross = category_totals["GROSS"]
+                rate = Decimal("100.00")
+                if state.upper() == "KA":
+                    if current_gross >= Decimal("25000.00"):
+                        # Feb is ₹300, other months ₹200
+                        line_total = Decimal("300.00") if (pay_date and pay_date.month == 2) else Decimal("200.00")
+                    else:
+                        line_total = Decimal("0.00")
+                else:
+                    line_total = round_curr(rule_amt)
+
+            elif code_upper == "TDS":
                 rate = rule_amt
-                base_code = rule.percentage_base or "BASIC"
-                base = rule_values.get(base_code, category_totals["BASIC"] if base_code == "BASIC" else category_totals["GROSS"])
-                line_total = round_curr(base * (rule_amt / Decimal("100.00")))
-            else:
                 line_total = round_curr(rule_amt)
+
+            else:
+                if amount_type == "percentage":
+                    rate = rule_amt
+                    base_code = rule.percentage_base or "BASIC"
+                    base = rule_values.get(base_code, category_totals["BASIC"] if base_code == "BASIC" else category_totals["GROSS"])
+                    line_total = round_curr(base * (rule_amt / Decimal("100.00")))
+                else:
+                    line_total = round_curr(rule_amt)
+
             category_totals["DEDUCTION"] += line_total
             rule_values[rule.code] = line_total
 
@@ -401,7 +448,7 @@ def compute_single_payslip(
         rules = structure.rules
 
     # 4. Sequenced Pipeline
-    basic, gross, deductions, net, snapshot_lines = calculate_payslip_lines_pipeline(wage, rules)
+    basic, gross, deductions, net, snapshot_lines = calculate_payslip_lines_pipeline(wage, rules, pay_date=payslip.date_to)
 
     payslip.basic_wage = basic
     payslip.gross_wage = gross

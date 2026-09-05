@@ -177,18 +177,44 @@ ON CONFLICT (id) DO UPDATE SET
 SELECT setval('salary_structures_id_seq', (SELECT MAX(id) FROM salary_structures));
 
 -- ==========================================================
--- 7. 7 Sequenced Rules (BASIC, HRA, TRANS, GROSS, PF, PTAX, NET)
+-- 6.5 Statutory Rules Master (Date-Effective Compliance Engine)
 -- ==========================================================
-DELETE FROM salary_rules WHERE id > 7;
+CREATE TABLE IF NOT EXISTS statutory_rules (
+    id SERIAL PRIMARY KEY,
+    rule_type VARCHAR(50) NOT NULL,
+    state VARCHAR(50),
+    threshold NUMERIC(12, 2),
+    rate NUMERIC(6, 4),
+    effective_from DATE NOT NULL,
+    effective_to DATE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+DELETE FROM statutory_rules;
+INSERT INTO statutory_rules (id, rule_type, state, threshold, rate, effective_from, effective_to) VALUES
+(1, 'PF_CEILING', NULL, 15000.00, 0.1200, '2014-09-01', NULL),
+(2, 'ESI_CEILING', NULL, 21000.00, 0.0075, '2019-07-01', NULL),
+(3, 'ESI_ER_RATE', NULL, 21000.00, 0.0325, '2019-07-01', NULL),
+(4, 'PT_SLAB', 'KA', 25000.00, 0.0000, '2025-04-01', NULL);
+
+SELECT setval('statutory_rules_id_seq', (SELECT MAX(id) FROM statutory_rules));
+
+-- ==========================================================
+-- 7. Sequenced Rules (Wage Code 2025 Compliant: BASIC, HRA, CONV, GROSS, PF, ESI, PTAX, TDS, NET)
+-- ==========================================================
+DELETE FROM salary_rules WHERE id > 9;
 
 INSERT INTO salary_rules (id, structure_id, name, code, category, sequence, amount_type, amount, percentage_base) VALUES
-(1, 1, 'Basic Salary', 'BASIC', 'BASIC', 10, 'percentage', 50.00, 'wage'),
+(1, 1, 'Basic Pay (Wage Code Floor: 50%)', 'BASIC', 'BASIC', 10, 'percentage', 50.00, 'wage'),
 (2, 1, 'House Rent Allowance', 'HRA', 'ALLOWANCE', 20, 'percentage', 40.00, 'BASIC'),
-(3, 1, 'Transport Allowance', 'TRANS', 'ALLOWANCE', 30, 'fixed', 3500.00, 'BASIC'),
+(3, 1, 'Conveyance Allowance', 'CONV', 'ALLOWANCE', 30, 'fixed', 1600.00, 'BASIC'),
 (4, 1, 'Gross Earnings', 'GROSS', 'GROSS', 100, 'percentage', 100.00, 'GROSS'),
-(5, 1, 'Provident Fund', 'PF', 'DEDUCTION', 110, 'percentage', 12.00, 'BASIC'),
-(6, 1, 'Professional Tax', 'PTAX', 'DEDUCTION', 120, 'fixed', 200.00, 'GROSS'),
-(7, 1, 'Net Salary Payout', 'NET', 'NET', 200, 'percentage', 100.00, 'NET')
+(5, 1, 'Employee PF (12% of Basic)', 'PF', 'DEDUCTION', 110, 'percentage', 12.00, 'BASIC'),
+(6, 1, 'Employee ESI (0.75% of Gross)', 'ESI', 'DEDUCTION', 115, 'percentage', 0.75, 'GROSS'),
+(7, 1, 'Professional Tax (Karnataka)', 'PTAX', 'DEDUCTION', 120, 'fixed', 0.00, 'GROSS'),
+(8, 1, 'Tax Deducted at Source (TDS)', 'TDS', 'DEDUCTION', 130, 'fixed', 0.00, 'GROSS'),
+(9, 1, 'Net Salary Payout', 'NET', 'NET', 200, 'percentage', 100.00, 'NET')
 ON CONFLICT (id) DO UPDATE SET
     structure_id = EXCLUDED.structure_id,
     name = EXCLUDED.name,
@@ -205,7 +231,7 @@ SELECT setval('salary_rules_id_seq', (SELECT MAX(id) FROM salary_rules));
 -- 8. Payruns (1 Historical Paid Payrun)
 -- ==========================================================
 INSERT INTO payruns (id, name, date_start, date_end, status, structure_id, total_basic, total_gross, total_net, payslip_count, warning_count) VALUES
-(1, 'August 2026 Monthly Payroll', '2026-08-01', '2026-08-31', 'paid', 1, 67250.00, 139650.00, 128980.00, 13, 0)
+(1, 'August 2026 Monthly Payroll', '2026-08-01', '2026-08-31', 'paid', 1, 67250.00, 137750.00, 127152.00, 13, 0)
 ON CONFLICT (id) DO UPDATE SET
     name = EXCLUDED.name,
     date_start = EXCLUDED.date_start,
@@ -224,19 +250,19 @@ SELECT setval('payruns_id_seq', (SELECT MAX(id) FROM payruns));
 -- 9. Payslips (Historical Paid Payslips for Verified Employees 1-13)
 -- ==========================================================
 INSERT INTO payslips (id, payrun_id, employee_id, contract_id, structure_id, date_from, date_to, basic_wage, gross_wage, total_deductions, net_wage, status, has_warning, bank_account, ifsc_code, email_sent) VALUES
-(1, 1, 1, 1, 1, '2026-08-01', '2026-08-31', 11000.00, 18900.00, 1520.00, 17380.00, 'paid', FALSE, 'ACCT00010101', 'PPAY0001234', TRUE),
-(2, 1, 2, 2, 1, '2026-08-01', '2026-08-31', 6250.00, 12250.00, 950.00, 11300.00, 'paid', FALSE, 'ACCT00020102', 'PPAY0001234', TRUE),
-(3, 1, 3, 3, 1, '2026-08-01', '2026-08-31', 5000.00, 10500.00, 800.00, 9700.00, 'paid', FALSE, 'ACCT00030103', 'PPAY0001234', TRUE),
-(4, 1, 4, 4, 1, '2026-08-01', '2026-08-31', 3750.00, 8750.00, 650.00, 8100.00, 'paid', FALSE, 'ACCT00040104', 'PPAY0001234', TRUE),
-(5, 1, 5, 5, 1, '2026-08-01', '2026-08-31', 3500.00, 8400.00, 620.00, 7780.00, 'paid', FALSE, 'ACCT00050105', 'PPAY0001234', TRUE),
-(6, 1, 6, 6, 1, '2026-08-01', '2026-08-31', 5750.00, 11550.00, 890.00, 10660.00, 'paid', FALSE, 'ACCT00060106', 'PPAY0001234', TRUE),
-(7, 1, 7, 7, 1, '2026-08-01', '2026-08-31', 3000.00, 7700.00, 560.00, 7140.00, 'paid', FALSE, 'ACCT00070107', 'PPAY0001234', TRUE),
-(8, 1, 8, 8, 1, '2026-08-01', '2026-08-31', 3250.00, 8050.00, 590.00, 7460.00, 'paid', FALSE, 'ACCT00080108', 'PPAY0001234', TRUE),
-(9, 1, 9, 9, 1, '2026-08-01', '2026-08-31', 8250.00, 15050.00, 1190.00, 13860.00, 'paid', FALSE, 'ACCT00090109', 'PPAY0001234', TRUE),
-(10, 1, 10, 10, 1, '2026-08-01', '2026-08-31', 4000.00, 9100.00, 680.00, 8420.00, 'paid', FALSE, 'ACCT00100110', 'PPAY0001234', TRUE),
-(11, 1, 11, 11, 1, '2026-08-01', '2026-08-31', 3100.00, 7840.00, 572.00, 7268.00, 'paid', FALSE, 'ACCT00110111', 'PPAY0001234', TRUE),
-(12, 1, 12, 12, 1, '2026-08-01', '2026-08-31', 7000.00, 13300.00, 1040.00, 12260.00, 'paid', FALSE, 'ACCT00120112', 'PPAY0001234', TRUE),
-(13, 1, 13, 13, 1, '2026-08-01', '2026-08-31', 3400.00, 8260.00, 608.00, 7652.00, 'paid', FALSE, 'ACCT00130113', 'PPAY0001234', TRUE)
+(1, 1, 1, 1, 1, '2026-08-01', '2026-08-31', 11000.00, 17000.00, 1448.00, 15552.00, 'paid', FALSE, 'ACCT00010101', 'PPAY0001234', TRUE),
+(2, 1, 2, 2, 1, '2026-08-01', '2026-08-31', 6250.00, 12250.00, 842.00, 11408.00, 'paid', FALSE, 'ACCT00020102', 'PPAY0001234', TRUE),
+(3, 1, 3, 3, 1, '2026-08-01', '2026-08-31', 5000.00, 10500.00, 679.00, 9821.00, 'paid', FALSE, 'ACCT00030103', 'PPAY0001234', TRUE),
+(4, 1, 4, 4, 1, '2026-08-01', '2026-08-31', 3750.00, 8750.00, 516.00, 8234.00, 'paid', FALSE, 'ACCT00040104', 'PPAY0001234', TRUE),
+(5, 1, 5, 5, 1, '2026-08-01', '2026-08-31', 3500.00, 8400.00, 483.00, 7917.00, 'paid', FALSE, 'ACCT00050105', 'PPAY0001234', TRUE),
+(6, 1, 6, 6, 1, '2026-08-01', '2026-08-31', 5750.00, 11550.00, 777.00, 10773.00, 'paid', FALSE, 'ACCT00060106', 'PPAY0001234', TRUE),
+(7, 1, 7, 7, 1, '2026-08-01', '2026-08-31', 3000.00, 7700.00, 418.00, 7282.00, 'paid', FALSE, 'ACCT00070107', 'PPAY0001234', TRUE),
+(8, 1, 8, 8, 1, '2026-08-01', '2026-08-31', 3250.00, 8050.00, 451.00, 7599.00, 'paid', FALSE, 'ACCT00080108', 'PPAY0001234', TRUE),
+(9, 1, 9, 9, 1, '2026-08-01', '2026-08-31', 8250.00, 15050.00, 1103.00, 13947.00, 'paid', FALSE, 'ACCT00090109', 'PPAY0001234', TRUE),
+(10, 1, 10, 10, 1, '2026-08-01', '2026-08-31', 4000.00, 9100.00, 549.00, 8551.00, 'paid', FALSE, 'ACCT00100110', 'PPAY0001234', TRUE),
+(11, 1, 11, 11, 1, '2026-08-01', '2026-08-31', 3100.00, 7840.00, 431.00, 7409.00, 'paid', FALSE, 'ACCT00110111', 'PPAY0001234', TRUE),
+(12, 1, 12, 12, 1, '2026-08-01', '2026-08-31', 7000.00, 13300.00, 940.00, 12360.00, 'paid', FALSE, 'ACCT00120112', 'PPAY0001234', TRUE),
+(13, 1, 13, 13, 1, '2026-08-01', '2026-08-31', 3400.00, 8260.00, 470.00, 7790.00, 'paid', FALSE, 'ACCT00130113', 'PPAY0001234', TRUE)
 ON CONFLICT (id) DO UPDATE SET
     basic_wage = EXCLUDED.basic_wage,
     gross_wage = EXCLUDED.gross_wage,
@@ -251,7 +277,7 @@ ON CONFLICT (id) DO UPDATE SET
 SELECT setval('payslips_id_seq', (SELECT MAX(id) FROM payslips));
 
 -- ==========================================================
--- 10. Payslip Lines (Snapshot Itemized Lines for 7 Rules)
+-- 10. Payslip Lines (Snapshot Itemized Lines for Compliant Rules)
 -- ==========================================================
 DELETE FROM payslip_lines WHERE payslip_id BETWEEN 1 AND 13;
 
@@ -268,10 +294,12 @@ SELECT
     CASE 
         WHEN r.code = 'BASIC' THEN p.basic_wage
         WHEN r.code = 'HRA' THEN round(p.basic_wage * 0.40, 2)
-        WHEN r.code = 'TRANS' THEN 3500.00
+        WHEN r.code = 'CONV' THEN 1600.00
         WHEN r.code = 'GROSS' THEN p.gross_wage
-        WHEN r.code = 'PF' THEN round(p.basic_wage * 0.12, 2)
-        WHEN r.code = 'PTAX' THEN 200.00
+        WHEN r.code = 'PF' THEN round(LEAST(p.basic_wage, 15000.00) * 0.12, 2)
+        WHEN r.code = 'ESI' THEN ceil(p.gross_wage * 0.0075)
+        WHEN r.code = 'PTAX' THEN CASE WHEN p.gross_wage >= 25000.00 THEN 200.00 ELSE 0.00 END
+        WHEN r.code = 'TDS' THEN 0.00
         WHEN r.code = 'NET' THEN p.net_wage
         ELSE 0.00
     END AS total
