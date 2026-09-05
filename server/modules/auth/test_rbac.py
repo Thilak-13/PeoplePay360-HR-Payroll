@@ -358,12 +358,12 @@ def test_admin_full_platform_and_user_management_access():
     token = create_access_token({"user_id": 1, "email": "admin@peoplepay360.com", "role": ROLE_ADMIN, "employee_id": 1})
     headers = {"Authorization": f"Bearer {token}"}
 
-    # 1. Admin can list users -> 200 OK
+    # 1. User Management: Admin can list users -> 200 OK
     res_users = client.get("/api/v1/auth/users", headers=headers)
     assert res_users.status_code == 200
     assert len(res_users.json()) >= 5
 
-    # 2. Admin can create new user -> 201 Created
+    # 2. User Management: Admin can create new user -> 201 Created
     new_user_payload = {
         "email": "newtestuser@peoplepay360.com",
         "password": "Password@123",
@@ -374,15 +374,31 @@ def test_admin_full_platform_and_user_management_access():
     assert res_create_user.status_code == 201
     new_user_id = res_create_user.json()["id"]
 
-    # 3. Admin can update user role -> 200 OK
+    # 3. Role Assignment & Permission Updates: Admin can update user role -> 200 OK
     res_update_role = client.put(f"/api/v1/auth/users/{new_user_id}/role", json={"role": "hr_manager"}, headers=headers)
     assert res_update_role.status_code == 200
     assert res_update_role.json()["role"] == "hr_manager"
 
-    # 4. Admin can delete user -> 200 OK
+    # 4. Status Toggle: Admin can activate / deactivate accounts -> 200 OK
+    res_status = client.put(f"/api/v1/auth/users/{new_user_id}/status", json={"is_active": False}, headers=headers)
+    assert res_status.status_code == 200
+    assert res_status.json()["is_active"] is False
+
+    # 5. User Management: Admin can delete user -> 200 OK
     res_del_user = client.delete(f"/api/v1/auth/users/{new_user_id}", headers=headers)
     assert res_del_user.status_code == 200
 
-    # 5. Admin can access payroll structures -> 200 OK
-    res_structs = client.get("/api/v1/payroll/structures", headers=headers)
-    assert res_structs.status_code == 200
+    # 6. Full Access across all platform modules & models:
+    assert client.get("/api/v1/master-data/employees", headers=headers).status_code == 200
+    assert client.get("/api/v1/master-data/contracts", headers=headers).status_code == 200
+    assert client.get("/api/v1/master-data/leave-requests", headers=headers).status_code == 200
+    assert client.get("/api/v1/attendance/shifts", headers=headers).status_code == 200
+    assert client.get("/api/v1/attendance/daily-summary", headers=headers).status_code == 200
+    assert client.get("/api/v1/payroll/payruns", headers=headers).status_code == 200
+    assert client.get("/api/v1/payroll/payslips", headers=headers).status_code == 200
+    assert client.get("/api/v1/payroll/structures", headers=headers).status_code == 200
+    assert client.get("/api/v1/payroll/metrics", headers=headers).status_code == 200
+    assert client.get("/api/v1/analytics/dashboard", headers=headers).status_code == 200
+    assert client.get("/api/v1/expenses", headers=headers).status_code == 200
+    assert client.get("/api/v1/loans", headers=headers).status_code == 200
+    assert client.get("/api/v1/tax/declarations", headers=headers).status_code == 200

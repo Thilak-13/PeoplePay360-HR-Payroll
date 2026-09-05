@@ -75,7 +75,7 @@ export const DEMO_ACCOUNTS: DemoAccount[] = [
     password: "Admin@123",
     color: "text-purple-600",
     bg: "bg-purple-50/70 border-purple-200 hover:border-purple-400 hover:bg-purple-50",
-    description: "Full access across all modules, user management, role assignment, and complete system administration."
+    description: "Full access to all modules and models across the platform. User management, role assignment, permission updates, and complete system administration."
   },
   {
     role: "hr_manager",

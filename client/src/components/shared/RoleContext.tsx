@@ -18,7 +18,7 @@ export const ROLE_DEFINITIONS: Record<string, RoleInfo> = {
     badgeColor: 'text-purple-700',
     badgeBg: 'bg-purple-100',
     badgeBorder: 'border-purple-300',
-    description: 'Full access across all modules, user management, role assignment, and system administration.',
+    description: 'Full access to all modules and models across the platform. User management, role assignment, permission updates, and complete system administration.',
   },
   super_admin: {
     id: 'admin',
@@ -26,7 +26,7 @@ export const ROLE_DEFINITIONS: Record<string, RoleInfo> = {
     badgeColor: 'text-purple-700',
     badgeBg: 'bg-purple-100',
     badgeBorder: 'border-purple-300',
-    description: 'Full access across all modules, user management, role assignment, and system administration.',
+    description: 'Full access to all modules and models across the platform. User management, role assignment, permission updates, and complete system administration.',
   },
   hr_manager: {
     id: 'hr_manager',
