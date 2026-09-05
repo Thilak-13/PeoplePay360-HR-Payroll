@@ -262,7 +262,7 @@ def get_dashboard_analytics(db: Session = Depends(get_db)):
     # ------------------------------------------------------
     compliance_alerts: List[ComplianceAlertItem] = []
 
-    # A. Missing Banking Information (bank_account_number / bank_ifsc / phone is NULL)
+    # A. Missing Banking Information (bank_account_number IS NULL or bank_ifsc IS NULL or phone IS NULL)
     try:
         missing_bank_query = text("""
             SELECT 
@@ -277,6 +277,7 @@ def get_dashboard_analytics(db: Session = Depends(get_db)):
               AND (
                 e.bank_account_number IS NULL OR TRIM(e.bank_account_number) = ''
                 OR e.bank_ifsc IS NULL OR TRIM(e.bank_ifsc) = ''
+                OR e.phone IS NULL OR TRIM(e.phone) = ''
               )
             ORDER BY e.id ASC
         """)
@@ -296,23 +297,25 @@ def get_dashboard_analytics(db: Session = Depends(get_db)):
             ORDER BY e.id ASC
         """)
         missing_bank_rows = db.execute(missing_bank_query).fetchall()
+    attention_alerts: List[ComplianceAlertItem] = []
     for row in missing_bank_rows:
         emp_id = row[0]
         emp_name = f"{row[1]} {row[2]}".strip()
         dept = row[4] or "Unassigned"
-        compliance_alerts.append(
-            ComplianceAlertItem(
-                id=f"bank-missing-{emp_id}",
-                type="missing_banking",
-                title=f"Missing Bank Info: {emp_name}",
-                message=f"{emp_name} ({dept}) does not have verified bank disbursement details or phone number on file. Pre-validation audit will block batch payouts.",
-                severity="critical",
-                employee_id=emp_id,
-                employee_name=emp_name,
-                department_name=dept,
-                action_url=f"/master-data/employees/{emp_id}",
-            )
+        item = ComplianceAlertItem(
+            employee_id=emp_id,
+            employee_name=emp_name,
+            issue="Missing Bank Account or IFSC Details",
+            severity="warning",
+            id=f"bank-missing-{emp_id}",
+            type="missing_banking",
+            title=f"Missing Bank Info: {emp_name}",
+            message=f"{emp_name} ({dept}) does not have verified bank disbursement details or phone number on file. Pre-validation audit will block batch payouts.",
+            department_name=dept,
+            action_url=f"/master-data/employees/{emp_id}",
         )
+        attention_alerts.append(item)
+        compliance_alerts.append(item)
 
     # B. Flagged warnings on unfinalized payslips
     warn_payslip_query = text("""
@@ -396,6 +399,9 @@ def get_dashboard_analytics(db: Session = Depends(get_db)):
         monthly_trends=monthly_trends,
         monthly_spend_trend=monthly_trends,
         compliance_alerts=compliance_alerts,
+        attention_items=attention_alerts,
+        attention_alerts=attention_alerts,
+        alerts=compliance_alerts,
         total_net_paid=kpis.total_net_paid,
         total_payslips=kpis.total_payslips,
         avg_salary=kpis.avg_salary,
