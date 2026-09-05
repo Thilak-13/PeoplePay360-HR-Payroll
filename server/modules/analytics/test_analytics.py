@@ -157,8 +157,16 @@ class TestAnalyticsModule(unittest.TestCase):
         self.assertEqual(data.kpis.approved_leave_days, 5.00)
         self.assertEqual(data.kpis.active_employees_count, 2)
 
-        # Verify Department Spend
+        # Verify Department Spend & Cost Breakdown
         self.assertGreaterEqual(len(data.department_spend), 2)
+        self.assertGreaterEqual(len(data.department_costs), 2)
+        eng_spend = next(d for d in data.department_spend if d.department_name == "Engineering")
+        self.assertGreater(eng_spend.total_gross, 0.0)
+
+        # Verify Monthly Trends
+        self.assertGreaterEqual(len(data.monthly_trends), 1)
+        self.assertEqual(data.monthly_trends[0].period_start, "2026-08-01")
+        self.assertEqual(data.monthly_trends[0].net_wage, 7500.00)
 
         # Verify Compliance Alerts (Employee 2 has missing phone/bank)
         missing_bank_alerts = [a for a in data.compliance_alerts if a.type == "missing_banking"]

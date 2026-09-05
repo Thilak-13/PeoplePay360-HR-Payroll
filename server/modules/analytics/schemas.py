@@ -21,7 +21,23 @@ class DepartmentSpendItem(BaseModel):
     employee_count: int = 0
     total_net: float = 0.0
     total_gross: float = 0.0
+    gross_wage: float = 0.0
     spend: float = Field(0.0, description="Primary spend value for chart visualization")
+
+
+class DepartmentCostItem(BaseModel):
+    department_name: str
+    gross_wage: float = 0.0
+    total_gross: float = 0.0
+    total_net: float = 0.0
+    employee_count: int = 0
+
+
+class MonthlyTrendItem(BaseModel):
+    period_start: str
+    net_wage: float = 0.0
+    total_net: float = 0.0
+    payslip_count: int = 0
 
 
 class ComplianceAlertItem(BaseModel):
@@ -39,6 +55,9 @@ class ComplianceAlertItem(BaseModel):
 class DashboardAnalyticsResponse(BaseModel):
     kpis: KPIsSummary
     department_spend: List[DepartmentSpendItem] = []
+    department_costs: List[DepartmentCostItem] = []
+    monthly_trends: List[MonthlyTrendItem] = []
+    monthly_spend_trend: List[MonthlyTrendItem] = []
     compliance_alerts: List[ComplianceAlertItem] = []
     total_net_paid: Optional[float] = None
     total_payslips: Optional[int] = None
