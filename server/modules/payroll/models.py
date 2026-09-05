@@ -9,6 +9,7 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
     Text,
+    CheckConstraint,
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -33,6 +34,16 @@ class SalaryStructure(Base):
 
 class SalaryRule(Base):
     __tablename__ = "salary_rules"
+    __table_args__ = (
+        CheckConstraint(
+            "category IN ('BASIC', 'ALLOWANCE', 'GROSS', 'DEDUCTION', 'NET')",
+            name="check_salary_rule_category"
+        ),
+        CheckConstraint(
+            "amount_type IN ('fixed', 'percentage')",
+            name="check_salary_rule_amount_type"
+        ),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     structure_id = Column(Integer, ForeignKey("salary_structures.id", ondelete="CASCADE"), nullable=False, index=True)
@@ -40,7 +51,7 @@ class SalaryRule(Base):
     code = Column(String(50), nullable=False, index=True)
     category = Column(String(50), nullable=False)  # 'BASIC', 'ALLOWANCE', 'GROSS', 'DEDUCTION', 'NET'
     sequence = Column(Integer, default=10, nullable=False)
-    amount_type = Column(String(20), default="percentage", nullable=False)  # 'percentage', 'fixed', 'code'
+    amount_type = Column(String(20), default="percentage", nullable=False)  # 'fixed', 'percentage'
     amount = Column(Numeric(12, 2), default=0.00, nullable=False)
     percentage_base = Column(String(50), default="BASIC", nullable=True)  # 'BASIC', 'wage', 'GROSS'
     condition_code = Column(Text, nullable=True)
