@@ -23,42 +23,7 @@ from server.modules.payroll.schemas import (
     PayrunWizardStep2ConfirmRequest,
 )
 
-# Register external master tables in Base.metadata for foreign key resolution
-departments_table = Table(
-    "departments",
-    Base.metadata,
-    Column("id", Integer, primary_key=True),
-    Column("name", String(100), nullable=False),
-    Column("code", String(20), unique=True, nullable=True),
-    extend_existing=True
-)
-
-employees_table = Table(
-    "employees",
-    Base.metadata,
-    Column("id", Integer, primary_key=True),
-    Column("first_name", String(50), nullable=False),
-    Column("last_name", String(50), nullable=False),
-    Column("email", String(100), unique=True, nullable=False),
-    Column("phone", String(20), nullable=True),
-    Column("department_id", Integer, nullable=True),
-    Column("job_title", String(100), nullable=True),
-    Column("status", String(20), default="active"),
-    extend_existing=True
-)
-
-contracts_table = Table(
-    "contracts",
-    Base.metadata,
-    Column("id", Integer, primary_key=True),
-    Column("employee_id", Integer, nullable=False),
-    Column("wage", Numeric(12, 2), nullable=False),
-    Column("contract_type", String(50), default="full_time"),
-    Column("start_date", Date, nullable=False),
-    Column("end_date", Date, nullable=True),
-    Column("status", String(20), default="draft"),
-    extend_existing=True
-)
+import server.modules.master_data.models  # Register all master data tables on Base.metadata
 
 TEST_DB_URL = "sqlite:///:memory:"
 engine = create_engine(TEST_DB_URL, connect_args={"check_same_thread": False})

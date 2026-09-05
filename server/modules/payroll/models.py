@@ -27,7 +27,7 @@ class SalaryStructure(Base):
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=datetime.utcnow, default=datetime.utcnow)
 
     # Relationships
-    parent = relationship("SalaryStructure", remote_side=[id], backref="children")
+    parent = relationship("SalaryStructure", remote_side=lambda: [SalaryStructure.id], backref="children")
     rules = relationship("SalaryRule", back_populates="structure", cascade="all, delete-orphan", order_by="SalaryRule.sequence")
     payslips = relationship("Payslip", back_populates="structure")
 

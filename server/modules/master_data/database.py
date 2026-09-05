@@ -8,16 +8,23 @@ DATABASE_URL = os.getenv(
     f"postgresql://{os.getenv('POSTGRES_USER', 'postgres')}:{os.getenv('POSTGRES_PASSWORD', 'postgres')}@{os.getenv('POSTGRES_HOST', 'localhost')}:{os.getenv('POSTGRES_PORT', '5432')}/{os.getenv('POSTGRES_DB', 'peoplepay360')}"
 )
 
-# If postgres is not reachable during local fallback/tests, sqlite can be used
-try:
-    if DATABASE_URL.startswith("sqlite"):
-        engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
-    else:
-        engine = create_engine(DATABASE_URL, pool_pre_ping=True)
-except Exception:
-    # Fallback to local SQLite for isolated testing if PostgreSQL is unavailable
-    FALLBACK_SQLITE_URL = "sqlite:///./peoplepay360.db"
-    engine = create_engine(FALLBACK_SQLITE_URL, connect_args={"check_same_thread": False})
+def _create_engine():
+    db_url = os.getenv(
+        "DATABASE_URL",
+        f"postgresql://{os.getenv('POSTGRES_USER', 'postgres')}:{os.getenv('POSTGRES_PASSWORD', 'postgres')}@{os.getenv('POSTGRES_HOST', 'localhost')}:{os.getenv('POSTGRES_PORT', '5432')}/{os.getenv('POSTGRES_DB', 'peoplepay360')}"
+    )
+    if db_url.startswith("sqlite"):
+        return create_engine(db_url, connect_args={"check_same_thread": False})
+    try:
+        eng = create_engine(db_url, pool_pre_ping=True)
+        with eng.connect() as conn:
+            pass
+        return eng
+    except Exception:
+        fallback_sqlite_url = "sqlite:///./peoplepay360.db"
+        return create_engine(fallback_sqlite_url, connect_args={"check_same_thread": False})
+
+engine = _create_engine()
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()

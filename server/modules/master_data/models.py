@@ -26,7 +26,7 @@ class Department(Base):
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=datetime.utcnow, default=datetime.utcnow)
 
     # Relationships
-    parent = relationship("Department", remote_side=[id], backref="children")
+    parent = relationship("Department", remote_side=lambda: [Department.id], backref="children")
     employees = relationship("Employee", back_populates="department")
 
 
