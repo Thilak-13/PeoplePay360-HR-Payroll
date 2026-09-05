@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from typing import Optional, List
 from decimal import Decimal
-from pydantic import BaseModel, EmailStr, Field, ConfigDict, model_validator
+from pydantic import BaseModel, Field, ConfigDict, model_validator
 
 
 # ==========================================
@@ -24,6 +24,14 @@ class DepartmentUpdate(BaseModel):
     code: Optional[str] = Field(None, max_length=20)
     manager_id: Optional[int] = None
     parent_id: Optional[int] = None
+
+
+class DepartmentRead(BaseModel):
+    id: int
+    name: str
+    code: Optional[str] = None
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 class DepartmentResponse(DepartmentBase):
@@ -86,7 +94,7 @@ class ContractBase(BaseModel):
     contract_type: str = Field(default="full_time")
     start_date: date
     end_date: Optional[date] = None
-    status: str = Field(default="draft")
+    status: str = Field(default="active")
 
     @model_validator(mode="after")
     def validate_dates(self):
@@ -121,6 +129,10 @@ class ContractResponse(ContractBase):
     model_config = ConfigDict(from_attributes=True)
 
 
+class ContractRead(ContractResponse):
+    pass
+
+
 # ==========================================
 # 4. LEAVE ALLOCATION SCHEMAS
 # ==========================================
@@ -150,6 +162,10 @@ class LeaveAllocationResponse(LeaveAllocationBase):
     updated_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class LeaveAllocationRead(LeaveAllocationResponse):
+    pass
 
 
 # ==========================================
@@ -198,6 +214,10 @@ class LeaveRequestResponse(LeaveRequestBase):
     model_config = ConfigDict(from_attributes=True)
 
 
+class LeaveRequestRead(LeaveRequestResponse):
+    pass
+
+
 class LeaveActionResponse(BaseModel):
     message: str
     leave_request: LeaveRequestResponse
@@ -205,17 +225,19 @@ class LeaveActionResponse(BaseModel):
 
 
 # ==========================================
-# 6. EMPLOYEE SCHEMAS & SMART STATS
+# 6. EMPLOYEE SCHEMAS (Sprint 02)
 # ==========================================
 
 class EmployeeBase(BaseModel):
     first_name: str = Field(..., min_length=1, max_length=50)
     last_name: str = Field(..., min_length=1, max_length=50)
-    email: EmailStr
+    email: str = Field(..., min_length=3, max_length=100)
     phone: Optional[str] = Field(None, max_length=20)
     department_id: Optional[int] = None
     working_schedule_id: Optional[int] = None
     job_title: Optional[str] = Field(None, max_length=100)
+    bank_account_number: Optional[str] = Field(None, max_length=50)
+    bank_ifsc: Optional[str] = Field(None, max_length=20)
     hire_date: Optional[date] = None
     status: str = Field(default="active")  # 'active', 'inactive', 'on_leave'
 
@@ -227,33 +249,41 @@ class EmployeeCreate(EmployeeBase):
 class EmployeeUpdate(BaseModel):
     first_name: Optional[str] = Field(None, min_length=1, max_length=50)
     last_name: Optional[str] = Field(None, min_length=1, max_length=50)
-    email: Optional[EmailStr] = None
+    email: Optional[str] = Field(None, min_length=3, max_length=100)
     phone: Optional[str] = Field(None, max_length=20)
     department_id: Optional[int] = None
     working_schedule_id: Optional[int] = None
     job_title: Optional[str] = Field(None, max_length=100)
+    bank_account_number: Optional[str] = Field(None, max_length=50)
+    bank_ifsc: Optional[str] = Field(None, max_length=20)
     hire_date: Optional[date] = None
     status: Optional[str] = None
 
 
-class EmployeeResponse(EmployeeBase):
+class EmployeeRead(EmployeeBase):
     id: int
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
-    department: Optional[DepartmentResponse] = None
+    department: Optional[DepartmentRead] = None
     working_schedule: Optional[WorkingScheduleResponse] = None
 
     model_config = ConfigDict(from_attributes=True)
 
 
+class EmployeeResponse(EmployeeRead):
+    pass
+
+
 class EmployeeSmartStats(BaseModel):
     contracts_count: int = 0
+    attendance_count: int = 22
     time_off_count: int = 0
     allocations_count: int = 0
 
 
-class EmployeeDetailResponse(EmployeeResponse):
+class EmployeeDetail(EmployeeRead):
     contracts_count: int = 0
+    attendance_count: int = 22
     time_off_count: int = 0
     allocations_count: int = 0
     contracts: List[ContractResponse] = []
@@ -261,3 +291,7 @@ class EmployeeDetailResponse(EmployeeResponse):
     leave_allocations: List[LeaveAllocationResponse] = []
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class EmployeeDetailResponse(EmployeeDetail):
+    pass
