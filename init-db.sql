@@ -1,11 +1,16 @@
--- Master Data Schema Initializer for PeoplePay360
+-- Master Data & Payroll Schema Initializer for PeoplePay360
+-- Lead Integrator (Developer 3) Master DDL Verification
+
+-- ==========================================
+-- 1. MASTER DATA DOMAIN TABLES (Developer 1)
+-- ==========================================
 
 CREATE TABLE IF NOT EXISTS departments (
     id SERIAL PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
     code VARCHAR(20) UNIQUE,
     manager_id INTEGER,
-    parent_id INTEGER,
+    parent_id INTEGER REFERENCES departments(id) ON DELETE SET NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
@@ -64,6 +69,72 @@ CREATE TABLE IF NOT EXISTS leave_requests (
     date_to DATE NOT NULL,
     number_of_days NUMERIC(5, 2) NOT NULL,
     status VARCHAR(20) DEFAULT 'draft',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ==========================================
+-- 2. PAYROLL DOMAIN TABLES (Developer 2)
+-- ==========================================
+
+CREATE TABLE IF NOT EXISTS salary_structures (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    code VARCHAR(50) UNIQUE NOT NULL,
+    parent_id INTEGER REFERENCES salary_structures(id) ON DELETE SET NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS salary_rules (
+    id SERIAL PRIMARY KEY,
+    structure_id INTEGER NOT NULL REFERENCES salary_structures(id) ON DELETE CASCADE,
+    name VARCHAR(100) NOT NULL,
+    code VARCHAR(50) NOT NULL,
+    category VARCHAR(50) NOT NULL,
+    sequence INTEGER DEFAULT 10,
+    amount_type VARCHAR(20) DEFAULT 'percentage',
+    amount NUMERIC(12, 2) DEFAULT 0.00,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS payruns (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    date_start DATE NOT NULL,
+    date_end DATE NOT NULL,
+    status VARCHAR(20) DEFAULT 'draft',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS payslips (
+    id SERIAL PRIMARY KEY,
+    payrun_id INTEGER REFERENCES payruns(id) ON DELETE SET NULL,
+    employee_id INTEGER NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
+    contract_id INTEGER REFERENCES contracts(id) ON DELETE SET NULL,
+    structure_id INTEGER REFERENCES salary_structures(id) ON DELETE SET NULL,
+    date_from DATE NOT NULL,
+    date_to DATE NOT NULL,
+    basic_wage NUMERIC(12, 2) DEFAULT 0.00,
+    gross_wage NUMERIC(12, 2) DEFAULT 0.00,
+    net_wage NUMERIC(12, 2) DEFAULT 0.00,
+    status VARCHAR(20) DEFAULT 'draft',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS payslip_lines (
+    id SERIAL PRIMARY KEY,
+    payslip_id INTEGER NOT NULL REFERENCES payslips(id) ON DELETE CASCADE,
+    salary_rule_id INTEGER REFERENCES salary_rules(id) ON DELETE SET NULL,
+    name VARCHAR(100) NOT NULL,
+    code VARCHAR(50) NOT NULL,
+    category VARCHAR(50) NOT NULL,
+    rate NUMERIC(6, 2) DEFAULT 100.00,
+    amount NUMERIC(12, 2) NOT NULL,
+    total NUMERIC(12, 2) NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
