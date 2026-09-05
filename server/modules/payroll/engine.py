@@ -72,60 +72,116 @@ def check_compliance_warnings(
     current_payrun_id: Optional[int] = None
 ) -> Tuple[bool, Optional[str], Optional[str], Optional[str]]:
     """
-    Pre-validation compliance audit:
-    Flags has_warning = True for missing bank account/IFSC or duplicate payslips in overlapping batches.
+    Pre-validation compliance audit.
+
+    Returns a 4-tuple: (has_warning, warning_message, bank_account, ifsc_code).
+
+    Rules applied in order:
+
+    1. **Bank details** – query ``bank_account_number`` and ``bank_ifsc`` from the
+       employees table.  If either column is absent/NULL/empty, fall back to
+       deriving a synthetic account from ``phone``.  If no usable value exists,
+       flag ``(True, "Missing Bank Account or IFSC details", None, None)``.
+
+    2. **Duplicate payslip** – check whether the employee already has a payslip
+       whose date range overlaps ``[period_start, period_end]`` inside *another*
+       payrun whose status is ``'validated'`` or ``'paid'``.  If so, flag
+       ``(True, "Duplicate payslip in overlapping batch", bank_acc, ifsc)``.
+
+    3. **Clean** – return ``(False, None, bank_acc, ifsc)``.
     """
-    warnings: List[str] = []
-    bank_account = None
-    ifsc_code = None
+    bank_account: Optional[str] = None
+    ifsc_code: Optional[str] = None
 
-    # 1. Check Employee Bank Info from master data table or defaults
-    emp_query = text("""
-        SELECT id, first_name, last_name, email, phone
-        FROM employees
-        WHERE id = :employee_id
-    """)
-    emp = db.execute(emp_query, {"employee_id": employee_id}).fetchone()
+    # ------------------------------------------------------------------
+    # 1. Bank-details check
+    # ------------------------------------------------------------------
+    # Try to read dedicated bank columns; fall back gracefully if the
+    # column does not exist yet in the running schema.
+    try:
+        emp_row = db.execute(
+            text("""
+                SELECT id, phone, bank_account_number, bank_ifsc
+                FROM employees
+                WHERE id = :eid
+            """),
+            {"eid": employee_id},
+        ).fetchone()
+    except Exception:
+        # bank_account_number / bank_ifsc columns not present – fall back
+        emp_row = None
 
-    # In PeoplePay360, mock or real bank resolution:
-    # If phone is null or employee has no banking record, check phone/details
-    if not emp:
-        return True, "Employee record not found in system", None, None
+    if emp_row is None:
+        # Retry without the bank columns
+        emp_row = db.execute(
+            text("SELECT id, phone FROM employees WHERE id = :eid"),
+            {"eid": employee_id},
+        ).fetchone()
 
-    # Simulate / verify bank account details
-    # Generate consistent bank format for demo employees if phone is present
-    if emp[4]:  # phone
-        bank_account = f"ACCT{emp[0]:04d}{emp[4][-4:]}"
+        if emp_row is None:
+            return True, "Employee record not found in system", None, None
+
+        # emp_row has (id, phone)
+        emp_id_val = emp_row[0]
+        phone_val = emp_row[1]
+        bank_account_col: Optional[str] = None
+        ifsc_col: Optional[str] = None
+    else:
+        # emp_row has (id, phone, bank_account_number, bank_ifsc)
+        emp_id_val = emp_row[0]
+        phone_val = emp_row[1]
+        bank_account_col = emp_row[2] if len(emp_row) > 2 else None
+        ifsc_col = emp_row[3] if len(emp_row) > 3 else None
+
+    # Resolve bank_account and ifsc_code
+    if bank_account_col and ifsc_col:
+        # Genuine bank details present in the DB
+        bank_account = bank_account_col
+        ifsc_code = ifsc_col
+    elif phone_val:
+        # Derive a deterministic synthetic account from phone (demo fallback)
+        bank_account = f"ACCT{emp_id_val:04d}{str(phone_val)[-4:]}"
         ifsc_code = "PPAY0001234"
     else:
-        # Flag missing bank info
-        warnings.append("Missing verified bank account number and IFSC code")
+        # No bank data and no phone – hard flag
+        return True, "Missing Bank Account or IFSC details", None, None
 
-    # 2. Check for duplicate payslip in overlapping batches/payruns
-    dup_query = text("""
-        SELECT p.id, pr.name, p.date_from, p.date_to
-        FROM payslips p
-        LEFT JOIN payruns pr ON p.payrun_id = pr.id
-        WHERE p.employee_id = :employee_id
-          AND p.date_from <= :period_end
-          AND p.date_to >= :period_start
-          AND p.status != 'cancelled'
-          AND (:current_payrun_id IS NULL OR p.payrun_id != :current_payrun_id)
-    """)
-    dup_results = db.execute(dup_query, {
-        "employee_id": employee_id,
-        "period_start": period_start,
-        "period_end": period_end,
-        "current_payrun_id": current_payrun_id or -1
-    }).fetchall()
+    # ------------------------------------------------------------------
+    # 2. Duplicate payslip check (validated / paid payruns only)
+    # ------------------------------------------------------------------
+    dup_results = db.execute(
+        text("""
+            SELECT p.id, pr.name
+            FROM payslips p
+            JOIN payruns pr ON p.payrun_id = pr.id
+            WHERE p.employee_id  = :employee_id
+              AND p.date_from    <= :period_end
+              AND p.date_to      >= :period_start
+              AND p.status       != 'cancelled'
+              AND pr.status      IN ('validated', 'paid')
+              AND (:current_payrun_id IS NULL OR pr.id != :current_payrun_id)
+        """),
+        {
+            "employee_id": employee_id,
+            "period_start": period_start,
+            "period_end": period_end,
+            "current_payrun_id": current_payrun_id if current_payrun_id is not None else -1,
+        },
+    ).fetchall()
 
     if dup_results:
-        batch_names = [f"#{r[0]} ({r[1] or 'Independent'})" for r in dup_results]
-        warnings.append(f"Duplicate payslip found in overlapping payrun: {', '.join(batch_names)}")
+        batch_names = [f"#{r[0]} (payrun: {r[1] or 'unknown'})" for r in dup_results]
+        return (
+            True,
+            f"Duplicate payslip in overlapping batch: {', '.join(batch_names)}",
+            bank_account,
+            ifsc_code,
+        )
 
-    has_warning = len(warnings) > 0
-    warning_message = " | ".join(warnings) if warnings else None
-    return has_warning, warning_message, bank_account, ifsc_code
+    # ------------------------------------------------------------------
+    # 3. All clear
+    # ------------------------------------------------------------------
+    return False, None, bank_account, ifsc_code
 
 
 # ==========================================
