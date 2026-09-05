@@ -268,7 +268,7 @@ def get_employee_smart_stats_endpoint(employee_id: int, db: Session = Depends(ge
     return get_employee_smart_stats(db, employee_id)
 
 
-@router.get("/employees/{employee_id}/detail", response_model=EmployeeDetailResponse, tags=["Employees"])
+@router.get("/employees/{employee_id}/detail", response_model=EmployeeDetail, tags=["Employees"])
 def get_employee_detail(employee_id: int, db: Session = Depends(get_db)):
     """
     Returns full employee details including related contracts, leave requests,
@@ -280,7 +280,7 @@ def get_employee_detail(employee_id: int, db: Session = Depends(get_db)):
 
     stats = get_employee_smart_stats(db, employee_id)
 
-    return EmployeeDetailResponse(
+    return EmployeeDetail(
         id=emp.id,
         first_name=emp.first_name,
         last_name=emp.last_name,
@@ -289,6 +289,8 @@ def get_employee_detail(employee_id: int, db: Session = Depends(get_db)):
         department_id=emp.department_id,
         working_schedule_id=emp.working_schedule_id,
         job_title=emp.job_title,
+        bank_account_number=emp.bank_account_number,
+        bank_ifsc=emp.bank_ifsc,
         hire_date=emp.hire_date,
         status=emp.status,
         created_at=emp.created_at,
@@ -296,6 +298,7 @@ def get_employee_detail(employee_id: int, db: Session = Depends(get_db)):
         department=emp.department,
         working_schedule=emp.working_schedule,
         contracts_count=stats["contracts_count"],
+        attendance_count=stats.get("attendance_count", 22),
         time_off_count=stats["time_off_count"],
         allocations_count=stats["allocations_count"],
         contracts=emp.contracts or [],
