@@ -35,9 +35,9 @@ export const TopNavBar: React.FC<TopNavBarProps> = ({ activeTab, onTabChange }) 
   }, []);
 
   const navItems = [
-    { id: 'analytics', label: 'Executive Analytics', icon: TrendingUp },
-    { id: 'master-data', label: 'Master Data', icon: Users },
-    { id: 'payroll', label: 'Payroll Engine', icon: CreditCard },
+    { id: 'analytics', label: 'Analytics Dashboard', icon: TrendingUp },
+    { id: 'master-data', label: 'Employees Directory', icon: Users },
+    { id: 'payroll', label: 'Payroll Batches', icon: CreditCard },
     { id: 'printable-payslip', label: 'Printable Payslip', icon: Printer },
   ];
 
@@ -56,7 +56,7 @@ export const TopNavBar: React.FC<TopNavBarProps> = ({ activeTab, onTabChange }) 
               </div>
               <div>
                 <span className="text-lg font-black tracking-tight text-gray-900">
-                  PeoplePay<span className="text-indigo-600">360</span>
+                  PeoplePay<span className="text-indigo-600">360</span> ERP
                 </span>
                 <span className="block text-[10px] uppercase font-bold tracking-wider text-gray-400 -mt-1">
                   Enterprise HR & Payroll
@@ -73,10 +73,10 @@ export const TopNavBar: React.FC<TopNavBarProps> = ({ activeTab, onTabChange }) 
                   <button
                     key={item.id}
                     onClick={() => onTabChange(item.id)}
-                    className={`inline-flex items-center space-x-2 px-3.5 py-2 rounded-lg text-sm font-semibold transition ${
+                    className={`inline-flex items-center space-x-2 px-3.5 py-2 text-sm font-semibold transition border-b-2 ${
                       isActive
-                        ? 'bg-indigo-50 text-indigo-700'
-                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                        ? 'bg-indigo-50/70 text-indigo-700 border-indigo-600 rounded-t-lg'
+                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50 border-transparent rounded-lg'
                     }`}
                   >
                     <Icon className="w-4 h-4" />
