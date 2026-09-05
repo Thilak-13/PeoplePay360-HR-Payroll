@@ -319,7 +319,7 @@ export const PayrunWizardModal: React.FC<PayrunWizardModalProps> = ({
                 <button
                   type="button"
                   onClick={() => handleSelectAll(false)}
-                  className="text-slate-500 hover:underline"
+                  className="text-slate-500 hover:underline font-semibold"
                 >
                   Deselect All
                 </button>
@@ -328,7 +328,8 @@ export const PayrunWizardModal: React.FC<PayrunWizardModalProps> = ({
 
             {loadingEmployees ? (
               <div className="py-12 text-center text-slate-500 text-sm">
-                Scanning temporal contracts & auditing compliance...
+                <div className="inline-block w-6 h-6 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin mb-2" />
+                <p>Scanning temporal contracts & auditing compliance...</p>
               </div>
             ) : eligibleEmployees.length === 0 ? (
               <div className="py-12 text-center text-slate-500 text-sm">
@@ -353,13 +354,15 @@ export const PayrunWizardModal: React.FC<PayrunWizardModalProps> = ({
                       <th className="py-2.5 px-3">Employee</th>
                       <th className="py-2.5 px-3">Department</th>
                       <th className="py-2.5 px-3">Contract Wage</th>
-                      <th className="py-2.5 px-3">Bank Details</th>
-                      <th className="py-2.5 px-3">Compliance</th>
+                      <th className="py-2.5 px-3">Compliance Status</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {eligibleEmployees.map((emp) => {
                       const isSelected = selectedEmpIds.includes(emp.employee_id);
+                      const hasMissingBank = !emp.has_bank_details || (!emp.bank_account && !emp.ifsc_code);
+                      const hasWarning = emp.has_warning || emp.warning || hasMissingBank;
+
                       return (
                         <tr
                           key={emp.employee_id}
@@ -372,38 +375,29 @@ export const PayrunWizardModal: React.FC<PayrunWizardModalProps> = ({
                               type="checkbox"
                               checked={isSelected}
                               onChange={() => handleToggleEmployee(emp.employee_id)}
-                              className="rounded text-indigo-600 focus:ring-indigo-500"
+                              className="rounded text-indigo-600 focus:ring-indigo-500 cursor-pointer"
                             />
                           </td>
                           <td className="py-2.5 px-3 font-semibold text-slate-900">
-                            <div>{emp.employee_name}</div>
-                            <div className="text-[11px] text-slate-400 font-normal">{emp.employee_email}</div>
+                            <div>{emp.employee_name || emp.name}</div>
+                            <div className="text-[11px] text-slate-400 font-normal">{emp.employee_email || emp.job_title}</div>
                           </td>
-                          <td className="py-2.5 px-3 text-slate-600">{emp.department_name || '—'}</td>
+                          <td className="py-2.5 px-3 text-slate-600">{emp.department_name || emp.department || '—'}</td>
                           <td className="py-2.5 px-3 font-medium text-slate-800">
                             ₹{Number(emp.wage).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                           </td>
                           <td className="py-2.5 px-3">
-                            {emp.has_bank_details ? (
-                              <span className="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded font-medium text-[11px]">
-                                Verified
-                              </span>
-                            ) : (
-                              <span className="text-rose-700 bg-rose-50 px-2 py-0.5 rounded font-medium text-[11px]">
-                                Missing Bank
-                              </span>
-                            )}
-                          </td>
-                          <td className="py-2.5 px-3">
-                            {emp.warning ? (
+                            {hasWarning ? (
                               <span
-                                title={emp.warning}
-                                className="text-amber-800 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded font-medium text-[11px] inline-flex items-center gap-1"
+                                title={emp.warning || emp.warning_reason || 'Missing verified bank account number / IFSC'}
+                                className="bg-amber-100 text-amber-800 border border-amber-300 text-[11px] font-semibold px-2 py-0.5 rounded-full inline-flex items-center gap-1"
                               >
-                                ⚠ {emp.warning.slice(0, 24)}...
+                                ⚠ {emp.warning || (hasMissingBank ? 'Missing Bank Details' : 'Compliance Warning')}
                               </span>
                             ) : (
-                              <span className="text-emerald-700 font-medium text-[11px]">✓ Passed</span>
+                              <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px] font-medium px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+                                ✓ Verified Bank ({emp.bank_account || 'Valid'})
+                              </span>
                             )}
                           </td>
                         </tr>
@@ -451,7 +445,7 @@ export const PayrunWizardModal: React.FC<PayrunWizardModalProps> = ({
                 disabled={submitting || selectedEmpIds.length === 0}
                 className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold shadow-sm disabled:opacity-50 flex items-center gap-2"
               >
-                {submitting ? 'Generating Payrun...' : `Confirm & Create Payrun (${selectedEmpIds.length})`}
+                {submitting ? 'Generating Batch...' : `Confirm & Generate Batch (${selectedEmpIds.length})`}
               </button>
             </>
           )}
