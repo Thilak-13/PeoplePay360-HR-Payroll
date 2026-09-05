@@ -35,12 +35,30 @@ export interface ComplianceAlertItem {
   employee_name?: string;
   department_name?: string;
   action_url?: string;
+  issue?: string;
+}
+
+export interface MonthlyTrendItem {
+  month?: string;
+  period_start?: string;
+  net_wage: number;
+  gross_wage?: number;
+  payslip_count?: number;
 }
 
 export interface DashboardAnalyticsResponse {
   kpis: KPIsSummary;
   department_spend: DepartmentSpendItem[];
+  department_costs?: DepartmentSpendItem[];
+  monthly_trends?: MonthlyTrendItem[];
+  monthly_spend_trend?: MonthlyTrendItem[];
   compliance_alerts: ComplianceAlertItem[];
+  attention_items?: ComplianceAlertItem[];
+  attention_alerts?: ComplianceAlertItem[];
+  total_net_paid?: number;
+  total_payslips?: number;
+  avg_salary?: number;
+  approved_leave_days?: number;
 }
 
 export interface DispatchToast {
