@@ -143,17 +143,40 @@ def wizard_step1_validate(req: PayrunWizardStep1ValidateRequest, db: Session = D
 
 @router.get("/payruns/wizard/eligible-employees", response_model=List[EligibleEmployeeResponse], tags=["Payrun Wizard"])
 def get_wizard_eligible_employees(
-    date_start: date = Query(..., description="Payrun start date"),
-    date_end: date = Query(..., description="Payrun end date"),
+    period_start: date = Query(..., description="Payrun period start date (YYYY-MM-DD)"),
+    period_end: date = Query(..., description="Payrun period end date (YYYY-MM-DD)"),
     db: Session = Depends(get_db)
 ):
-    """Step 2: Query active employees with valid contracts covering period, with pre-validation warning flags."""
-    return get_eligible_employees(db, date_start, date_end)
+    """
+    Step 2 – Eligible employee listing.
+
+    Queries all employees who have an active, non-cancelled contract that overlaps
+    the requested [period_start, period_end] interval.  For each candidate the
+    pre-validation compliance audit is executed (missing bank details, duplicate
+    payslip overlap) and the result is surfaced as ``has_warning`` / ``warning_reason``
+    on the returned :class:`EligibleEmployeeItem` so the UI can highlight problems
+    before the user confirms the payrun.
+    """
+    if period_start > period_end:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="period_start must not be after period_end",
+        )
+    return get_eligible_employees(db, period_start, period_end)
 
 
 @router.post("/payruns/wizard/step2-confirm", response_model=PayrunResponse, status_code=status.HTTP_201_CREATED, tags=["Payrun Wizard"])
 def wizard_step2_confirm(req: PayrunWizardStep2ConfirmRequest, db: Session = Depends(get_db)):
-    """Step 2 confirmation: create payrun batch and generate draft payslips for chosen employees."""
+    """
+    Step 2 – Confirm and create payrun.
+
+    Accepts a :class:`PayrunCreate` body.  Creates a :class:`Payrun` record in
+    ``'draft'`` status, then creates a placeholder :class:`Payslip` (also
+    ``'draft'``, with zeroed wage fields) for every employee ID listed in
+    ``selected_employee_ids``.  Each placeholder payslip already has compliance
+    warnings resolved (bank details, duplicate overlap) so the UI can display
+    them immediately.  Wages are computed later via the ``/compute`` endpoint.
+    """
     try:
         return PayrollService.wizard_step2_confirm_and_create(db, req)
     except ValueError as e:
