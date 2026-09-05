@@ -104,17 +104,17 @@ export const AppShell: React.FC = () => {
 
       {/* Sub-Navigation Bar: Master Data */}
       {activeTab === 'master-data' && canManageEmployees && (
-        <div className="bg-white border-b border-gray-200 px-6 py-2.5 flex items-center justify-between no-print">
-          <div className="flex space-x-2">
+        <div className="bg-white border-b border-slate-200/80 px-6 py-2 flex items-center justify-between no-print">
+          <div className="flex space-x-1.5">
             <button
               onClick={() => {
                 setMasterSubTab('employees');
                 setSelectedEmployeeId(null);
               }}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer ${
                 masterSubTab === 'employees'
-                  ? 'bg-indigo-50 text-indigo-700'
-                  : 'text-gray-600 hover:text-gray-900'
+                  ? 'bg-slate-100 text-slate-900 font-semibold'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
               }`}
             >
               Employees Directory
@@ -124,23 +124,23 @@ export const AppShell: React.FC = () => {
                 setMasterSubTab('contracts');
                 setSelectedEmployeeId(null);
               }}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer ${
                 masterSubTab === 'contracts'
-                  ? 'bg-indigo-50 text-indigo-700'
-                  : 'text-gray-600 hover:text-gray-900'
+                  ? 'bg-slate-100 text-slate-900 font-semibold'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
               }`}
             >
-              Contracts Manager
+              Contracts
             </button>
             <button
               onClick={() => {
                 setMasterSubTab('leaves');
                 setSelectedEmployeeId(null);
               }}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer ${
                 masterSubTab === 'leaves'
-                  ? 'bg-indigo-50 text-indigo-700'
-                  : 'text-gray-600 hover:text-gray-900'
+                  ? 'bg-slate-100 text-slate-900 font-semibold'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
               }`}
             >
               Time Off & Leaves
@@ -151,18 +151,18 @@ export const AppShell: React.FC = () => {
 
       {/* Sub-Navigation Bar: Payroll */}
       {activeTab === 'payroll' && !isSelfServiceOnly && (
-        <div className="bg-white border-b border-gray-200 px-6 py-2.5 flex items-center justify-between no-print">
-          <div className="flex space-x-2">
+        <div className="bg-white border-b border-slate-200/80 px-6 py-2 flex items-center justify-between no-print">
+          <div className="flex space-x-1.5">
             <button
               onClick={() => {
                 setPayrollSubTab('payruns');
                 setSelectedPayrunId(null);
                 setSelectedPayslipId(null);
               }}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer ${
                 payrollSubTab === 'payruns' && !selectedPayslipId
-                  ? 'bg-indigo-50 text-indigo-700'
-                  : 'text-gray-600 hover:text-gray-900'
+                  ? 'bg-slate-100 text-slate-900 font-semibold'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
               }`}
             >
               Payrun Batches
@@ -173,10 +173,10 @@ export const AppShell: React.FC = () => {
                 setSelectedPayrunId(null);
                 setSelectedPayslipId(null);
               }}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer ${
                 payrollSubTab === 'structures'
-                  ? 'bg-indigo-50 text-indigo-700'
-                  : 'text-gray-600 hover:text-gray-900'
+                  ? 'bg-slate-100 text-slate-900 font-semibold'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
               }`}
             >
               Salary Structures & Rules
@@ -187,37 +187,37 @@ export const AppShell: React.FC = () => {
 
       {/* Sub-Navigation Bar: Attendance */}
       {activeTab === 'attendance' && !isSelfServiceOnly && (
-        <div className="bg-white border-b border-gray-200 px-6 py-2.5 flex items-center justify-between no-print">
-          <div className="flex space-x-2">
+        <div className="bg-white border-b border-slate-200/80 px-6 py-2 flex items-center justify-between no-print">
+          <div className="flex space-x-1.5">
             <button
               onClick={() => setAttendanceSubTab('tracker')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer ${
                 attendanceSubTab === 'tracker'
-                  ? 'bg-indigo-50 text-indigo-700'
-                  : 'text-gray-600 hover:text-gray-900'
+                  ? 'bg-slate-100 text-slate-900 font-semibold'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
               }`}
             >
-              Clock-In & Biometrics
+              Clock-In & Status
             </button>
             <button
               onClick={() => setAttendanceSubTab('daily')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer ${
                 attendanceSubTab === 'daily'
-                  ? 'bg-indigo-50 text-indigo-700'
-                  : 'text-gray-600 hover:text-gray-900'
+                  ? 'bg-slate-100 text-slate-900 font-semibold'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
               }`}
             >
-              Daily Punches Matrix
+              Daily Punches
             </button>
             <button
               onClick={() => setAttendanceSubTab('shifts')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer ${
                 attendanceSubTab === 'shifts'
-                  ? 'bg-indigo-50 text-indigo-700'
-                  : 'text-gray-600 hover:text-gray-900'
+                  ? 'bg-slate-100 text-slate-900 font-semibold'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
               }`}
             >
-              Shift Management & Rosters
+              Shift Rosters
             </button>
           </div>
         </div>
@@ -225,27 +225,27 @@ export const AppShell: React.FC = () => {
 
       {/* Sub-Navigation Bar: Loans */}
       {activeTab === 'loans' && !isSelfServiceOnly && (
-        <div className="bg-white border-b border-gray-200 px-6 py-2.5 flex items-center justify-between no-print">
-          <div className="flex space-x-2">
+        <div className="bg-white border-b border-slate-200/80 px-6 py-2 flex items-center justify-between no-print">
+          <div className="flex space-x-1.5">
             <button
               onClick={() => setLoansSubTab('manager')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer ${
                 loansSubTab === 'manager'
-                  ? 'bg-indigo-50 text-indigo-700'
-                  : 'text-gray-600 hover:text-gray-900'
+                  ? 'bg-slate-100 text-slate-900 font-semibold'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
               }`}
             >
-              Loan Applications & Advances
+              Loan Applications
             </button>
             <button
               onClick={() => setLoansSubTab('schedule')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer ${
                 loansSubTab === 'schedule'
-                  ? 'bg-indigo-50 text-indigo-700'
-                  : 'text-gray-600 hover:text-gray-900'
+                  ? 'bg-slate-100 text-slate-900 font-semibold'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
               }`}
             >
-              EMI Schedule Breakdown
+              EMI Schedules
             </button>
           </div>
         </div>
@@ -253,27 +253,27 @@ export const AppShell: React.FC = () => {
 
       {/* Sub-Navigation Bar: Tax */}
       {activeTab === 'tax' && !isSelfServiceOnly && (
-        <div className="bg-white border-b border-gray-200 px-6 py-2.5 flex items-center justify-between no-print">
-          <div className="flex space-x-2">
+        <div className="bg-white border-b border-slate-200/80 px-6 py-2 flex items-center justify-between no-print">
+          <div className="flex space-x-1.5">
             <button
               onClick={() => setTaxSubTab('portal')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer ${
                 taxSubTab === 'portal'
-                  ? 'bg-indigo-50 text-indigo-700'
-                  : 'text-gray-600 hover:text-gray-900'
+                  ? 'bg-slate-100 text-slate-900 font-semibold'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
               }`}
             >
-              Tax Calculator & Declaration Portal
+              Tax Calculator & Declarations
             </button>
             <button
               onClick={() => setTaxSubTab('verification')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer ${
                 taxSubTab === 'verification'
-                  ? 'bg-indigo-50 text-indigo-700'
-                  : 'text-gray-600 hover:text-gray-900'
+                  ? 'bg-slate-100 text-slate-900 font-semibold'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
               }`}
             >
-              HR Proof Verification Portal
+              Proof Verification
             </button>
           </div>
         </div>
@@ -385,15 +385,15 @@ export const AppShell: React.FC = () => {
 
       {/* User Profile & Password Modal */}
       {isProfileOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in overflow-y-auto">
-          <div className="bg-slate-900 border border-slate-700 rounded-3xl shadow-2xl w-full max-w-3xl overflow-hidden text-slate-100 my-8">
-            <div className="bg-slate-950 px-6 py-4 border-b border-slate-800 flex justify-between items-center">
-              <span className="font-bold text-sm text-slate-200">Account & Security Management</span>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 overflow-y-auto">
+          <div className="bg-white border border-slate-200 rounded-2xl shadow-xl w-full max-w-3xl overflow-hidden text-slate-900 my-8">
+            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center">
+              <span className="font-semibold text-sm text-slate-900">Account & Security</span>
               <button
                 onClick={() => setIsProfileOpen(false)}
-                className="p-1.5 hover:bg-slate-800 text-slate-400 hover:text-white rounded-lg transition-colors cursor-pointer"
+                className="p-1 hover:bg-slate-100 text-slate-400 hover:text-slate-600 rounded-lg transition cursor-pointer"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
             <div className="p-6">

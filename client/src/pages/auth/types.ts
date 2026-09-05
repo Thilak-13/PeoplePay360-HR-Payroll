@@ -60,8 +60,8 @@ export const DEMO_ACCOUNTS: DemoAccount[] = [
     label: "Super Admin",
     email: "admin@peoplepay360.com",
     password: "Admin@123",
-    color: "text-purple-400",
-    bg: "bg-purple-950/60 border-purple-800/80 hover:border-purple-600",
+    color: "text-purple-600",
+    bg: "bg-purple-50/70 border-purple-200 hover:border-purple-400 hover:bg-purple-50",
     description: "Full system administration, DDL management, audit logs, and cross-domain access."
   },
   {
@@ -69,8 +69,8 @@ export const DEMO_ACCOUNTS: DemoAccount[] = [
     label: "HR Manager",
     email: "hr@peoplepay360.com",
     password: "Hr@12345",
-    color: "text-blue-400",
-    bg: "bg-blue-950/60 border-blue-800/80 hover:border-blue-600",
+    color: "text-blue-600",
+    bg: "bg-blue-50/70 border-blue-200 hover:border-blue-400 hover:bg-blue-50",
     description: "Employee directory, contracts, attendance rosters, leaves, and tax proof verification."
   },
   {
@@ -78,8 +78,8 @@ export const DEMO_ACCOUNTS: DemoAccount[] = [
     label: "Payroll Officer",
     email: "payroll@peoplepay360.com",
     password: "Payroll@123",
-    color: "text-emerald-400",
-    bg: "bg-emerald-950/60 border-emerald-800/80 hover:border-emerald-600",
+    color: "text-emerald-600",
+    bg: "bg-emerald-50/70 border-emerald-200 hover:border-emerald-400 hover:bg-emerald-50",
     description: "Payrun batch computation, wizard verification, salary structures, and payment disbursement."
   },
   {
@@ -87,8 +87,8 @@ export const DEMO_ACCOUNTS: DemoAccount[] = [
     label: "Dept Manager",
     email: "manager@peoplepay360.com",
     password: "Manager@123",
-    color: "text-amber-400",
-    bg: "bg-amber-950/60 border-amber-800/80 hover:border-amber-600",
+    color: "text-amber-600",
+    bg: "bg-amber-50/70 border-amber-200 hover:border-amber-400 hover:bg-amber-50",
     description: "Team management, leave approvals, and expense claim authorizations."
   },
   {
@@ -96,8 +96,8 @@ export const DEMO_ACCOUNTS: DemoAccount[] = [
     label: "Employee",
     email: "employee@peoplepay360.com",
     password: "Employee@123",
-    color: "text-cyan-400",
-    bg: "bg-cyan-950/60 border-cyan-800/80 hover:border-cyan-600",
+    color: "text-indigo-600",
+    bg: "bg-indigo-50/70 border-indigo-200 hover:border-indigo-400 hover:bg-indigo-50",
     description: "Self-service portal: view personal payslips, punch attendance, request loans, and submit claims."
   }
 ];
