@@ -35,9 +35,9 @@ def resolve_active_contract(db: Session, employee_id: int, period_start: date, p
         SELECT id, employee_id, wage, contract_type, start_date, end_date, status
         FROM contracts
         WHERE employee_id = :employee_id
+          AND status != 'cancelled'
           AND start_date <= :period_end
           AND (end_date IS NULL OR end_date >= :period_start)
-          AND status != 'cancelled'
         ORDER BY start_date DESC, id DESC
         LIMIT 1
     """)
