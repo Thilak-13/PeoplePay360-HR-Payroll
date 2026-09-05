@@ -148,7 +148,7 @@ class PayslipLine(Base):
     salary_rule_id = Column(Integer, ForeignKey("salary_rules.id", ondelete="SET NULL"), nullable=True)
     name = Column(String(100), nullable=False)
     code = Column(String(50), nullable=False)
-    category = Column(String(50), nullable=False)  # 'BASIC', 'ALLOWANCE', 'GROSS', 'DEDUCTION', 'NET'
+    category = Column(String(50), nullable=False)
     sequence = Column(Integer, default=10, nullable=False)
     rate = Column(Numeric(6, 2), default=100.00, nullable=False)
     amount = Column(Numeric(12, 2), nullable=False)
