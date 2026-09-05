@@ -185,10 +185,10 @@ export const PayrollDashboard: React.FC<PayrollDashboardProps> = ({
             </div>
             <div>
               <h1 className="text-2xl font-bold tracking-tight text-gray-900">
-                PeoplePay360 Executive Analytics
+                Executive Payroll Dashboard
               </h1>
               <p className="text-sm text-gray-500">
-                Live SQL aggregations, department payroll spend, and pre-validation compliance monitoring.
+                Live SQL aggregations, department gross payroll spend, and pre-validation compliance monitoring.
               </p>
             </div>
           </div>
@@ -348,15 +348,15 @@ export const PayrollDashboard: React.FC<PayrollDashboardProps> = ({
             <div>
               <h2 className="text-lg font-bold text-gray-900 flex items-center space-x-2">
                 <Building2 className="w-5 h-5 text-indigo-600" />
-                <span>Department Payroll Spend</span>
+                <span>Department Gross Spend</span>
               </h2>
               <p className="text-xs text-gray-500 mt-0.5">
-                Realized payroll expenditure breakdown across organizational units.
+                Gross payroll expenditure breakdown across organizational units.
               </p>
             </div>
             <div className="flex items-center space-x-2 text-xs">
               <span className="inline-block w-3 h-3 bg-indigo-600 rounded"></span>
-              <span className="text-gray-600 font-medium">Net Payout (₹)</span>
+              <span className="text-gray-600 font-medium">Gross Spend (₹)</span>
             </div>
           </div>
 
@@ -380,7 +380,7 @@ export const PayrollDashboard: React.FC<PayrollDashboardProps> = ({
                     tickFormatter={(val) => `₹${val / 1000}k`}
                   />
                   <Tooltip
-                    formatter={(value: any) => [formatCurrency(Number(value)), 'Net Spend']}
+                    formatter={(value: any) => [formatCurrency(Number(value)), 'Gross Spend']}
                     labelStyle={{ fontWeight: 'bold', color: '#111827' }}
                     contentStyle={{ borderRadius: '8px', border: '1px solid #e5e7eb' }}
                   />
@@ -388,7 +388,7 @@ export const PayrollDashboard: React.FC<PayrollDashboardProps> = ({
                     dataKey="spend"
                     fill="#4f46e5"
                     radius={[6, 6, 0, 0]}
-                    name="Net Spend"
+                    name="Gross Spend"
                   />
                 </BarChart>
               </ResponsiveContainer>
