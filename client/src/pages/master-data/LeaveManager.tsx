@@ -48,6 +48,14 @@ export const LeaveManager: React.FC<LeaveManagerProps> = ({
     year: new Date().getFullYear(),
   });
 
+  const getAuthHeaders = (extra: Record<string, string> = {}) => {
+    const token = localStorage.getItem('peoplepay360_token') || sessionStorage.getItem('peoplepay360_token');
+    return {
+      ...extra,
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    };
+  };
+
   useEffect(() => {
     fetchData();
   }, [employeeId]);
@@ -66,7 +74,7 @@ export const LeaveManager: React.FC<LeaveManagerProps> = ({
       const url = employeeId
         ? `/api/v1/master-data/leave-requests?employee_id=${employeeId}`
         : '/api/v1/master-data/leave-requests';
-      const res = await fetch(url);
+      const res = await fetch(url, { headers: getAuthHeaders() });
       if (res.ok) {
         const data = await res.json();
         setRequests(data);
@@ -81,7 +89,7 @@ export const LeaveManager: React.FC<LeaveManagerProps> = ({
       const url = employeeId
         ? `/api/v1/master-data/leave-allocations?employee_id=${employeeId}`
         : '/api/v1/master-data/leave-allocations';
-      const res = await fetch(url);
+      const res = await fetch(url, { headers: getAuthHeaders() });
       if (res.ok) {
         const data = await res.json();
         setAllocations(data);
@@ -93,7 +101,9 @@ export const LeaveManager: React.FC<LeaveManagerProps> = ({
 
   const fetchBalances = async () => {
     try {
-      const res = await fetch(`/api/v1/master-data/leave-allocations/balance/${effectiveEmployeeId}`);
+      const res = await fetch(`/api/v1/master-data/leave-allocations/balance/${effectiveEmployeeId}`, {
+        headers: getAuthHeaders(),
+      });
       if (res.ok) {
         const data = await res.json();
         setBalances(data.balances || []);
@@ -115,7 +125,7 @@ export const LeaveManager: React.FC<LeaveManagerProps> = ({
     try {
       const res = await fetch('/api/v1/master-data/leave-requests', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({
           employee_id: effectiveEmployeeId,
           holiday_type: requestForm.holiday_type,
@@ -150,7 +160,7 @@ export const LeaveManager: React.FC<LeaveManagerProps> = ({
     try {
       const res = await fetch('/api/v1/master-data/leave-allocations', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({
           employee_id: effectiveEmployeeId,
           holiday_type: allocForm.holiday_type,
@@ -177,6 +187,7 @@ export const LeaveManager: React.FC<LeaveManagerProps> = ({
     try {
       const res = await fetch(`/api/v1/master-data/leave-requests/${requestId}/approve`, {
         method: 'POST',
+        headers: getAuthHeaders(),
       });
       if (res.ok) {
         fetchData();
@@ -194,6 +205,7 @@ export const LeaveManager: React.FC<LeaveManagerProps> = ({
     try {
       const res = await fetch(`/api/v1/master-data/leave-requests/${requestId}/refuse`, {
         method: 'POST',
+        headers: getAuthHeaders(),
       });
       if (res.ok) {
         fetchData();
