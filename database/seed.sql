@@ -21,6 +21,8 @@ ALTER TABLE payslips ADD COLUMN IF NOT EXISTS bank_account VARCHAR(50);
 ALTER TABLE payslips ADD COLUMN IF NOT EXISTS ifsc_code VARCHAR(20);
 ALTER TABLE payslips ADD COLUMN IF NOT EXISTS email_sent BOOLEAN DEFAULT FALSE;
 
+ALTER TABLE payslip_lines ADD COLUMN IF NOT EXISTS sequence INTEGER DEFAULT 10;
+
 ALTER TABLE employees ADD COLUMN IF NOT EXISTS bank_account_number VARCHAR(50);
 ALTER TABLE employees ADD COLUMN IF NOT EXISTS bank_ifsc VARCHAR(20);
 
@@ -276,3 +278,6 @@ SELECT
 FROM payslips p
 CROSS JOIN salary_rules r
 WHERE p.payrun_id = 1 AND r.structure_id = 1;
+
+SELECT setval('payslip_lines_id_seq', (SELECT COALESCE(MAX(id), 1) FROM payslip_lines));
+
