@@ -227,3 +227,160 @@ class AttendanceService:
             "lop_hours": lop_hours,
             "unpaid_dates": unpaid_dates,
         }
+
+    @staticmethod
+    def get_weekly_working_hours(
+        db: Session,
+        employee_id: Optional[int] = None,
+        year: Optional[int] = None,
+        month: Optional[int] = None
+    ) -> List[Dict[str, Any]]:
+        """
+        Calculate employee weekly working hours across a calendar month,
+        categorize into salary tiers (Executive Schedule, Standard Full-Time, Part-Time),
+        and compute overtime bonus and leave deductions.
+        """
+        import calendar
+        from server.modules.payroll.engine import resolve_active_contract
+
+        target_year = year or date.today().year
+        target_month = month or date.today().month
+
+        _, last_day_num = calendar.monthrange(target_year, target_month)
+        first_day = date(target_year, target_month, 1)
+        last_day = date(target_year, target_month, last_day_num)
+
+        # Build 5 week intervals
+        week_ranges = [
+            (1, date(target_year, target_month, 1), date(target_year, target_month, 7)),
+            (2, date(target_year, target_month, 8), date(target_year, target_month, 14)),
+            (3, date(target_year, target_month, 15), date(target_year, target_month, 21)),
+            (4, date(target_year, target_month, 22), date(target_year, target_month, 28)),
+        ]
+        if last_day_num >= 29:
+            week_ranges.append(
+                (5, date(target_year, target_month, 29), date(target_year, target_month, last_day_num))
+            )
+
+        # Count total working days in month (Mon-Fri)
+        working_days_in_month = 0
+        curr = first_day
+        while curr <= last_day:
+            if curr.weekday() < 5:
+                working_days_in_month += 1
+            curr += timedelta(days=1)
+        if working_days_in_month == 0:
+            working_days_in_month = 20
+
+        # Query Target Employees
+        emp_query = db.query(Employee)
+        if employee_id:
+            emp_query = emp_query.filter(Employee.id == employee_id)
+        else:
+            emp_query = emp_query.filter(Employee.status == "active")
+
+        employees = emp_query.order_by(Employee.first_name.asc(), Employee.id.asc()).all()
+        results: List[Dict[str, Any]] = []
+
+        for emp in employees:
+            emp_name = f"{emp.first_name} {emp.last_name}".strip()
+
+            # 1. Resolve Active Contract
+            contract_data = resolve_active_contract(db, emp.id, first_day, last_day)
+            contract_wage = float(contract_data["wage"]) if contract_data else 0.0
+            hourly_rate = round(contract_wage / 160.0, 2) if contract_wage > 0.0 else 0.0
+
+            # 2. Query Attendance Records
+            records = db.query(AttendanceRecord).filter(
+                AttendanceRecord.employee_id == emp.id,
+                AttendanceRecord.date >= first_day,
+                AttendanceRecord.date <= last_day
+            ).all()
+
+            weeks_breakdown: List[Dict[str, Any]] = []
+            for w_num, w_start, w_end in week_ranges:
+                w_recs = [r for r in records if w_start <= r.date <= w_end]
+                w_worked = round(sum(float(r.worked_hours or 0.0) for r in w_recs), 2)
+                w_ot = max(0.0, round(w_worked - 40.0, 2))
+                weeks_breakdown.append({
+                    "week_number": w_num,
+                    "date_from": w_start,
+                    "date_to": w_end,
+                    "worked_hours": w_worked,
+                    "overtime_hours": w_ot,
+                })
+
+            total_worked = round(sum(w["worked_hours"] for w in weeks_breakdown), 2)
+            num_weeks = len(weeks_breakdown)
+            avg_weekly = round(total_worked / num_weeks, 2) if num_weeks > 0 else 0.0
+
+            # 3. Categorization & Multipliers
+            if avg_weekly >= 45.0:
+                category = "Executive Schedule"
+                ot_mult = 1.5
+                is_part_time = False
+            elif avg_weekly >= 40.0:
+                category = "Standard Full-Time"
+                ot_mult = 1.25
+                is_part_time = False
+            elif avg_weekly >= 20.0:
+                category = "Part-Time Schedule"
+                ot_mult = 0.0
+                is_part_time = True
+            else:
+                category = "Part-Time Schedule (Under 20h)"
+                ot_mult = 0.0
+                is_part_time = True
+
+            total_ot_hours = round(sum(w["overtime_hours"] for w in weeks_breakdown), 2)
+            overtime_bonus = round(total_ot_hours * hourly_rate * ot_mult, 2)
+
+            # 4. Leave Deductions
+            approved_leaves = db.query(LeaveRequest).filter(
+                LeaveRequest.employee_id == emp.id,
+                LeaveRequest.status == "approved",
+                LeaveRequest.date_from <= last_day,
+                LeaveRequest.date_to >= first_day
+            ).all()
+
+            unpaid_days_count = 0
+            for lv in approved_leaves:
+                lv_type = (lv.holiday_type or "").lower().strip()
+                if lv_type in ["unpaid", "lop"]:
+                    l_start = max(lv.date_from, first_day)
+                    l_end = min(lv.date_to, last_day)
+                    c_date = l_start
+                    while c_date <= l_end:
+                        if c_date.weekday() < 5:
+                            unpaid_days_count += 1
+                        c_date += timedelta(days=1)
+
+            daily_wage = round(contract_wage / working_days_in_month, 2) if working_days_in_month > 0 else 0.0
+            leave_deduction = round(unpaid_days_count * daily_wage, 2)
+
+            # 5. Base Salary & Net Adjusted
+            if is_part_time and contract_wage > 0.0:
+                base_sal = round(contract_wage * min(1.0, total_worked / 160.0), 2)
+            else:
+                base_sal = contract_wage
+
+            net_adjusted = max(0.0, round(base_sal + overtime_bonus - leave_deduction, 2))
+
+            results.append({
+                "employee_id": emp.id,
+                "employee_name": emp_name,
+                "year": target_year,
+                "month": target_month,
+                "weeks": weeks_breakdown,
+                "total_worked_hours": total_worked,
+                "avg_weekly_hours": avg_weekly,
+                "salary_category": category,
+                "contract_wage": contract_wage,
+                "hourly_rate": hourly_rate,
+                "overtime_bonus": overtime_bonus,
+                "leave_deduction": leave_deduction,
+                "unpaid_leave_days": unpaid_days_count,
+                "net_adjusted_salary": net_adjusted,
+            })
+
+        return results

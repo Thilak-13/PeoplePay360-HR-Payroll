@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { AttendanceRecord, DailySummary, MonthlyAttendanceSummary, UnpaidAbsence, Shift, ShiftAssignment, PunchRequest } from './types';
+import { AttendanceRecord, DailySummary, MonthlyAttendanceSummary, UnpaidAbsence, Shift, ShiftAssignment, PunchRequest, EmployeeWeeklyHours } from './types';
 
 const API_BASE = '/api/v1/attendance';
 
@@ -54,5 +54,14 @@ export async function assignShift(assignment: { employee_id: number; shift_id: n
 
 export async function seedSampleAttendance(): Promise<{ status: string; records_created: number }> {
   const res = await axios.post<{ status: string; records_created: number }>(`${API_BASE}/seed-sample-records`);
+  return res.data;
+}
+
+export async function fetchWeeklyHours(employeeId?: number, year?: number, month?: number): Promise<EmployeeWeeklyHours[]> {
+  const params: Record<string, number> = {};
+  if (employeeId) params.employee_id = employeeId;
+  if (year) params.year = year;
+  if (month) params.month = month;
+  const res = await axios.get<EmployeeWeeklyHours[]>(`${API_BASE}/weekly-hours`, { params });
   return res.data;
 }

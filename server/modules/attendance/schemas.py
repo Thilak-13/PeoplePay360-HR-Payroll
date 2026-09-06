@@ -103,3 +103,28 @@ class ShiftAssignmentResponse(BaseModel):
     end_date: Optional[date] = None
     shift: Optional[ShiftResponse] = None
     employee: Optional[EmployeeSnippet] = None
+
+
+class WeekBreakdown(BaseModel):
+    week_number: int
+    date_from: date
+    date_to: date
+    worked_hours: float
+    overtime_hours: float
+
+
+class EmployeeWeeklyHoursResponse(BaseModel):
+    employee_id: int
+    employee_name: str
+    year: int
+    month: int
+    weeks: List[WeekBreakdown]
+    total_worked_hours: float
+    avg_weekly_hours: float
+    salary_category: str
+    contract_wage: float
+    hourly_rate: float
+    overtime_bonus: float
+    leave_deduction: float
+    unpaid_leave_days: int
+    net_adjusted_salary: float

@@ -104,6 +104,8 @@ export const Breadcrumbs: React.FC<BreadcrumbsProps> = ({
       if (isSelfServiceOnly) {
         if (activeSubTab === 'daily') {
           items.push({ label: 'Attendance Records', isCurrent: true });
+        } else if (activeSubTab === 'weekly') {
+          items.push({ label: 'Weekly Hours & Tier', isCurrent: true });
         } else {
           items.push({ label: 'Clock-In Entry', isCurrent: true });
         }
@@ -116,6 +118,8 @@ export const Breadcrumbs: React.FC<BreadcrumbsProps> = ({
           items.push({ label: 'Clock-In & Status', isCurrent: true });
         } else if (activeSubTab === 'daily') {
           items.push({ label: 'Daily Attendance Summary', isCurrent: true });
+        } else if (activeSubTab === 'weekly') {
+          items.push({ label: 'Weekly Hours & Tiers', isCurrent: true });
         } else if (activeSubTab === 'shifts') {
           items.push({ label: 'Shift Rosters', isCurrent: true });
         }

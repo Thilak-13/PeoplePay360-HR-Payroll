@@ -17,6 +17,7 @@ from server.modules.attendance.schemas import (
     ShiftResponse,
     ShiftAssignmentCreate,
     ShiftAssignmentResponse,
+    EmployeeWeeklyHoursResponse,
 )
 from server.modules.attendance.services import AttendanceService
 from server.modules.auth.models import User
@@ -276,3 +277,31 @@ def seed_sample_records(db: Session = Depends(get_db)):
 
     db.commit()
     return {"status": "seeded", "records_created": created}
+
+
+@router.get("/weekly-hours", response_model=List[EmployeeWeeklyHoursResponse], tags=["Attendance"])
+def get_weekly_working_hours(
+    employee_id: Optional[int] = Query(None, description="Optional employee ID filter"),
+    year: Optional[int] = Query(None, description="Year (defaults to current year)"),
+    month: Optional[int] = Query(None, description="Month (defaults to current month)"),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Weekly working hours breakdown and salary category classification.
+    Employees can only view their own attendance hours; HR/Admins can view all or filter by employee.
+    """
+    if current_user.role == ROLE_EMPLOYEE:
+        if employee_id is not None and employee_id != current_user.employee_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Employees can only view their own attendance hours."
+            )
+        employee_id = current_user.employee_id
+
+    return AttendanceService.get_weekly_working_hours(
+        db=db,
+        employee_id=employee_id,
+        year=year,
+        month=month
+    )

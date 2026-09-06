@@ -3,3 +3,4 @@ export * from "./api";
 export * from "./AttendanceTracker";
 export * from "./DailyPunches";
 export * from "./ShiftManager";
+export * from "./WeeklyHoursSummary";

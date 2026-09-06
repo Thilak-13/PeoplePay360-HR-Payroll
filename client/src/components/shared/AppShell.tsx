@@ -22,6 +22,7 @@ import {
   AttendanceTracker,
   DailyPunches,
   ShiftManager,
+  WeeklyHoursSummary,
 } from '../../pages/attendance';
 import { UserManagement } from '../../pages/admin/UserManagement';
 import { X } from 'lucide-react';
@@ -55,7 +56,7 @@ export const AppShell: React.FC = () => {
   // Sub-tabs for domain navigation
   const [masterSubTab, setMasterSubTab] = useState<'employees' | 'contracts' | 'leaves' | 'schedules'>('employees');
   const [payrollSubTab, setPayrollSubTab] = useState<'payruns' | 'structures' | 'payslips'>('payruns');
-  const [attendanceSubTab, setAttendanceSubTab] = useState<'tracker' | 'daily' | 'shifts'>('tracker');
+  const [attendanceSubTab, setAttendanceSubTab] = useState<'tracker' | 'daily' | 'shifts' | 'weekly'>('tracker');
 
   // Sidebar collapse state & mobile drawer state
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(false);
@@ -283,6 +284,7 @@ export const AppShell: React.FC = () => {
             <div>
               {attendanceSubTab === 'tracker' && <AttendanceTracker />}
               {attendanceSubTab === 'daily' && <DailyPunches />}
+              {attendanceSubTab === 'weekly' && <WeeklyHoursSummary />}
               {attendanceSubTab === 'shifts' && canManageEmployees && <ShiftManager />}
             </div>
           )}

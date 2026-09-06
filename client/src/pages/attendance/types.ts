@@ -79,3 +79,28 @@ export interface PunchRequest {
   timestamp?: string;
   notes?: string;
 }
+
+export interface WeekBreakdown {
+  week_number: number;
+  date_from: string;
+  date_to: string;
+  worked_hours: number;
+  overtime_hours: number;
+}
+
+export interface EmployeeWeeklyHours {
+  employee_id: number;
+  employee_name: string;
+  year: number;
+  month: number;
+  weeks: WeekBreakdown[];
+  total_worked_hours: number;
+  avg_weekly_hours: number;
+  salary_category: 'Executive Schedule' | 'Standard Full-Time' | 'Part-Time Schedule' | 'Part-Time Schedule (Under 20h)';
+  contract_wage: number;
+  hourly_rate: number;
+  overtime_bonus: number;
+  leave_deduction: number;
+  unpaid_leave_days: number;
+  net_adjusted_salary: number;
+}

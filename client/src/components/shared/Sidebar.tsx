@@ -15,6 +15,7 @@ import {
   LogOut,
   ChevronDown,
   Check,
+  Award,
 } from 'lucide-react';
 import { useAuth } from '../../pages/auth/AuthContext';
 import { useRole } from './RoleContext';
@@ -92,6 +93,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
               subTab: 'daily',
               label: 'Attendance Records',
               icon: CalendarDays,
+              visible: true,
+            },
+            {
+              id: 'attendance',
+              subTab: 'weekly',
+              label: 'Weekly Hours & Tier',
+              icon: Award,
               visible: true,
             },
             {
@@ -173,6 +181,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
               subTab: 'daily',
               label: 'Attendance Records',
               icon: CalendarDays,
+              visible: true,
+            },
+            {
+              id: 'attendance',
+              subTab: 'weekly',
+              label: 'Weekly Hours & Tiers',
+              icon: Award,
               visible: true,
             },
           ],

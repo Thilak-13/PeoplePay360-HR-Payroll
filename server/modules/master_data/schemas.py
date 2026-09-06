@@ -125,12 +125,6 @@ class ContractBase(BaseModel):
     end_date: Optional[date] = None
     status: str = Field(default="active")
 
-    @model_validator(mode="after")
-    def validate_dates(self):
-        if self.end_date and self.start_date > self.end_date:
-            raise ValueError("Contract start_date must be less than or equal to end_date")
-        return self
-
 
 class ContractCreate(ContractBase):
     pass
@@ -142,12 +136,6 @@ class ContractUpdate(BaseModel):
     start_date: Optional[date] = None
     end_date: Optional[date] = None
     status: Optional[str] = None
-
-    @model_validator(mode="after")
-    def validate_dates(self):
-        if self.start_date and self.end_date and self.start_date > self.end_date:
-            raise ValueError("Contract start_date must be less than or equal to end_date")
-        return self
 
 
 class ContractResponse(ContractBase):

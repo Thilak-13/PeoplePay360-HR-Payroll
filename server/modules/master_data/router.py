@@ -87,16 +87,16 @@ def ping():
 @router.post("/schedules/calculate-hours", response_model=ScheduleCalculationResponse, tags=["Schedules"])
 def calculate_schedule_hours_endpoint(req: ScheduleCalculationRequest, db: Session = Depends(get_db)):
     """Utility to calculate weekly hours, daily hours, and span hours based on schedule."""
-    hours_per_week = req.hours_per_week or Decimal("40.00")
+    hours_per_week = req.hours_per_week if req.hours_per_week is not None else Decimal("40.00")
     schedule = None
     if req.working_schedule_id:
         schedule = db.query(WorkingSchedule).filter(WorkingSchedule.id == req.working_schedule_id).first()
-        if schedule:
+        if schedule and schedule.hours_per_week is not None:
             hours_per_week = schedule.hours_per_week
 
     return calculate_working_hours(
         hours_per_week=hours_per_week,
-        days_per_week=req.days_per_week or 5,
+        days_per_week=req.days_per_week if req.days_per_week is not None else 5,
         date_from=req.date_from,
         date_to=req.date_to,
         schedule=schedule,
@@ -635,6 +635,7 @@ def delete_leave_allocation(
 def get_employee_leave_balances(
     employee_id: int,
     year: Optional[int] = None,
+    holiday_type: Optional[str] = None,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -647,6 +648,26 @@ def get_employee_leave_balances(
         raise HTTPException(status_code=404, detail="Employee not found")
 
     target_year = year or date.today().year
+
+    if holiday_type:
+        allocated, used, remaining = get_leave_balance(db, employee_id, holiday_type, target_year)
+        item = {
+            "holiday_type": holiday_type,
+            "year": target_year,
+            "allocated_days": float(allocated),
+            "used_days": float(used),
+            "remaining_days": float(remaining),
+        }
+        return {
+            "employee_id": employee_id,
+            "holiday_type": holiday_type,
+            "year": target_year,
+            "allocated_days": float(allocated),
+            "used_days": float(used),
+            "remaining_days": float(remaining),
+            "balances": [item]
+        }
+
     types = ["paid_time_off", "sick_leave", "unpaid", "parental"]
     balances = []
     for h_type in types:

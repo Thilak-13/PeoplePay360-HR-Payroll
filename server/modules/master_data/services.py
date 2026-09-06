@@ -202,35 +202,41 @@ def check_contract_overlap(
             )
 
 
+import threading
+
+_contract_mutation_lock = threading.Lock()
+
+
 def create_employee_contract(db: Session, contract_data: ContractCreate) -> Contract:
     """Creates contract after validating dates and active overlap constraints."""
     validate_contract_dates(contract_data.start_date, contract_data.end_date)
     
-    # Ensure employee exists
-    emp = db.query(Employee).filter(Employee.id == contract_data.employee_id).first()
-    if not emp:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Employee #{contract_data.employee_id} not found.",
+    with _contract_mutation_lock:
+        # Ensure employee exists
+        emp = db.query(Employee).filter(Employee.id == contract_data.employee_id).first()
+        if not emp:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Employee #{contract_data.employee_id} not found.",
+            )
+
+        # Normalize status casing
+        if contract_data.status:
+            contract_data.status = str(contract_data.status).lower().strip()
+
+        check_contract_overlap(
+            db,
+            employee_id=contract_data.employee_id,
+            start_date=contract_data.start_date,
+            end_date=contract_data.end_date,
+            new_status=contract_data.status,
         )
 
-    # Normalize status casing
-    if contract_data.status:
-        contract_data.status = str(contract_data.status).lower().strip()
-
-    check_contract_overlap(
-        db,
-        employee_id=contract_data.employee_id,
-        start_date=contract_data.start_date,
-        end_date=contract_data.end_date,
-        new_status=contract_data.status,
-    )
-
-    db_contract = Contract(**contract_data.model_dump())
-    db.add(db_contract)
-    db.commit()
-    db.refresh(db_contract)
-    return db_contract
+        db_contract = Contract(**contract_data.model_dump())
+        db.add(db_contract)
+        db.commit()
+        db.refresh(db_contract)
+        return db_contract
 
 
 def update_employee_contract(db: Session, contract_id: int, update_data: ContractUpdate) -> Contract:

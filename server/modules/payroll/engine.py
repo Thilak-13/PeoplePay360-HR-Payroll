@@ -34,16 +34,31 @@ def round_curr(val: Decimal) -> Decimal:
 # 1. Temporal Contract Resolution
 # ==========================================
 
+def _parse_date(val: Any) -> Optional[date]:
+    if val is None:
+        return None
+    if isinstance(val, datetime):
+        return val.date()
+    if isinstance(val, date):
+        return val
+    if isinstance(val, str):
+        try:
+            return date.fromisoformat(val[:10])
+        except Exception:
+            return None
+    return None
+
+
 def resolve_active_contract(db: Session, employee_id: int, period_start: date, period_end: date) -> Optional[Dict[str, Any]]:
     """
-    Temporal contract resolution:
+    Contract resolution:
     Query only the contract where start_date <= period_end AND (end_date IS NULL OR end_date >= period_start) AND status = 'active'.
     """
     query = text("""
         SELECT id, employee_id, wage, contract_type, start_date, end_date, status
         FROM contracts
         WHERE employee_id = :employee_id
-          AND status = 'active'
+          AND LOWER(TRIM(status)) IN ('active', 'running')
           AND start_date <= :period_end
           AND (end_date IS NULL OR end_date >= :period_start)
         ORDER BY start_date DESC, id DESC
@@ -61,8 +76,8 @@ def resolve_active_contract(db: Session, employee_id: int, period_start: date, p
             "employee_id": result[1],
             "wage": Decimal(str(result[2])),
             "contract_type": result[3],
-            "start_date": result[4],
-            "end_date": result[5],
+            "start_date": _parse_date(result[4]),
+            "end_date": _parse_date(result[5]),
             "status": result[6],
         }
     return None
@@ -160,8 +175,8 @@ def get_eligible_employees(db: Session, period_start: date, period_end: date) ->
         FROM employees e
         INNER JOIN contracts c ON e.id = c.employee_id
         LEFT JOIN departments d ON e.department_id = d.id
-        WHERE e.status = 'active'
-          AND c.status = 'active'
+        WHERE LOWER(TRIM(e.status)) = 'active'
+          AND LOWER(TRIM(c.status)) IN ('active', 'running')
           AND c.start_date <= :period_end
           AND (c.end_date IS NULL OR c.end_date >= :period_start)
         ORDER BY d.name ASC, e.first_name ASC, c.start_date DESC, c.id DESC
@@ -191,10 +206,10 @@ def get_eligible_employees(db: Session, period_start: date, period_end: date) ->
             "job_title": row[4],
             "department_name": row[5] or "General",
             "contract_id": row[6],
-            "wage": Decimal(str(row[7])),
+            "wage": float(row[7]),
             "contract_type": row[8],
-            "contract_start": row[9],
-            "contract_end": row[10],
+            "contract_start": _parse_date(row[9]),
+            "contract_end": _parse_date(row[10]),
             "has_bank_details": bool(bank_acc and ifsc),
             "bank_account": bank_acc,
             "ifsc_code": ifsc,
@@ -272,6 +287,23 @@ def calculate_payslip_lines_pipeline(
     # Sort rules strictly by sequence ASC
     sorted_rules = sorted(rules, key=lambda r: r.sequence)
 
+    # If contract wage is zero or negative, net salary and earnings are zero
+    if wage <= Decimal("0.00"):
+        zero = Decimal("0.00")
+        lines = []
+        for rule in sorted_rules:
+            lines.append({
+                "salary_rule_id": rule.id,
+                "name": rule.name,
+                "code": rule.code,
+                "category": rule.category.upper(),
+                "sequence": rule.sequence,
+                "rate": zero,
+                "amount": zero,
+                "total": zero
+            })
+        return zero, zero, zero, zero, lines
+
     category_totals = {
         "BASIC": Decimal("0.00"),
         "ALLOWANCE": Decimal("0.00"),
@@ -314,9 +346,13 @@ def calculate_payslip_lines_pipeline(
             rule_values[rule.code] = line_total
 
         elif category == "GROSS":
-            # Auto compute total gross from basic + allowances
-            computed_gross = category_totals["BASIC"] + category_totals["ALLOWANCE"]
-            line_total = round_curr(computed_gross)
+            if amount_type == "fixed" and rule_amt > Decimal("0.00"):
+                line_total = round_curr(rule_amt)
+            else:
+                computed_gross = category_totals["BASIC"] + category_totals["ALLOWANCE"]
+                if computed_gross == Decimal("0.00"):
+                    computed_gross = wage if wage > Decimal("0.00") else rule_amt
+                line_total = round_curr(computed_gross)
             category_totals["GROSS"] = line_total
             rule_values[rule.code] = line_total
             rule_values["GROSS"] = line_total

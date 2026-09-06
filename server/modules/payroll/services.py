@@ -197,14 +197,12 @@ class PayrollService:
         overlapping_names = [f"{p.name} ({p.date_start} to {p.date_end}) [{p.status}]" for p in overlap_query]
 
         # Check structure
-        structure_name = None
+        st = None
         if req.structure_id:
             st = db.query(SalaryStructure).filter(SalaryStructure.id == req.structure_id).first()
-            if st:
-                structure_name = st.name
-        else:
-            default_st = get_or_create_default_structure(db)
-            structure_name = default_st.name
+        if not st:
+            st = get_or_create_default_structure(db)
+        structure_name = st.name
 
         # Count eligible employees
         eligible = get_eligible_employees(db, req.date_start, req.date_end)
@@ -224,10 +222,12 @@ class PayrollService:
             raise ValueError("Start date cannot be after end date")
 
         # Resolve structure
-        structure_id = req.structure_id
-        if not structure_id:
-            default_st = get_or_create_default_structure(db)
-            structure_id = default_st.id
+        structure = None
+        if req.structure_id:
+            structure = db.query(SalaryStructure).filter(SalaryStructure.id == req.structure_id).first()
+        if not structure:
+            structure = get_or_create_default_structure(db)
+        structure_id = structure.id
 
         # Create Payrun
         payrun = Payrun(

@@ -84,9 +84,9 @@ class PayslipLineBase(BaseModel):
     code: str
     category: str
     sequence: int = 10
-    rate: Decimal = Decimal("100.00")
-    amount: Decimal
-    total: Decimal
+    rate: float = 100.00
+    amount: float
+    total: float
 
 
 class PayslipLineResponse(PayslipLineBase):
@@ -118,10 +118,10 @@ class PayslipCreate(PayslipBase):
 class PayslipResponse(PayslipBase):
     id: int
     payrun_id: Optional[int] = None
-    basic_wage: Decimal
-    gross_wage: Decimal
-    net_wage: Decimal
-    total_deductions: Decimal
+    basic_wage: float
+    gross_wage: float
+    net_wage: float
+    total_deductions: float
     status: str
     has_warning: bool
     warning_message: Optional[str] = None
@@ -167,9 +167,9 @@ class PayrunUpdate(BaseModel):
 class PayrunResponse(PayrunBase):
     id: int
     status: str
-    total_basic: Decimal
-    total_gross: Decimal
-    total_net: Decimal
+    total_basic: float
+    total_gross: float
+    total_net: float
     payslip_count: int
     warning_count: int
     structure_name: Optional[str] = None
@@ -188,7 +188,7 @@ class PayrunDetailResponse(PayrunResponse):
 # ==========================================
 
 class PayrunWizardStep1ValidateRequest(BaseModel):
-    name: str
+    name: Optional[str] = None
     date_start: date
     date_end: date
     structure_id: Optional[int] = None
@@ -209,7 +209,7 @@ class EligibleEmployeeResponse(BaseModel):
     department_name: Optional[str] = None
     job_title: Optional[str] = None
     contract_id: int
-    wage: Decimal
+    wage: float
     contract_type: str
     contract_start: date
     contract_end: Optional[date] = None
