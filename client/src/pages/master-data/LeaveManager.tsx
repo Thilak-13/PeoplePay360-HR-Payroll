@@ -222,6 +222,20 @@ export const LeaveManager: React.FC<LeaveManagerProps> = ({
 
   return (
     <div className="space-y-6">
+      {/* Top Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-2 border-b border-slate-200/80 gap-3">
+        <div>
+          <h1 className="text-xl font-bold tracking-tight text-slate-900">
+            {isSelfServiceOnly ? 'My Leave Balances & Time Off' : 'Time Off & Leave Management'}
+          </h1>
+          <p className="text-xs text-slate-500 mt-0.5">
+            {isSelfServiceOnly
+              ? 'View personal leave quotas, check remaining days, and request time off.'
+              : 'Review and approve employee time-off requests, allocate leave quotas, and monitor balances.'}
+          </p>
+        </div>
+      </div>
+
       {/* Balances Summary Cards */}
       {balances.length > 0 && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -257,7 +271,7 @@ export const LeaveManager: React.FC<LeaveManagerProps> = ({
                   : 'border-transparent text-slate-500 hover:text-slate-800'
               }`}
             >
-              Time Off Requests ({requests.length})
+              {isSelfServiceOnly ? 'My Time Off Requests' : 'Time Off Requests'} ({requests.length})
             </button>
             {canManageHR && (
               <button
@@ -314,6 +328,7 @@ export const LeaveManager: React.FC<LeaveManagerProps> = ({
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="bg-slate-50/80 border-b border-slate-200/80 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                    {!employeeId && <th className="py-3 px-4">Employee</th>}
                     <th className="py-3 px-4">Leave Type</th>
                     <th className="py-3 px-4">Period</th>
                     <th className="py-3 px-4">Days</th>
@@ -326,6 +341,11 @@ export const LeaveManager: React.FC<LeaveManagerProps> = ({
                 <tbody className="divide-y divide-slate-100 text-xs">
                   {requests.map((r) => (
                     <tr key={r.id} className="hover:bg-slate-50/60 transition-colors">
+                      {!employeeId && (
+                        <td className="py-3 px-4 font-mono font-medium text-slate-700">
+                          Employee #{r.employee_id}
+                        </td>
+                      )}
                       <td className="py-3 px-4 font-medium text-slate-900 capitalize">
                         {r.holiday_type.replace(/_/g, ' ')}
                       </td>

@@ -16,6 +16,7 @@ import {
   PayrunDetail,
   SalaryStructureManager,
   PayslipDetail,
+  EmployeePayslipList,
 } from '../../pages/payroll';
 import {
   AttendanceTracker,
@@ -53,7 +54,7 @@ export const AppShell: React.FC = () => {
 
   // Sub-tabs for domain navigation
   const [masterSubTab, setMasterSubTab] = useState<'employees' | 'contracts' | 'leaves' | 'schedules'>('employees');
-  const [payrollSubTab, setPayrollSubTab] = useState<'payruns' | 'structures'>('payruns');
+  const [payrollSubTab, setPayrollSubTab] = useState<'payruns' | 'structures' | 'payslips'>('payruns');
   const [attendanceSubTab, setAttendanceSubTab] = useState<'tracker' | 'daily' | 'shifts'>('tracker');
 
   // Sidebar collapse state & mobile drawer state
@@ -66,9 +67,12 @@ export const AppShell: React.FC = () => {
   // Sync and enforce strict role boundaries when role switches
   React.useEffect(() => {
     if (isSelfServiceOnly) {
-      if (activeTab === 'analytics' || activeTab === 'payroll' || activeTab === 'user-management') {
+      if (activeTab === 'analytics' || activeTab === 'user-management') {
         setActiveTab('master-data');
         setMasterSubTab('employees');
+      }
+      if (activeTab === 'payroll' && payrollSubTab !== 'payslips') {
+        setPayrollSubTab('payslips');
       }
       if (activeTab === 'master-data' && (masterSubTab === 'contracts' || masterSubTab === 'schedules')) {
         setMasterSubTab('employees');
@@ -113,9 +117,12 @@ export const AppShell: React.FC = () => {
     let targetTab = tab;
     let targetSubTab = subTab;
     if (isSelfServiceOnly) {
-      if (targetTab === 'analytics' || targetTab === 'payroll' || targetTab === 'user-management') {
+      if (targetTab === 'analytics' || targetTab === 'user-management') {
         targetTab = 'master-data';
         targetSubTab = 'employees';
+      }
+      if (targetTab === 'payroll') {
+        targetSubTab = 'payslips';
       }
       if (targetTab === 'master-data' && (targetSubTab === 'contracts' || targetSubTab === 'schedules')) {
         targetSubTab = 'employees';
@@ -281,27 +288,40 @@ export const AppShell: React.FC = () => {
           )}
 
           {/* 4. Payroll Engine Domain */}
-          {activeTab === 'payroll' && canRunPayroll && (
-            <div>
-              {selectedPayslipId ? (
-                <PayslipDetail
-                  payslipId={selectedPayslipId}
-                  onBack={() => setSelectedPayslipId(null)}
-                />
-              ) : payrollSubTab === 'structures' ? (
-                <SalaryStructureManager onBack={() => setPayrollSubTab('payruns')} />
-              ) : selectedPayrunId ? (
-                <PayrunDetail
-                  payrunId={selectedPayrunId}
-                  onBack={() => setSelectedPayrunId(null)}
-                />
-              ) : (
-                <PayrunList
-                  onSelectPayrun={setSelectedPayrunId}
-                  onNavigateStructures={() => setPayrollSubTab('structures')}
-                />
-              )}
-            </div>
+          {activeTab === 'payroll' && (
+            isSelfServiceOnly ? (
+              <div>
+                {selectedPayslipId ? (
+                  <PayslipDetail
+                    payslipId={selectedPayslipId}
+                    onBack={() => setSelectedPayslipId(null)}
+                  />
+                ) : (
+                  <EmployeePayslipList onSelectPayslip={setSelectedPayslipId} />
+                )}
+              </div>
+            ) : canRunPayroll ? (
+              <div>
+                {selectedPayslipId ? (
+                  <PayslipDetail
+                    payslipId={selectedPayslipId}
+                    onBack={() => setSelectedPayslipId(null)}
+                  />
+                ) : payrollSubTab === 'structures' ? (
+                  <SalaryStructureManager onBack={() => setPayrollSubTab('payruns')} />
+                ) : selectedPayrunId ? (
+                  <PayrunDetail
+                    payrunId={selectedPayrunId}
+                    onBack={() => setSelectedPayrunId(null)}
+                  />
+                ) : (
+                  <PayrunList
+                    onSelectPayrun={setSelectedPayrunId}
+                    onNavigateStructures={() => setPayrollSubTab('structures')}
+                  />
+                )}
+              </div>
+            ) : null
           )}
 
           {/* 5. Admin User Management & RBAC */}

@@ -161,7 +161,7 @@ export const PayrunDetail: React.FC<PayrunDetailProps> = ({
             <h1 className="text-2xl font-black text-slate-900">{payrun.name}</h1>
             {isPaid && (
               <span className="bg-emerald-100 text-emerald-800 text-xs font-bold px-2.5 py-0.5 rounded-full border border-emerald-300">
-                🔒 Terminal Lock (PAID)
+                Status: Paid (Locked)
               </span>
             )}
           </div>
@@ -199,7 +199,7 @@ export const PayrunDetail: React.FC<PayrunDetailProps> = ({
                   disabled={actionLoading}
                   className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-semibold shadow-sm disabled:opacity-50"
                 >
-                  Validate Payrun (Enforce Barrier)
+                  Validate Payrun
                 </button>
               )}
 
@@ -209,7 +209,7 @@ export const PayrunDetail: React.FC<PayrunDetailProps> = ({
                   disabled={actionLoading}
                   className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold shadow-sm disabled:opacity-50"
                 >
-                  Confirm & Mark Paid (Lock)
+                  Confirm & Mark as Paid
                 </button>
               )}
 
@@ -234,7 +234,7 @@ export const PayrunDetail: React.FC<PayrunDetailProps> = ({
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
           </svg>
           <div>
-            <div className="font-bold">Execution / Validation Alert</div>
+            <div className="font-bold">Validation Alert</div>
             <div>{errorMsg}</div>
           </div>
         </div>
@@ -252,7 +252,7 @@ export const PayrunDetail: React.FC<PayrunDetailProps> = ({
       {/* State Machine Statusbar */}
       <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
         <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">
-          Payrun Lifecycle State Machine
+          Payrun Status Flow
         </div>
         <div className="grid grid-cols-4 gap-2">
           {statuses.map((st, idx) => {

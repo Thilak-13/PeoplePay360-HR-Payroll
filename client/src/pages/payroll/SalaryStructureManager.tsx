@@ -158,9 +158,9 @@ export const SalaryStructureManager: React.FC<SalaryStructureManagerProps> = ({
               ← Back to Payruns
             </button>
           )}
-          <h1 className="text-2xl font-black text-slate-900">Salary Structures & Rules Pipeline</h1>
+          <h1 className="text-2xl font-black text-slate-900">Salary Structures & Rules</h1>
           <p className="text-xs text-slate-500 mt-0.5">
-            Configure sequenced calculation pipelines across BASIC, ALLOWANCE, GROSS, DEDUCTION, and NET.
+            Configure calculation sequences across BASIC, ALLOWANCE, GROSS, DEDUCTION, and NET.
           </p>
         </div>
         {canEditPayrollConfig ? (
@@ -353,7 +353,7 @@ export const SalaryStructureManager: React.FC<SalaryStructureManagerProps> = ({
       {showAddRuleModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
           <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 border border-slate-200">
-            <h2 className="text-base font-bold text-slate-900 mb-4">Add Salary Rule to Pipeline</h2>
+            <h2 className="text-base font-bold text-slate-900 mb-4">Add Salary Rule</h2>
             <form onSubmit={handleAddRule} className="space-y-3 text-xs">
               <div>
                 <label className="block font-semibold text-slate-700 mb-1">Rule Name *</label>

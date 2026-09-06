@@ -65,9 +65,9 @@ export const PayrunList: React.FC<PayrunListProps> = ({
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-black text-slate-900">Payroll Engine & Payruns</h1>
+          <h1 className="text-2xl font-black text-slate-900">Payroll & Payruns</h1>
           <p className="text-xs text-slate-500 mt-0.5">
-            Automated salary calculations, temporal contract resolution, and compliance state transitions.
+            Salary calculations, contract resolution, and batch payment processing.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -120,7 +120,7 @@ export const PayrunList: React.FC<PayrunListProps> = ({
             <div className={`text-2xl font-black mt-1 ${metrics.pending_warnings > 0 ? 'text-amber-600' : 'text-slate-900'}`}>
               {metrics.pending_warnings}
             </div>
-            <div className="text-[11px] text-slate-400 mt-1">Validation barrier flags</div>
+            <div className="text-[11px] text-slate-400 mt-1">Items requiring review</div>
           </div>
         </div>
       )}

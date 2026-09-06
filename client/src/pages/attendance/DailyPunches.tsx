@@ -45,12 +45,12 @@ export const DailyPunches: React.FC = () => {
             <div className="p-1.5 bg-slate-100 text-slate-700 rounded-lg border border-slate-200/60">
               <Users className="w-4 h-4" />
             </div>
-            {isSelfServiceOnly ? "My Attendance Records" : "Daily Attendance Summary Matrix"}
+            {isSelfServiceOnly ? "My Attendance Records" : "Daily Attendance Summary"}
           </h1>
           <p className="text-slate-500 text-xs mt-1">
             {isSelfServiceOnly
-              ? "Your biometric punch times, daily hours worked, and verification status."
-              : "Live workforce biometric presence, worked hours, and status tracking."}
+              ? "Your attendance clock times, daily hours worked, and status."
+              : "Workforce attendance presence, worked hours, and status tracking."}
           </p>
         </div>
 

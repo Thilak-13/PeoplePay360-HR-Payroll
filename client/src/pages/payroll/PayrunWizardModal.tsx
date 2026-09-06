@@ -352,7 +352,7 @@ export const PayrunWizardModal: React.FC<PayrunWizardModalProps> = ({
 
             {loadingEmployees ? (
               <div className="py-12 text-center text-slate-500 text-sm">
-                Scanning temporal contracts & auditing compliance...
+                Loading active contracts and verifying employee details...
               </div>
             ) : eligibleEmployees.length === 0 ? (
               <div className="py-12 text-center text-slate-500 text-sm">

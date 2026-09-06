@@ -108,6 +108,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
               icon: Clock,
               visible: true,
             },
+            {
+              id: 'payroll',
+              subTab: 'payslips',
+              label: 'My Payslips',
+              icon: CreditCard,
+              visible: true,
+            },
           ],
         },
       ]

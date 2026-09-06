@@ -382,20 +382,20 @@ export const PayrollDashboard: React.FC<PayrollDashboardProps> = ({
         </div>
       </div>
 
-      {/* 3. OPERATIONAL PAYROLL PIPELINE FLOW */}
+      {/* 3. OPERATIONAL PAYROLL WORKFLOW */}
       <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-2xs space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
           <div>
             <h2 className="text-sm font-semibold text-slate-900 flex items-center space-x-2">
               <Layers className="w-4 h-4 text-slate-700" />
-              <span>Monthly Payroll Processing Pipeline</span>
+              <span>Monthly Payroll Workflow</span>
             </h2>
             <p className="text-xs text-slate-500 mt-0.5">
               End-to-end execution flow for active Payrun Cycle #{selectedPayrunId}
             </p>
           </div>
           <div className="flex items-center space-x-2">
-            <span className="text-xs font-medium text-slate-500">Pipeline Status:</span>
+            <span className="text-xs font-medium text-slate-500">Cycle Status:</span>
             <StatusBadge status="active" label="In Progress" />
           </div>
         </div>
@@ -422,7 +422,7 @@ export const PayrollDashboard: React.FC<PayrollDashboardProps> = ({
             </div>
             <div className="font-semibold text-xs text-slate-900">Attendance &amp; LOP</div>
             <p className="text-[11px] text-slate-500">
-              Biometric punches and approved leaves mapped to worked days.
+              Daily clock-ins and approved leaves mapped to worked days.
             </p>
           </div>
 

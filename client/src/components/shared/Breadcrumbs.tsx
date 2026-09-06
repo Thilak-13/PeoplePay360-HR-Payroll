@@ -115,7 +115,7 @@ export const Breadcrumbs: React.FC<BreadcrumbsProps> = ({
         if (activeSubTab === 'tracker') {
           items.push({ label: 'Clock-In & Status', isCurrent: true });
         } else if (activeSubTab === 'daily') {
-          items.push({ label: 'Daily Punches Matrix', isCurrent: true });
+          items.push({ label: 'Daily Attendance Summary', isCurrent: true });
         } else if (activeSubTab === 'shifts') {
           items.push({ label: 'Shift Rosters', isCurrent: true });
         }
@@ -123,36 +123,50 @@ export const Breadcrumbs: React.FC<BreadcrumbsProps> = ({
       break;
 
     case 'payroll':
-      items.push({
-        label: 'Payroll',
-        onClick: () => {
-          onNavigate('payroll', 'payruns');
-          if (onResetPayrun) onResetPayrun();
-          if (onResetPayslip) onResetPayslip();
-        },
-      });
-      if (selectedPayslipId) {
+      if (isSelfServiceOnly) {
         items.push({
-          label: 'Payslips',
-          onClick: onResetPayslip,
+          label: 'My Payslips',
+          onClick: selectedPayslipId && onResetPayslip ? () => onResetPayslip() : undefined,
+          isCurrent: !selectedPayslipId,
         });
-        items.push({
-          label: `Payslip #${selectedPayslipId}`,
-          isCurrent: true,
-        });
-      } else if (selectedPayrunId) {
-        items.push({
-          label: 'Payrun Batches',
-          onClick: onResetPayrun,
-        });
-        items.push({
-          label: `Payrun Batch #${selectedPayrunId}`,
-          isCurrent: true,
-        });
-      } else if (activeSubTab === 'structures') {
-        items.push({ label: 'Salary Structures & Rules', isCurrent: true });
+        if (selectedPayslipId) {
+          items.push({
+            label: `Payslip #${selectedPayslipId}`,
+            isCurrent: true,
+          });
+        }
       } else {
-        items.push({ label: 'Payrun Batches', isCurrent: true });
+        items.push({
+          label: 'Payroll',
+          onClick: () => {
+            onNavigate('payroll', 'payruns');
+            if (onResetPayrun) onResetPayrun();
+            if (onResetPayslip) onResetPayslip();
+          },
+        });
+        if (selectedPayslipId) {
+          items.push({
+            label: 'Payslips',
+            onClick: onResetPayslip,
+          });
+          items.push({
+            label: `Payslip #${selectedPayslipId}`,
+            isCurrent: true,
+          });
+        } else if (selectedPayrunId) {
+          items.push({
+            label: 'Payrun Batches',
+            onClick: onResetPayrun,
+          });
+          items.push({
+            label: `Payrun Batch #${selectedPayrunId}`,
+            isCurrent: true,
+          });
+        } else if (activeSubTab === 'structures') {
+          items.push({ label: 'Salary Structures & Rules', isCurrent: true });
+        } else {
+          items.push({ label: 'Payrun Batches', isCurrent: true });
+        }
       }
       break;
 

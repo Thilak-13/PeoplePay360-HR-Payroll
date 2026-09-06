@@ -211,7 +211,7 @@ export const NotificationCenter: React.FC = () => {
 
                 <div className="bg-slate-50 rounded-lg p-4 border border-slate-200 text-xs text-slate-600 space-y-1.5">
                   <div className="font-semibold text-slate-800 flex items-center gap-1.5">
-                    <Sparkles className="w-4 h-4 text-indigo-600" /> Automated Pipeline
+                    <Sparkles className="w-4 h-4 text-indigo-600" /> Automated Delivery Process
                   </div>
                   <div>• Formats earnings and deduction tables into ISO compliant PDF</div>
                   <div>• Attaches company header, employee metadata, and PAN/Bank details</div>

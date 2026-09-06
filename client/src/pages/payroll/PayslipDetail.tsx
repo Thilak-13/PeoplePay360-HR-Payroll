@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Payslip, PayslipLine } from './types';
+import { useRole } from '../../components/shared/RoleContext';
 
 interface PayslipDetailProps {
   payslipId: number;
@@ -10,6 +11,7 @@ export const PayslipDetail: React.FC<PayslipDetailProps> = ({
   payslipId,
   onBack,
 }) => {
+  const { canRunPayroll, isSelfServiceOnly } = useRole();
   const [payslip, setPayslip] = useState<Payslip | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [recomputing, setRecomputing] = useState<boolean>(false);
@@ -106,7 +108,7 @@ export const PayslipDetail: React.FC<PayslipDetailProps> = ({
         <div>
           <div className="flex items-center gap-2 text-xs text-slate-500 mb-1">
             <button onClick={onBack} className="hover:text-indigo-600 font-medium">
-              ← Back to Payrun Batch
+              ← Back to {isSelfServiceOnly ? 'My Payslips' : 'Payrun Batch'}
             </button>
             <span>/</span>
             <span className="text-slate-900 font-semibold">Payslip #{payslip.id}</span>
@@ -129,13 +131,13 @@ export const PayslipDetail: React.FC<PayslipDetailProps> = ({
             </svg>
             Print / PDF
           </button>
-          {!isPaid && (
+          {!isPaid && canRunPayroll && (
             <button
               onClick={handleRecompute}
               disabled={recomputing}
               className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold shadow-sm disabled:opacity-50"
             >
-              {recomputing ? 'Recomputing...' : 'Recompute Rules'}
+              {recomputing ? 'Recalculating...' : 'Recalculate'}
             </button>
           )}
         </div>
@@ -167,10 +169,10 @@ export const PayslipDetail: React.FC<PayslipDetailProps> = ({
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
           </svg>
           <div>
-            <div className="font-bold text-amber-950">Pre-Validation Compliance Warning Flagged</div>
+            <div className="font-bold text-amber-950">Validation Warning</div>
             <div className="mt-0.5 text-amber-800">{payslip.warning_message}</div>
             <div className="mt-1 text-[11px] text-amber-700">
-              Note: This warning blocks the payrun batch from moving to 'validated' status until resolved.
+              Note: This warning must be resolved before this payrun batch can be validated.
             </div>
           </div>
         </div>
@@ -243,13 +245,13 @@ export const PayslipDetail: React.FC<PayslipDetailProps> = ({
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
         <div className="p-4 border-b border-slate-200 bg-slate-50/50 flex items-center justify-between">
           <div>
-            <h2 className="text-sm font-bold text-slate-900">Itemized Salary Rules Breakdown</h2>
+            <h2 className="text-sm font-bold text-slate-900">Itemized Salary Breakdown</h2>
             <p className="text-xs text-slate-500">
-              Sequenced calculation pipeline (BASIC → ALLOWANCE → GROSS → DEDUCTION → NET).
+              Calculation order: Basic → Allowance → Gross → Deduction → Net.
             </p>
           </div>
           <div className="text-xs text-slate-400">
-            Snapshot Items: <strong>{payslip.lines?.length || 0}</strong>
+            Items: <strong>{payslip.lines?.length || 0}</strong>
           </div>
         </div>
 
@@ -270,7 +272,7 @@ export const PayslipDetail: React.FC<PayslipDetailProps> = ({
               {!payslip.lines || payslip.lines.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="py-12 text-center text-slate-400">
-                    No snapshot line items recorded for this payslip yet. Click "Recompute Rules" to evaluate.
+                    No line items recorded for this payslip yet.
                   </td>
                 </tr>
               ) : (

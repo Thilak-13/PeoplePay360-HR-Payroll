@@ -40,7 +40,7 @@ export const EmployeeDetail: React.FC<EmployeeDetailProps> = ({ employeeId, onBa
   if (loading) {
     return (
       <div className="p-8 text-center text-slate-500 font-medium">
-        Loading employee profile and smart stats...
+        Loading employee profile and details...
       </div>
     );
   }

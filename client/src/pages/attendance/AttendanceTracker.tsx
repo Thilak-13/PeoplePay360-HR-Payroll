@@ -76,7 +76,7 @@ export const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
             <Clock className="w-5 h-5" />
           </div>
           <div>
-            <h2 className="text-sm font-semibold text-slate-900">Attendance Punch Terminal</h2>
+            <h2 className="text-sm font-semibold text-slate-900">Attendance Clock</h2>
             <p className="text-xs text-slate-500">Record daily check-in and check-out timestamps</p>
           </div>
         </div>
