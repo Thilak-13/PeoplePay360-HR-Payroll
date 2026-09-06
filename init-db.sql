@@ -155,3 +155,17 @@ CREATE TABLE IF NOT EXISTS statutory_rules (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS registration_requests (
+    id SERIAL PRIMARY KEY,
+    full_name VARCHAR(100) NOT NULL,
+    email VARCHAR(120) NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    requested_role VARCHAR(50) DEFAULT 'employee' NOT NULL,
+    status VARCHAR(20) DEFAULT 'pending' NOT NULL,
+    rejection_reason TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    reviewed_at TIMESTAMP WITH TIME ZONE,
+    reviewed_by INTEGER REFERENCES users(id) ON DELETE SET NULL
+);
+
+

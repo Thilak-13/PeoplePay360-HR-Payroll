@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { AuthToken, LoginRequest, RegisterRequest, User, AuditLog, ChangePasswordRequest } from './types';
+import { AuthToken, LoginRequest, RegisterRequest, User, AuditLog, ChangePasswordRequest, SignupRequest, RegistrationRequest } from './types';
 
 const API_BASE = '/api/v1/auth';
 
@@ -81,3 +81,35 @@ export async function seedDefaultUsers(): Promise<{ status: string; created_user
   const res = await axios.post<{ status: string; created_users: string[] }>(`${API_BASE}/seed-default-users`);
   return res.data;
 }
+
+export async function submitSignup(req: SignupRequest): Promise<RegistrationRequest> {
+  const res = await axios.post<RegistrationRequest>(`${API_BASE}/signup`, req);
+  return res.data;
+}
+
+export async function fetchRegistrationRequests(statusFilter?: string): Promise<RegistrationRequest[]> {
+  const res = await axios.get<RegistrationRequest[]>(`${API_BASE}/registration-requests`, {
+    params: statusFilter ? { status_filter: statusFilter } : {},
+    headers: getAuthHeaders(),
+  });
+  return res.data;
+}
+
+export async function approveRegistrationRequest(id: number): Promise<{ message: string; registration_request: RegistrationRequest; user: User }> {
+  const res = await axios.post<{ message: string; registration_request: RegistrationRequest; user: User }>(
+    `${API_BASE}/registration-requests/${id}/approve`,
+    {},
+    { headers: getAuthHeaders() }
+  );
+  return res.data;
+}
+
+export async function rejectRegistrationRequest(id: number, reason?: string): Promise<RegistrationRequest> {
+  const res = await axios.post<RegistrationRequest>(
+    `${API_BASE}/registration-requests/${id}/reject`,
+    { rejection_reason: reason },
+    { headers: getAuthHeaders() }
+  );
+  return res.data;
+}
+

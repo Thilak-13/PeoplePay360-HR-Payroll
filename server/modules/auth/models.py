@@ -43,3 +43,21 @@ class AuditLog(Base):
 
     # Relationships
     user = relationship("User", foreign_keys=[user_id], lazy="joined")
+
+
+class RegistrationRequest(Base):
+    __tablename__ = "registration_requests"
+
+    id = Column(Integer, primary_key=True, index=True)
+    full_name = Column(String(100), nullable=False)
+    email = Column(String(120), index=True, nullable=False)
+    password_hash = Column(String(255), nullable=False)
+    requested_role = Column(String(50), default="employee", nullable=False)
+    status = Column(String(20), default="pending", nullable=False, index=True)  # pending, approved, rejected
+    rejection_reason = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), default=lambda: datetime.now(timezone.utc))
+    reviewed_at = Column(DateTime(timezone=True), nullable=True)
+    reviewed_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+
+    # Relationships
+    reviewer = relationship("User", foreign_keys=[reviewed_by], lazy="joined")

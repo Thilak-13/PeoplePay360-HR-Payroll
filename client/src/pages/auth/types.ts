@@ -42,6 +42,26 @@ export interface RegisterRequest {
   is_active?: boolean;
 }
 
+export interface SignupRequest {
+  full_name: string;
+  email: string;
+  password: string;
+  requested_role: string;
+}
+
+export interface RegistrationRequest {
+  id: number;
+  full_name: string;
+  email: string;
+  requested_role: string;
+  status: 'pending' | 'approved' | 'rejected';
+  rejection_reason?: string | null;
+  created_at: string;
+  reviewed_at?: string | null;
+  reviewed_by?: number | null;
+}
+
+
 export interface ChangePasswordRequest {
   old_password: string;
   new_password: string;

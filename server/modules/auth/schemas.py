@@ -60,3 +60,35 @@ class AuditLogResponse(BaseModel):
     ip_address: Optional[str]
     details_json: Optional[str]
     timestamp: datetime
+
+
+class SignupRequest(BaseModel):
+    full_name: str = Field(min_length=1, max_length=100)
+    email: EmailStr
+    password: str = Field(min_length=6, description="Plaintext password")
+    requested_role: str = Field(default="employee", description="Role: employee, hr_manager, hr_payroll_user, hr_payroll_manager")
+
+
+class RegistrationRequestResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    full_name: str
+    email: str
+    requested_role: str
+    status: str
+    rejection_reason: Optional[str] = None
+    created_at: datetime
+    reviewed_at: Optional[datetime] = None
+    reviewed_by: Optional[int] = None
+
+
+class RejectRequest(BaseModel):
+    rejection_reason: Optional[str] = None
+
+
+class ApproveRegistrationResponse(BaseModel):
+    message: str
+    registration_request: RegistrationRequestResponse
+    user: UserResponse
+

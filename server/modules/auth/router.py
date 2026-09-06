@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import desc
 
 from server.modules.master_data.database import get_db, Base, engine
-from server.modules.auth.models import User, AuditLog
+from server.modules.auth.models import User, AuditLog, RegistrationRequest
 from server.modules.auth.schemas import (
     LoginRequest,
     UserCreate,
@@ -17,7 +17,12 @@ from server.modules.auth.schemas import (
     TokenResponse,
     ChangePasswordRequest,
     AuditLogResponse,
+    SignupRequest,
+    RegistrationRequestResponse,
+    RejectRequest,
+    ApproveRegistrationResponse,
 )
+
 from server.modules.auth.security import (
     hash_password,
     verify_password,
@@ -164,6 +169,86 @@ def register(
     )
 
     return UserResponse.model_validate(user)
+
+
+ALLOWED_SIGNUP_ROLES = [
+    ROLE_EMPLOYEE,
+    ROLE_HR_MANAGER,
+    ROLE_HR_PAYROLL_USER,
+    ROLE_HR_PAYROLL_MANAGER,
+    "dept_manager",
+    "payroll_officer",
+]
+
+
+@router.post("/signup", response_model=RegistrationRequestResponse, status_code=status.HTTP_201_CREATED, tags=["Auth"])
+def signup(
+    req: SignupRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    """
+    Public registration request submission.
+    Creates a PENDING request stored for Super Admin approval without activating the account.
+    """
+    clean_email = req.email.lower().strip()
+    clean_role = req.requested_role.lower().strip()
+
+    # Reject administrative roles from self-assignment
+    if clean_role in ["admin", "super_admin", "superadmin", ROLE_ADMIN, ROLE_SUPER_ADMIN]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Super Admin and Admin roles cannot be requested through public registration.",
+        )
+
+    if clean_role not in ALLOWED_SIGNUP_ROLES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid requested role '{req.requested_role}'. Allowed roles: {ALLOWED_SIGNUP_ROLES}",
+        )
+
+    # Check if active account already exists
+    existing_user = db.query(User).filter(User.email == clean_email).first()
+    if existing_user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="An account with this email address already exists.",
+        )
+
+    # Check if a pending registration request is already active for this email
+    existing_pending = db.query(RegistrationRequest).filter(
+        RegistrationRequest.email == clean_email,
+        RegistrationRequest.status == "pending"
+    ).first()
+    if existing_pending:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="A registration request is already pending approval for this email. Please await Super Admin review.",
+        )
+
+    # Check for previously rejected requests - if present, create fresh request
+    reg = RegistrationRequest(
+        full_name=req.full_name.strip(),
+        email=clean_email,
+        password_hash=hash_password(req.password),
+        requested_role=clean_role,
+        status="pending",
+    )
+    db.add(reg)
+    db.commit()
+    db.refresh(reg)
+
+    client_ip = request.client.host if request.client else "unknown"
+    log_audit(
+        db=db,
+        action="SIGNUP_REQUESTED",
+        resource="auth",
+        ip_address=client_ip,
+        details={"email": clean_email, "full_name": reg.full_name, "requested_role": clean_role}
+    )
+
+    return RegistrationRequestResponse.model_validate(reg)
+
 
 
 @router.get("/me", response_model=UserResponse, tags=["Auth"])
@@ -377,6 +462,156 @@ def get_audit_logs(
     """Fetch system audit trail logs (Admin only)."""
     logs = db.query(AuditLog).order_by(desc(AuditLog.timestamp)).limit(limit).all()
     return [AuditLogResponse.model_validate(log) for log in logs]
+
+
+# ==========================================================
+# Admin Registration Requests Management (Super Admin only)
+# ==========================================================
+
+@router.get("/registration-requests", response_model=List[RegistrationRequestResponse], tags=["User Management"])
+def list_registration_requests(
+    status_filter: Optional[str] = None,
+    current_user: User = Depends(require_role(ADMIN_ROLES)),
+    db: Session = Depends(get_db),
+):
+    """List pending and historical registration requests (Admin / Super Admin only)."""
+    query = db.query(RegistrationRequest)
+    if status_filter:
+        query = query.filter(RegistrationRequest.status == status_filter.lower().strip())
+    requests = query.order_by(RegistrationRequest.created_at.desc()).all()
+    return [RegistrationRequestResponse.model_validate(r) for r in requests]
+
+
+@router.post("/registration-requests/{request_id}/approve", response_model=ApproveRegistrationResponse, tags=["User Management"])
+def approve_registration_request(
+    request_id: int,
+    current_user: User = Depends(require_role(ADMIN_ROLES)),
+    db: Session = Depends(get_db),
+):
+    """
+    Approve a pending registration request.
+    Creates and activates the new User account with requested role and marks request APPROVED (Admin only).
+    """
+    from datetime import datetime, timezone
+
+    reg = db.query(RegistrationRequest).filter(RegistrationRequest.id == request_id).first()
+    if not reg:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Registration request #{request_id} not found.",
+        )
+
+    if reg.status != "pending":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Registration request #{request_id} is already {reg.status} and cannot be processed again.",
+        )
+
+    # Check if a user with this email already exists
+    existing_user = db.query(User).filter(User.email == reg.email).first()
+    if existing_user:
+        reg.status = "approved"
+        reg.reviewed_at = datetime.now(timezone.utc)
+        reg.reviewed_by = current_user.id
+        db.commit()
+        db.refresh(reg)
+        return ApproveRegistrationResponse(
+            message="Registration request approved. Account with this email was already active.",
+            registration_request=RegistrationRequestResponse.model_validate(reg),
+            user=UserResponse.model_validate(existing_user),
+        )
+
+    # Look up matching employee by email if present
+    from server.modules.master_data.models import Employee
+    matching_emp = db.query(Employee).filter(Employee.email == reg.email).first()
+    emp_id = matching_emp.id if matching_emp else None
+
+    # Create new active User account
+    new_user = User(
+        email=reg.email,
+        hashed_password=reg.password_hash,
+        role=reg.requested_role,
+        employee_id=emp_id,
+        is_active=True,
+    )
+    db.add(new_user)
+    db.flush()
+
+    # Update registration request status
+    reg.status = "approved"
+    reg.reviewed_at = datetime.now(timezone.utc)
+    reg.reviewed_by = current_user.id
+    db.commit()
+    db.refresh(reg)
+    db.refresh(new_user)
+
+    log_audit(
+        db=db,
+        action="REGISTRATION_APPROVED",
+        resource="user_management",
+        user_id=current_user.id,
+        details={
+            "registration_id": reg.id,
+            "approved_email": reg.email,
+            "role": reg.requested_role,
+            "created_user_id": new_user.id,
+        }
+    )
+
+    return ApproveRegistrationResponse(
+        message="Registration request approved successfully. User account activated.",
+        registration_request=RegistrationRequestResponse.model_validate(reg),
+        user=UserResponse.model_validate(new_user),
+    )
+
+
+@router.post("/registration-requests/{request_id}/reject", response_model=RegistrationRequestResponse, tags=["User Management"])
+def reject_registration_request(
+    request_id: int,
+    req_body: Optional[RejectRequest] = None,
+    current_user: User = Depends(require_role(ADMIN_ROLES)),
+    db: Session = Depends(get_db),
+):
+    """
+    Reject a pending registration request (Admin only).
+    """
+    from datetime import datetime, timezone
+
+    reg = db.query(RegistrationRequest).filter(RegistrationRequest.id == request_id).first()
+    if not reg:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Registration request #{request_id} not found.",
+        )
+
+    if reg.status != "pending":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Registration request #{request_id} is already {reg.status} and cannot be rejected.",
+        )
+
+    reason = req_body.rejection_reason if req_body else None
+    reg.status = "rejected"
+    reg.reviewed_at = datetime.now(timezone.utc)
+    reg.reviewed_by = current_user.id
+    reg.rejection_reason = reason
+    db.commit()
+    db.refresh(reg)
+
+    log_audit(
+        db=db,
+        action="REGISTRATION_REJECTED",
+        resource="user_management",
+        user_id=current_user.id,
+        details={
+            "registration_id": reg.id,
+            "rejected_email": reg.email,
+            "rejection_reason": reason,
+        }
+    )
+
+    return RegistrationRequestResponse.model_validate(reg)
+
 
 
 def ensure_baseline_entities(db: Session):

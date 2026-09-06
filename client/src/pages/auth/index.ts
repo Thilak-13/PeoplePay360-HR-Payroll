@@ -4,4 +4,6 @@ export * from "./LoginModal";
 export * from "./LoginScreen";
 export * from "./UserProfile";
 export * from "./AuthContext";
+export * from "./SignupScreen";
+
 

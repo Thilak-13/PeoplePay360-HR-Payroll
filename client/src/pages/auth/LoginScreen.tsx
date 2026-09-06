@@ -1,15 +1,18 @@
 import React, { useState } from "react";
-import { Lock, Mail, Shield, Key, AlertCircle, Sparkles, Building2 } from "lucide-react";
+import { Lock, Mail, Shield, Key, AlertCircle, Sparkles, Building2, UserPlus } from "lucide-react";
 import { useAuth } from "./AuthContext";
 import { DEMO_ACCOUNTS, DemoAccount } from "./types";
+import { SignupScreen } from "./SignupScreen";
 
 export const LoginScreen: React.FC = () => {
   const { login, quickDemoLogin } = useAuth();
+  const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [activeDemo, setActiveDemo] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,8 +43,13 @@ export const LoginScreen: React.FC = () => {
     }
   };
 
+  if (isSignUp) {
+    return <SignupScreen onNavigateToLogin={() => setIsSignUp(false)} />;
+  }
+
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col justify-center items-center p-4 sm:p-6 text-slate-900 font-sans">
+
       <div className="w-full max-w-lg space-y-6">
         {/* Brand Header */}
         <div className="text-center space-y-1.5">
@@ -116,6 +124,19 @@ export const LoginScreen: React.FC = () => {
               )}
             </button>
           </form>
+
+          {/* Request Access / Public Signup link */}
+          <div className="text-center">
+            <button
+              type="button"
+              onClick={() => setIsSignUp(true)}
+              className="text-xs font-medium text-indigo-600 hover:text-indigo-800 transition cursor-pointer flex items-center justify-center gap-1.5 mx-auto"
+            >
+              <UserPlus className="w-3.5 h-3.5" />
+              <span>Don't have an account? <span className="font-semibold underline">Request Access / Sign Up</span></span>
+            </button>
+          </div>
+
 
           {/* Quick Demo Role Logins */}
           <div className="pt-5 border-t border-slate-100 space-y-3">
