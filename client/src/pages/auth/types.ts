@@ -60,6 +60,7 @@ export interface AuditLog {
 export interface DemoAccount {
   role: UserRole;
   label: string;
+  userName?: string;
   email: string;
   password: string;
   color: string;
@@ -71,6 +72,7 @@ export const DEMO_ACCOUNTS: DemoAccount[] = [
   {
     role: "admin",
     label: "Admin",
+    userName: "Aditya Raman",
     email: "admin@peoplepay360.com",
     password: "Admin@123",
     color: "text-purple-600",
@@ -80,6 +82,7 @@ export const DEMO_ACCOUNTS: DemoAccount[] = [
   {
     role: "hr_manager",
     label: "HR Manager",
+    userName: "Priya Sundaram",
     email: "hr@peoplepay360.com",
     password: "Hr@12345",
     color: "text-blue-600",
@@ -89,6 +92,7 @@ export const DEMO_ACCOUNTS: DemoAccount[] = [
   {
     role: "hr_payroll_user",
     label: "HR Payroll User",
+    userName: "Karthik Subramanian",
     email: "payrolluser@peoplepay360.com",
     password: "PayrollUser@123",
     color: "text-teal-600",
@@ -98,6 +102,7 @@ export const DEMO_ACCOUNTS: DemoAccount[] = [
   {
     role: "hr_payroll_manager",
     label: "HR Payroll Manager",
+    userName: "Thilak I",
     email: "payrollmanager@peoplepay360.com",
     password: "PayrollMgr@123",
     color: "text-emerald-600",
@@ -107,6 +112,7 @@ export const DEMO_ACCOUNTS: DemoAccount[] = [
   {
     role: "employee",
     label: "Employee",
+    userName: "Ananya Krishnan",
     email: "employee@peoplepay360.com",
     password: "Employee@123",
     color: "text-indigo-600",

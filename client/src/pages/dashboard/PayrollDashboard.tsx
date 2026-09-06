@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-  DollarSign,
+  IndianRupee,
   FileText,
   TrendingUp,
   Calendar,
@@ -296,7 +296,7 @@ export const PayrollDashboard: React.FC<PayrollDashboardProps> = ({
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-slate-500">Net Disbursed</span>
             <div className="w-7 h-7 rounded-md bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-700">
-              <DollarSign className="w-3.5 h-3.5" />
+              <IndianRupee className="w-3.5 h-3.5" />
             </div>
           </div>
           <div>

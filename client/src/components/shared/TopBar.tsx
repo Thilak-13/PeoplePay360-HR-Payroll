@@ -1,5 +1,5 @@
 import React from 'react';
-import { Menu, User as UserIcon } from 'lucide-react';
+import { Menu, User as UserIcon, LogOut } from 'lucide-react';
 import { Breadcrumbs } from './Breadcrumbs';
 import { useAuth } from '../../pages/auth/AuthContext';
 import { useRole } from './RoleContext';
@@ -31,7 +31,7 @@ export const TopBar: React.FC<TopBarProps> = ({
   onOpenProfile,
   onToggleMobileSidebar,
 }) => {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const { roleInfo } = useRole();
 
   const initials = user?.email
@@ -64,8 +64,8 @@ export const TopBar: React.FC<TopBarProps> = ({
         />
       </div>
 
-      {/* Right: profile summary */}
-      <div className="flex items-center space-x-3 flex-shrink-0">
+      {/* Right: profile summary + Sign Out */}
+      <div className="flex items-center space-x-2 flex-shrink-0">
         {/* Profile Pill Trigger */}
         <button
           onClick={onOpenProfile}
@@ -76,10 +76,20 @@ export const TopBar: React.FC<TopBarProps> = ({
             {initials}
           </div>
           <div className="hidden sm:block text-left text-xs">
-            <span className="font-medium text-slate-800 block leading-tight max-w-[120px] truncate">
-              {user?.email ? user.email.split('@')[0] : 'Account'}
+            <span className="font-medium text-slate-800 block leading-tight max-w-[140px] truncate">
+              {user?.email || 'Account'}
             </span>
           </div>
+        </button>
+
+        {/* Sign Out Button */}
+        <button
+          onClick={logout}
+          className="p-1.5 text-slate-500 hover:text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-200 rounded-lg transition cursor-pointer flex items-center gap-1 text-xs"
+          title="Sign Out / Back to Login"
+        >
+          <LogOut className="w-4 h-4" />
+          <span className="hidden md:inline font-medium">Logout</span>
         </button>
       </div>
     </header>

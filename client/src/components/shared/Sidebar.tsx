@@ -318,7 +318,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     >
                       <div className="flex items-center gap-2 min-w-0">
                         <Shield className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
-                        <span className="truncate">{acc.label}</span>
+                        <div className="min-w-0">
+                          <span className="truncate block font-medium">{acc.label}</span>
+                          {acc.userName && (
+                            <span className="text-[10px] text-slate-400 truncate block">{acc.userName} ({acc.email})</span>
+                          )}
+                        </div>
                       </div>
                       {isCurrent && <Check className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />}
                     </button>

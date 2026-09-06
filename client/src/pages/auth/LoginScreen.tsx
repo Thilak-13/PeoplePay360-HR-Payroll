@@ -149,7 +149,10 @@ export const LoginScreen: React.FC = () => {
                           <div className="w-3 h-3 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
                         )}
                       </div>
-                      <p className="text-[10px] text-slate-500 truncate mt-0.5">{account.email}</p>
+                      {account.userName && (
+                        <p className="text-[11px] font-medium text-slate-700 truncate">{account.userName}</p>
+                      )}
+                      <p className="text-[10px] text-slate-500 truncate">{account.email}</p>
                     </div>
                   </button>
                 );

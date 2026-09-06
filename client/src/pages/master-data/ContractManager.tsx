@@ -180,7 +180,7 @@ export const ContractManager: React.FC<ContractManagerProps> = ({
                 <tr key={c.id} className="hover:bg-slate-50/60">
                   <td className="py-3 px-4 font-semibold text-slate-800">#{c.id}</td>
                   <td className="py-3 px-4 text-slate-600 capitalize">{c.contract_type.replace('_', ' ')}</td>
-                  <td className="py-3 px-4 font-bold text-slate-900">${Number(c.wage).toLocaleString()}</td>
+                  <td className="py-3 px-4 font-bold text-slate-900">₹{Number(c.wage).toLocaleString('en-IN')}</td>
                   <td className="py-3 px-4 text-slate-600">{c.start_date}</td>
                   <td className="py-3 px-4 text-slate-600">{c.end_date || 'Open Ended'}</td>
                   <td className="py-3 px-4">{getStatusBadge(c.status)}</td>
@@ -250,12 +250,12 @@ export const ContractManager: React.FC<ContractManagerProps> = ({
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Monthly Basic Wage ($) *</label>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Monthly Basic Wage (₹) *</label>
                 <input
                   type="number"
                   step="0.01"
                   required
-                  placeholder="e.g. 5000.00"
+                  placeholder="e.g. 50000.00"
                   value={formData.wage}
                   onChange={(e) => setFormData({ ...formData, wage: e.target.value })}
                   className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500"
