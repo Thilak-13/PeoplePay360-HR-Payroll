@@ -313,11 +313,12 @@ SELECT setval('payslip_lines_id_seq', (SELECT COALESCE(MAX(id), 1) FROM payslip_
 -- 11. Authentication & System Users
 -- ==========================================================
 INSERT INTO users (id, email, hashed_password, role, employee_id, is_active, created_at, updated_at) VALUES
-(1, 'superadmin@peoplepay360.com', '$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW', 'super_admin', 1, TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(1, 'superadmin@peoplepay360.com', '$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW', 'admin', 1, TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
 (2, 'hr.manager@peoplepay360.com', '$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW', 'hr_manager', 6, TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
 (3, 'payroll.officer@peoplepay360.com', '$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW', 'payroll_officer', 9, TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
 (4, 'dept.manager@peoplepay360.com', '$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW', 'dept_manager', 2, TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-(5, 'alex.johnson@peoplepay360.com', '$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW', 'employee', 3, TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+(5, 'alex.johnson@peoplepay360.com', '$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW', 'employee', 3, TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(100, 'vishaal.m12@gmail.com', '1626e868c3d92e1f9ceba20721cb7d20$a805cf0d442a684ae597544a601712e71ff69d86f89a64653ad828b803c9c5c4', 'super_admin', 1, TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
 ON CONFLICT (id) DO UPDATE SET
     email = EXCLUDED.email,
     role = EXCLUDED.role,

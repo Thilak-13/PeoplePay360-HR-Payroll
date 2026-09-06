@@ -121,6 +121,26 @@ ROLE_EMPLOYEE = "employee"
 ROLE_PAYROLL_OFFICER = "payroll_officer"  # Legacy alias for hr_payroll_user
 ROLE_DEPT_MANAGER = "dept_manager"
 
+SUPER_ADMIN_EMAIL = os.getenv("SUPER_ADMIN_EMAIL", "vishaal.m12@gmail.com").strip().lower()
+
+
+def normalize_email(email: Optional[str]) -> str:
+    """Normalize email string according to system standard (lowercase and stripped)."""
+    return email.strip().lower() if email else ""
+
+
+def is_super_admin(user: Any) -> bool:
+    """
+    Check if the user is authorized as Super Admin.
+    Enforces the rule that SUPER_ADMIN authorization is valid ONLY when:
+    user.role == 'super_admin' AND normalized email == SUPER_ADMIN_EMAIL.
+    """
+    if not user:
+        return False
+    user_email = normalize_email(getattr(user, "email", None))
+    user_role = (getattr(user, "role", None) or "").strip().lower()
+    return user_role == ROLE_SUPER_ADMIN and user_email == SUPER_ADMIN_EMAIL
+
 ADMIN_ROLES = [ROLE_ADMIN, ROLE_SUPER_ADMIN]
 HR_ROLES = ADMIN_ROLES + [ROLE_HR_PAYROLL_MANAGER, ROLE_HR_PAYROLL_USER, ROLE_HR_MANAGER, ROLE_PAYROLL_OFFICER, ROLE_DEPT_MANAGER]
 PAYROLL_READ_ROLES = ADMIN_ROLES + [ROLE_HR_PAYROLL_MANAGER, ROLE_HR_PAYROLL_USER, ROLE_PAYROLL_OFFICER]
@@ -180,12 +200,34 @@ def get_current_user(
 def require_role(allowed_roles: List[str]):
     """FastAPI dependency factory enforcing RBAC roles across the platform."""
     def role_checker(current_user = Depends(get_current_user)):
-        # Admin and super_admin have universal access across all modules
-        if current_user.role in ADMIN_ROLES:
+        user_role = (current_user.role or "").strip().lower()
+        user_email = normalize_email(current_user.email)
+
+        # If user claims super_admin role, verify they are strictly the authorized super admin identity
+        if user_role == ROLE_SUPER_ADMIN:
+            if user_email != SUPER_ADMIN_EMAIL:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Access denied. Super Admin privileges are restricted to the authorized Super Admin.",
+                )
+            return current_user
+
+        # If an endpoint specifically requires super_admin only:
+        if allowed_roles == [ROLE_SUPER_ADMIN]:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied. Super Admin privileges required.",
+            )
+
+        # Standard admin role has universal access across standard administrative endpoints
+        if user_role == ROLE_ADMIN and (ROLE_ADMIN in allowed_roles or allowed_roles == ADMIN_ROLES or allowed_roles in [HR_ROLES, PAYROLL_READ_ROLES, PAYROLL_WRITE_ROLES, PAYROLL_DELETE_ROLES, PAYROLL_CONFIG_ROLES]):
+            return current_user
+
+        # If user has an administrative role allowed in the list
+        if user_role in allowed_roles:
             return current_user
 
         # Alias resolution
-        user_role = current_user.role
         if user_role == ROLE_PAYROLL_OFFICER and (ROLE_HR_PAYROLL_USER in allowed_roles or ROLE_HR_PAYROLL_MANAGER in allowed_roles):
             return current_user
 
@@ -196,6 +238,18 @@ def require_role(allowed_roles: List[str]):
             )
         return current_user
     return role_checker
+
+
+def require_super_admin():
+    """FastAPI dependency strictly requiring the authorized Super Admin identity."""
+    def super_admin_checker(current_user = Depends(get_current_user)):
+        if not is_super_admin(current_user):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Super Admin privileges are strictly restricted to the authorized Super Admin.",
+            )
+        return current_user
+    return super_admin_checker
 
 
 def require_admin():

@@ -133,6 +133,7 @@ interface RoleContextType {
   canEditPayrollConfig: boolean;
   canDeletePayruns: boolean;
   canManageUsers: boolean;
+  isSuperAdmin: boolean;
   canManageShifts: boolean;
   canApproveLoans: boolean;
   canApproveExpenses: boolean;
@@ -157,6 +158,7 @@ export const RoleProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
+  const isSuperAdmin = (rawRole === 'super_admin' || rawRole === 'Admin') && (user?.email?.toLowerCase().trim() === 'vishaal.m12@gmail.com');
   const isAdmin = rawRole === 'admin' || rawRole === 'super_admin' || rawRole === 'Admin';
   const isHrPayrollManager = rawRole === 'hr_payroll_manager' || rawRole === 'HR Payroll Manager';
   const isHrPayrollUser = rawRole === 'hr_payroll_user' || rawRole === 'HR Payroll User' || rawRole === 'payroll_officer';
@@ -180,6 +182,7 @@ export const RoleProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         allRoles: DEMO_ACCOUNTS,
         switchPersona,
         isAdmin,
+        isSuperAdmin,
         canManageHR,
         canManageEmployees: canManageHR,
         canApproveTimeOff,

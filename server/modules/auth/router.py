@@ -23,6 +23,7 @@ from server.modules.auth.schemas import (
     ApproveRegistrationResponse,
 )
 
+import os
 from server.modules.auth.security import (
     hash_password,
     verify_password,
@@ -30,6 +31,10 @@ from server.modules.auth.security import (
     get_current_user,
     require_role,
     require_admin,
+    require_super_admin,
+    SUPER_ADMIN_EMAIL,
+    normalize_email,
+    is_super_admin,
     ADMIN_ROLES,
     ROLE_ADMIN,
     ROLE_SUPER_ADMIN,
@@ -140,17 +145,25 @@ def register(
     db: Session = Depends(get_db),
 ):
     """Register a new user account."""
-    existing = db.query(User).filter(User.email == req.email.lower().strip()).first()
+    clean_email = normalize_email(req.email)
+    existing = db.query(User).filter(User.email == clean_email).first()
     if existing:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="A user with this email already exists",
         )
 
+    clean_role = (req.role or ROLE_EMPLOYEE).strip().lower()
+    if clean_role in [ROLE_SUPER_ADMIN, "super_admin", "superadmin"] and clean_email != SUPER_ADMIN_EMAIL:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Super Admin role cannot be assigned to this email address.",
+        )
+
     user = User(
-        email=req.email.lower().strip(),
+        email=clean_email,
         hashed_password=hash_password(req.password),
-        role=req.role,
+        role=clean_role,
         employee_id=req.employee_id,
         is_active=req.is_active,
     )
@@ -191,11 +204,11 @@ def signup(
     Public registration request submission.
     Creates a PENDING request stored for Super Admin approval without activating the account.
     """
-    clean_email = req.email.lower().strip()
-    clean_role = req.requested_role.lower().strip()
+    clean_email = normalize_email(req.email)
+    clean_role = (req.requested_role or "employee").strip().lower()
 
-    # Reject administrative roles from self-assignment
-    if clean_role in ["admin", "super_admin", "superadmin", ROLE_ADMIN, ROLE_SUPER_ADMIN]:
+    # Reject administrative roles from self-assignment (including SUPER_ADMIN in any casing)
+    if clean_role in ["admin", "super_admin", "superadmin", ROLE_ADMIN, ROLE_SUPER_ADMIN] or "admin" in clean_role:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Super Admin and Admin roles cannot be requested through public registration.",
@@ -321,17 +334,31 @@ def create_user_admin(
     db: Session = Depends(get_db),
 ):
     """Create a new user with assigned role and linked employee (Admin only)."""
-    existing = db.query(User).filter(User.email == req.email.lower().strip()).first()
+    clean_email = normalize_email(req.email)
+    existing = db.query(User).filter(User.email == clean_email).first()
     if existing:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="A user with this email address already exists.",
         )
 
+    clean_role = (req.role or ROLE_EMPLOYEE).strip().lower()
+    if clean_role in [ROLE_SUPER_ADMIN, "super_admin", "superadmin"]:
+        if clean_email != SUPER_ADMIN_EMAIL:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Super Admin role cannot be assigned to another email address.",
+            )
+        if not is_super_admin(current_user):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Only the Super Admin can create a Super Admin account.",
+            )
+
     user = User(
-        email=req.email.lower().strip(),
+        email=clean_email,
         hashed_password=hash_password(req.password),
-        role=req.role,
+        role=clean_role,
         employee_id=req.employee_id,
         is_active=req.is_active,
     )
@@ -367,7 +394,8 @@ def update_user_role(
         "payroll_officer",
         "dept_manager",
     ]
-    if req.role not in valid_roles:
+    target_role = (req.role or "").strip().lower()
+    if target_role not in [r.lower() for r in valid_roles]:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Invalid role '{req.role}'. Valid roles: {valid_roles}",
@@ -377,8 +405,31 @@ def update_user_role(
     if not target_user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"User #{user_id} not found")
 
+    target_email = normalize_email(target_user.email)
+
+    # Protect Super Admin role assignment
+    if target_role in [ROLE_SUPER_ADMIN, "super_admin", "superadmin"]:
+        if target_email != SUPER_ADMIN_EMAIL:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Super Admin role cannot be assigned to another email address.",
+            )
+        if not is_super_admin(current_user):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Only the Super Admin can assign the Super Admin role.",
+            )
+
+    # Protect Super Admin account from demotion by non-super-admins
+    if target_email == SUPER_ADMIN_EMAIL and target_role != ROLE_SUPER_ADMIN:
+        if not is_super_admin(current_user):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Super Admin account role cannot be modified by non-Super Admin.",
+            )
+
     old_role = target_user.role
-    target_user.role = req.role
+    target_user.role = target_role
     db.commit()
     db.refresh(target_user)
 
@@ -387,7 +438,7 @@ def update_user_role(
         action="USER_ROLE_UPDATED",
         resource="user_management",
         user_id=current_user.id,
-        details={"target_user_id": user_id, "old_role": old_role, "new_role": req.role}
+        details={"target_user_id": user_id, "old_role": old_role, "new_role": target_role}
     )
     return UserResponse.model_validate(target_user)
 
@@ -400,26 +451,34 @@ def update_user_status(
     db: Session = Depends(get_db),
 ):
     """Activate or deactivate a user account (Admin only)."""
-    if target_user := db.query(User).filter(User.id == user_id).first():
-        if user_id == current_user.id and not req.is_active:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Administrators cannot deactivate their own active account.",
-            )
-        target_user.is_active = req.is_active
-        db.commit()
-        db.refresh(target_user)
+    target_user = db.query(User).filter(User.id == user_id).first()
+    if not target_user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"User #{user_id} not found")
 
-        log_audit(
-            db=db,
-            action="USER_STATUS_UPDATED",
-            resource="user_management",
-            user_id=current_user.id,
-            details={"target_user_id": user_id, "is_active": req.is_active}
+    if normalize_email(target_user.email) == SUPER_ADMIN_EMAIL and not req.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="The primary Super Admin account cannot be deactivated.",
         )
-        return UserResponse.model_validate(target_user)
 
-    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"User #{user_id} not found")
+    if user_id == current_user.id and not req.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Administrators cannot deactivate their own active account.",
+        )
+
+    target_user.is_active = req.is_active
+    db.commit()
+    db.refresh(target_user)
+
+    log_audit(
+        db=db,
+        action="USER_STATUS_UPDATED",
+        resource="user_management",
+        user_id=current_user.id,
+        details={"target_user_id": user_id, "is_active": req.is_active}
+    )
+    return UserResponse.model_validate(target_user)
 
 
 @router.delete("/users/{user_id}", tags=["User Management"])
@@ -429,15 +488,21 @@ def delete_user(
     db: Session = Depends(get_db),
 ):
     """Permanently delete a user account (Admin only)."""
+    target_user = db.query(User).filter(User.id == user_id).first()
+    if not target_user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"User #{user_id} not found")
+
+    if normalize_email(target_user.email) == SUPER_ADMIN_EMAIL:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="The primary Super Admin account cannot be deleted.",
+        )
+
     if user_id == current_user.id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Cannot delete current active administrator account.",
         )
-
-    target_user = db.query(User).filter(User.id == user_id).first()
-    if not target_user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"User #{user_id} not found")
 
     email = target_user.email
     db.delete(target_user)
@@ -491,6 +556,7 @@ def approve_registration_request(
     """
     Approve a pending registration request.
     Creates and activates the new User account with requested role and marks request APPROVED (Admin only).
+    Enforces that Super Admin role can NEVER be approved through registration requests.
     """
     from datetime import datetime, timezone
 
@@ -505,6 +571,14 @@ def approve_registration_request(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Registration request #{request_id} is already {reg.status} and cannot be processed again.",
+        )
+
+    # Validate that the requested role is a valid non-SUPER_ADMIN role
+    req_role = (reg.requested_role or "").strip().lower()
+    if req_role in [ROLE_SUPER_ADMIN, "super_admin", "superadmin"] or req_role not in ALLOWED_SIGNUP_ROLES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Cannot approve registration request with role '{reg.requested_role}'. Only valid non-Super Admin roles can be approved.",
         )
 
     # Check if a user with this email already exists
@@ -737,15 +811,69 @@ def ensure_baseline_entities(db: Session):
     db.commit()
 
 
+@router.get("/super-admin-verify", tags=["Auth"])
+def verify_super_admin(current_user: User = Depends(require_super_admin())):
+    """Dedicated endpoint restricted strictly to the verified Super Admin."""
+    return {
+        "status": "authorized",
+        "email": current_user.email,
+        "role": current_user.role,
+        "is_super_admin": True,
+    }
+
+
+def ensure_super_admin_integrity(db: Session):
+    """
+    Safely enforces the Super Admin identity invariant:
+    1. Downgrade any non-authorized accounts possessing super_admin to admin.
+    2. Ensure vishaal.m12@gmail.com exists with ROLE_SUPER_ADMIN.
+    """
+    # 1. Safely downgrade any other accounts currently having super_admin
+    all_users = db.query(User).all()
+    downgraded_count = 0
+    for u in all_users:
+        if (u.role or "").strip().lower() == ROLE_SUPER_ADMIN and normalize_email(u.email) != SUPER_ADMIN_EMAIL:
+            u.role = ROLE_ADMIN
+            downgraded_count += 1
+    if downgraded_count > 0:
+        db.commit()
+
+    # 2. Ensure vishaal.m12@gmail.com exists with ROLE_SUPER_ADMIN
+    sa_user = None
+    for u in all_users:
+        if normalize_email(u.email) == SUPER_ADMIN_EMAIL:
+            sa_user = u
+            break
+
+    if not sa_user:
+        sa_pwd = os.getenv("SUPER_ADMIN_PASSWORD", "Admin@123")
+        sa_user = User(
+            email=SUPER_ADMIN_EMAIL,
+            hashed_password=hash_password(sa_pwd),
+            role=ROLE_SUPER_ADMIN,
+            employee_id=1,
+            is_active=True,
+        )
+        db.add(sa_user)
+        db.commit()
+    else:
+        if sa_user.role != ROLE_SUPER_ADMIN:
+            sa_user.role = ROLE_SUPER_ADMIN
+            db.commit()
+
+
 @router.post("/seed-default-users", tags=["Auth"])
 def seed_default_users(db: Session = Depends(get_db)):
     """Seed baseline demo accounts for the 5 system roles with verified credentials and backing employee data."""
     # Ensure baseline employee models exist first
     ensure_baseline_entities(db)
 
+    # Enforce Super Admin integrity
+    ensure_super_admin_integrity(db)
+
     demo_users = [
         ("admin@peoplepay360.com", "Admin@123", ROLE_ADMIN, 1),
-        ("superadmin@peoplepay360.com", "Admin@123", ROLE_SUPER_ADMIN, 1),
+        ("superadmin@peoplepay360.com", "Admin@123", ROLE_ADMIN, 1),
         ("hr@peoplepay360.com", "Hr@12345", ROLE_HR_MANAGER, 2),
         ("hrmanager@peoplepay360.com", "Hr@12345", ROLE_HR_MANAGER, 2),
         ("payrolluser@peoplepay360.com", "PayrollUser@123", ROLE_HR_PAYROLL_USER, 3),
