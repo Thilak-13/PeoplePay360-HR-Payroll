@@ -1,5 +1,5 @@
-﻿import pytest
-from datetime import datetime, date, timedelta, time as dt_time
+import pytest
+from datetime import datetime, date, timedelta, time as dt_time, timezone
 from decimal import Decimal
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -146,3 +146,35 @@ def test_unpaid_absence_lop_calculation():
     assert data["employee_id"] == 101
     assert "absent_days" in data
     assert "lop_hours" in data
+
+
+def test_clock_out_mixed_timezone_and_none_timestamp():
+    """Verify that clocking out does not crash with offset-naive vs offset-aware datetime error."""
+    today = date(2026, 9, 15)
+    cin_naive = datetime.combine(today, dt_time(9, 0))  # naive datetime
+
+    # 1. Clock in with naive timestamp
+    res_in = client.post("/api/v1/attendance/punch", json={
+        "employee_id": 101,
+        "punch_type": "in",
+        "timestamp": cin_naive.isoformat()
+    })
+    assert res_in.status_code == 200
+
+    # 2. Clock out with aware UTC timestamp
+    cout_aware = datetime.combine(today, dt_time(17, 0)).replace(tzinfo=timezone.utc)
+    res_out = client.post("/api/v1/attendance/punch", json={
+        "employee_id": 101,
+        "punch_type": "out",
+        "timestamp": cout_aware.isoformat()
+    })
+    assert res_out.status_code == 200
+    assert float(res_out.json()["worked_hours"]) >= 7.0
+
+    # 3. Clock out without timestamp (uses datetime.now(timezone.utc) against naive in DB)
+    res_out_live = client.post("/api/v1/attendance/punch", json={
+        "employee_id": 101,
+        "punch_type": "out",
+    })
+    assert res_out_live.status_code == 200
+

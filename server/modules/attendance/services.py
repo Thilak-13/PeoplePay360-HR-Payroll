@@ -8,6 +8,13 @@ from server.modules.attendance.models import AttendanceRecord, Shift, ShiftAssig
 from server.modules.master_data.models import Employee, LeaveRequest
 
 
+def _to_utc(dt: datetime) -> datetime:
+    """Ensure datetime is timezone-aware in UTC so comparisons and subtractions never raise TypeError."""
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
+
+
 class AttendanceService:
     @staticmethod
     def record_punch(
@@ -49,7 +56,7 @@ class AttendanceService:
                         sh_hour, sh_min = map(int, shift.start_time.split(":"))
                         shift_start_dt = datetime.combine(today, dt_time(sh_hour, sh_min))
                         grace_cutoff = shift_start_dt + timedelta(minutes=shift.grace_period_mins)
-                        if ts > grace_cutoff:
+                        if _to_utc(ts) > _to_utc(grace_cutoff):
                             status = "late"
                     except Exception:
                         pass
@@ -84,7 +91,9 @@ class AttendanceService:
 
             # Calculate worked hours if clock_in exists
             if record.clock_in and record.clock_out:
-                duration_secs = max(0, (record.clock_out - record.clock_in).total_seconds())
+                cin_utc = _to_utc(record.clock_in)
+                cout_utc = _to_utc(record.clock_out)
+                duration_secs = max(0.0, (cout_utc - cin_utc).total_seconds())
                 raw_hours = Decimal(str(round(duration_secs / 3600.0, 2)))
                 
                 # Deduct break if worked more than 5 hours
