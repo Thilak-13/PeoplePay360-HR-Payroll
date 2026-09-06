@@ -21,12 +21,12 @@ export const ROLE_DEFINITIONS: Record<string, RoleInfo> = {
     description: 'Full access to all modules and models across the platform. User management, role assignment, permission updates, and complete system administration.',
   },
   super_admin: {
-    id: 'admin',
-    name: 'Admin',
-    badgeColor: 'text-purple-700',
+    id: 'super_admin',
+    name: 'Super Admin',
+    badgeColor: 'text-purple-800',
     badgeBg: 'bg-purple-100',
-    badgeBorder: 'border-purple-300',
-    description: 'Full access to all modules and models across the platform. User management, role assignment, permission updates, and complete system administration.',
+    badgeBorder: 'border-purple-400',
+    description: 'Sole Super Admin identity with full administrative governance, user provisioning authority, and registration approval.',
   },
   hr_manager: {
     id: 'hr_manager',

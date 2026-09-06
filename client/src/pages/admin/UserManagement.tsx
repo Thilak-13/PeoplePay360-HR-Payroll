@@ -266,8 +266,9 @@ export const UserManagement: React.FC = () => {
 
   const getRoleBadge = (role: string) => {
     switch (role) {
-      case 'admin':
       case 'super_admin':
+        return <span className="bg-purple-100 text-purple-900 text-xs px-2.5 py-0.5 rounded-full font-bold border border-purple-400">Super Admin</span>;
+      case 'admin':
       case 'Admin':
         return <span className="bg-purple-100 text-purple-800 text-xs px-2.5 py-0.5 rounded-full font-bold border border-purple-200">Admin</span>;
       case 'hr_manager':

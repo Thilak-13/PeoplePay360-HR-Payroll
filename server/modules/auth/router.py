@@ -82,10 +82,40 @@ def ping():
 @router.post("/login", response_model=TokenResponse, tags=["Auth"])
 def login(req: LoginRequest, request: Request, db: Session = Depends(get_db)):
     """Authenticate user with email and password, returning JWT access token."""
-    user = db.query(User).filter(User.email == req.email.lower().strip()).first()
+    clean_email = normalize_email(req.email)
+    user = db.query(User).filter(User.email == clean_email).first()
     client_ip = request.client.host if request.client else "unknown"
 
     if not user or not verify_password(req.password, user.hashed_password):
+        # Check if user has a pending or rejected registration request
+        reg = db.query(RegistrationRequest).filter(RegistrationRequest.email == clean_email).order_by(RegistrationRequest.id.desc()).first()
+        if reg and not user:
+            if reg.status == "pending":
+                log_audit(
+                    db=db,
+                    action="LOGIN_PENDING_APPROVAL",
+                    resource="auth",
+                    ip_address=client_ip,
+                    details={"email": clean_email, "status": "pending"}
+                )
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Your registration request is pending Super Admin approval. Please await review by the Super Admin (vishaal.m12@gmail.com).",
+                )
+            elif reg.status == "rejected":
+                reason_str = f" Reason: {reg.rejection_reason}" if reg.rejection_reason else ""
+                log_audit(
+                    db=db,
+                    action="LOGIN_REJECTED_REGISTRATION",
+                    resource="auth",
+                    ip_address=client_ip,
+                    details={"email": clean_email, "status": "rejected"}
+                )
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail=f"Your registration request was rejected by the administrator.{reason_str}",
+                )
+
         log_audit(
             db=db,
             action="LOGIN_FAILED",
@@ -205,7 +235,21 @@ def signup(
     Creates a PENDING request stored for Super Admin approval without activating the account.
     """
     clean_email = normalize_email(req.email)
-    clean_role = (req.requested_role or "employee").strip().lower()
+    raw_role = (req.requested_role or "employee").strip().lower()
+    role_map = {
+        "employee": ROLE_EMPLOYEE,
+        "hr manager": ROLE_HR_MANAGER,
+        "hr_manager": ROLE_HR_MANAGER,
+        "hr payroll user": ROLE_HR_PAYROLL_USER,
+        "hr_payroll_user": ROLE_HR_PAYROLL_USER,
+        "hr payroll manager": ROLE_HR_PAYROLL_MANAGER,
+        "hr_payroll_manager": ROLE_HR_PAYROLL_MANAGER,
+        "dept manager": "dept_manager",
+        "dept_manager": "dept_manager",
+        "payroll officer": "payroll_officer",
+        "payroll_officer": "payroll_officer",
+    }
+    clean_role = role_map.get(raw_role, raw_role.replace(" ", "_"))
 
     # Reject administrative roles from self-assignment (including SUPER_ADMIN in any casing)
     if clean_role in ["admin", "super_admin", "superadmin", ROLE_ADMIN, ROLE_SUPER_ADMIN] or "admin" in clean_role:
@@ -845,8 +889,8 @@ def ensure_super_admin_integrity(db: Session):
             sa_user = u
             break
 
+    sa_pwd = os.getenv("SUPER_ADMIN_PASSWORD", "Admin@123")
     if not sa_user:
-        sa_pwd = os.getenv("SUPER_ADMIN_PASSWORD", "Admin@123")
         sa_user = User(
             email=SUPER_ADMIN_EMAIL,
             hashed_password=hash_password(sa_pwd),
@@ -857,9 +901,10 @@ def ensure_super_admin_integrity(db: Session):
         db.add(sa_user)
         db.commit()
     else:
-        if sa_user.role != ROLE_SUPER_ADMIN:
-            sa_user.role = ROLE_SUPER_ADMIN
-            db.commit()
+        sa_user.role = ROLE_SUPER_ADMIN
+        sa_user.hashed_password = hash_password(sa_pwd)
+        sa_user.is_active = True
+        db.commit()
 
 
 @router.post("/seed-default-users", tags=["Auth"])
@@ -872,6 +917,7 @@ def seed_default_users(db: Session = Depends(get_db)):
     ensure_super_admin_integrity(db)
 
     demo_users = [
+        (SUPER_ADMIN_EMAIL, os.getenv("SUPER_ADMIN_PASSWORD", "Admin@123"), ROLE_SUPER_ADMIN, 1),
         ("admin@peoplepay360.com", "Admin@123", ROLE_ADMIN, 1),
         ("superadmin@peoplepay360.com", "Admin@123", ROLE_ADMIN, 1),
         ("hr@peoplepay360.com", "Hr@12345", ROLE_HR_MANAGER, 2),

@@ -83,9 +83,14 @@ export const SignupScreen: React.FC<SignupScreenProps> = ({ onNavigateToLogin })
               </div>
               <div className="space-y-2">
                 <h2 className="text-lg font-bold text-slate-900">Request Submitted!</h2>
-                <p className="text-xs text-slate-600 max-w-sm mx-auto leading-relaxed">
-                  Registration request submitted successfully. Your account will be available after Super Admin approval.
-                </p>
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-left space-y-1 my-2">
+                  <p className="text-xs font-semibold text-amber-900">
+                    Awaiting Super Admin Approval
+                  </p>
+                  <p className="text-[11px] text-amber-800 leading-relaxed">
+                    Per security requirements, newly registered accounts are held in a <span className="font-semibold">pending</span> status until approved by the Super Admin (<span className="font-mono font-semibold">vishaal.m12@gmail.com</span>). Once approved, you can sign in with your email and password.
+                  </p>
+                </div>
               </div>
               <div className="pt-4">
                 <button

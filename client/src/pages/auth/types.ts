@@ -90,6 +90,16 @@ export interface DemoAccount {
 
 export const DEMO_ACCOUNTS: DemoAccount[] = [
   {
+    role: "super_admin",
+    label: "Super Admin",
+    userName: "Vishaal M (Super Admin)",
+    email: "vishaal.m12@gmail.com",
+    password: "Admin@123",
+    color: "text-purple-700",
+    bg: "bg-purple-100/70 border-purple-300 hover:border-purple-500 hover:bg-purple-100",
+    description: "Sole Super Admin identity with exclusive authority over system security, user provisioning, registration approvals, and audit logs."
+  },
+  {
     role: "admin",
     label: "Admin",
     userName: "Aditya Raman",
